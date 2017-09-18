@@ -34,6 +34,11 @@
 		"description" : "lower bound of asset grid",
 		"symbol" : "\\underline{a}"
 	},
+	"a_lowT" : {
+		"value" : 0.0,
+		"description" : "lower bound of asset grid in final period",
+		"symbol" : "\\underline{a_T}"
+	},
 	"ny" : {
 		"value" : 5,
 		"description" : "number of income grid points",

@@ -6,7 +6,7 @@
 Main body of the DC-EGM algorithm
 """
 
-function d_EGM!(m::iidDModel,p::Param)
+function dc_EGM!(m::iidDModel,p::Param)
     for it in p.nT:-1:1
     	for id in 1:p.nD
     		@debug(logger,"id: $id")
@@ -15,12 +15,15 @@ function d_EGM!(m::iidDModel,p::Param)
     		if it==p.nT
     			# final period: consume everyting.
                 # set the consumption function
-                set!(m.c[it],Line(vcat(0.0,p.a_high),vcat(0.0,p.a_high)))
+                set!(m.c[it,id],Line(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)))
+
+                # initialize value function with vf(1) = 0
+                set!(m.v[it,id],Line(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)))
 
                 # set the value function
     			# this line assumes that you cannot die in debt
-    			set_vbound!(m.v,it,id,0.0)
-    			set_vbound!(m.v,it,0.0)
+    			# set_vbound!(m.v,it,id,0.0)
+    			# set_vbound!(m.v,it,0.0)
     			# v0 = u(c0,working,p) + p.beta * 0.0
     		else
     			# previous periods
@@ -32,6 +35,20 @@ function d_EGM!(m::iidDModel,p::Param)
     			# precomputed next period's cash on hand on all income states
     			# what's next period's cash on hand given you work/not today?
     			mm1 = m.m1[it+1][id]
+
+                # get next period's value functions
+
+                # get next period's consumtion function
+
+                # get choice probs
+
+                # get marginal utility of that consumption
+
+                # get RHS of euler
+
+                # get current consumption
+
+                # save policy
 
     			# next period's endogenous grid and cons function
     			# on the envelope!
