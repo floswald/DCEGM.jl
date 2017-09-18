@@ -1,0 +1,82 @@
+{
+	"gamma" : {
+		"value" : 2.1,
+		"description" : "CRRA",
+		"symbol" : "\\gamma"
+	},
+	"beta" : {
+		"value" : 0.95,
+		"description" : "discount factor",
+		"symbol" : "\\beta"
+	},
+	"R" : {
+		"value" : 1.04,
+		"description" : "gross interest rate",
+		"symbol" : "R"
+	},
+	"na" : {
+		"value" : 500,
+		"description" : "number of asset grid points",
+		"symbol" : "na"
+	},
+	"nD" : {
+		"value" : 2,
+		"description" : "number of discrete choices",
+		"symbol" : "nD"
+	},
+	"a_high" : {
+		"value" : 50.0,
+		"description" : "upper bound of asset grid",
+		"symbol" : "\\overline{a}"
+	},
+	"a_low" : {
+		"value" : 0.0,
+		"description" : "lower bound of asset grid",
+		"symbol" : "\\underline{a}"
+	},
+	"ny" : {
+		"value" : 5,
+		"description" : "number of income grid points",
+		"symbol" : "ny"
+	},
+	"nT" : {
+		"value" : 25,
+		"description" : "number of years",
+		"symbol" : "nT"
+	},
+	"alpha" : {
+		"value" : 0.35,
+		"description" : "disutility of work",
+		"symbol" : "\\alpha"
+	},
+	"sigma" : {
+		"value" : 0.25,
+		"description" : "Income shock variance",
+		"symbol" : "\\sigma"
+	},
+	"lambda" : {
+		"value" : 0.02,
+		"description" : "scale of EV shocks",
+		"symbol" : "\\lambda"
+	},
+	"inc0" : {
+		"value" : 0.75,
+		"description" : "scale of EV shocks",
+		"symbol" : "\\lambda"
+	},
+	"inc1" : {
+		"value" : 0.04,
+		"description" : "scale of EV shocks",
+		"symbol" : "\\lambda"
+	},
+	"inc2" : {
+		"value" : 0.0002,
+		"description" : "scale of EV shocks",
+		"symbol" : "\\lambda"
+	},
+	"cfloor" : {
+		"value" : 0.001,
+		"description" : "consumption floor",
+		"symbol" : "\\underline{c}"
+	}
+}
