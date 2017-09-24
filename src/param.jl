@@ -78,7 +78,7 @@ Binary Choice Model with iid income uncertainty
 
 uses cash-on-hand m=y+a as state variable
 """
-mutable struct iidDModel
+mutable struct Model
 
 	# nD is number of discrete choices: nD = 2
 
@@ -93,14 +93,14 @@ mutable struct iidDModel
 	ev::Matrix{Float64}
 
 	# result objects
-	m :: Dict{Int,Envelope}
-	v :: Dict{Int,Envelope}
-	c :: Dict{Int,Envelope}
+	m :: Matrix{Envelope}
+	v :: Matrix{Envelope}
+	c :: Matrix{Envelope}
 
 	"""
-	Constructor for iid Dchoice Model
+	Constructor for Dchoice Model
 	"""
-	function iidDModel(p::Param)
+	function Model(p::Param)
 
 		this = new()
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
@@ -127,9 +127,11 @@ mutable struct iidDModel
 
 		# dicts
 		# m = [it => Envelope([id => zeros(p.na) for id in 1:2],[id => 0.0 for id in 1:2], 0.0, zeros(p.na)) for it in 1:p.nT]
-		this.m = [it => Envelope(0.0) for it in 1:p.nT]
-		this.v = [it => Envelope(0.0) for it in 1:p.nT]
-		this.c = [it => Envelope(0.0) for it in 1:p.nT]
+		# this.m = [it => Envelope(0.0) for it in 1:p.nT]
+
+		# each of those a Line object with x=m and y=v or y=c
+		this.v = [Envelope([Line(fill(NaN,(p.na,1)),fill(NaN,(p.na,1))) for id in 1:p.nD]) for it in 1:p.nT]
+		this.c = [Envelope([Line(fill(NaN,(p.na,1)),fill(NaN,(p.na,1))) for id in 1:p.nD]) for it in 1:p.nT]
 		# dchoice = [it => ["d" => zeros(Int,p.na), "Vzero" => 0.0, "threshold" => 0.0] for it=1:p.nT]
 
 		return this

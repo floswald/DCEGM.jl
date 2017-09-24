@@ -1,12 +1,39 @@
 
 
 """
+    vfun(id::Int,it::Int,x::Vector{Float64},L::Line,p::Param)
+
+Calculate the period `it`, discrete choice `id`-specific value function. Avoids interpolation in credit constrained region by using the analytic form of the value function (no need to interpolate expected value function when on the lower bound of assets.)
+"""
+function vfun(id::Int,x::Vector{Float64},L::Line,p::Param)
+
+    if length(L) < 2
+        error("need more than 2 points in envelope object")
+    end
+
+    r = fill(NaN,size(x))
+    mask = x.<L.x[2]
+    mask = it==p.nT ? trues(mask) : mask
+
+    if any(mask)
+        # in the credit constrained region:
+        r[mask] = u(x[mask],p,id==2) + p.beta * L.y[1]
+
+        # elsewhere
+        r[.!mask] = interp(L,x[.!mask])
+    else
+        r[:] = interp(L,x)
+    end
+end
+
+
+"""
     dcegm!(m::Model,p::Param)
 
 Main body of the DC-EGM algorithm
 """
 
-function dc_EGM!(m::iidDModel,p::Param)
+function dc_EGM!(m::Model,p::Param)
     for it in p.nT:-1:1
     	for id in 1:p.nD
     		@debug(logger,"id: $id")
@@ -15,10 +42,10 @@ function dc_EGM!(m::iidDModel,p::Param)
     		if it==p.nT
     			# final period: consume everyting.
                 # set the consumption function
-                set!(m.c[it,id],Line(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)))
+                set!(m.c[it],id,Line(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high))
 
                 # initialize value function with vf(1) = 0
-                set!(m.v[it,id],Line(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)))
+                set!(m.v[it],id,Line(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN))
 
                 # set the value function
     			# this line assumes that you cannot die in debt
@@ -28,21 +55,28 @@ function dc_EGM!(m::iidDModel,p::Param)
     		else
     			# previous periods
     			# set values on lower bound
-    			set_vbound!(m.c,it,id,0.0)
-    			set_vbound!(m.m,it,id,0.0)
-    			set_vbound!(m.v,it,id,NaN)
+    			# set_vbound!(m.c,it,id,0.0)
+    			# set_vbound!(m.m,it,id,0.0)
+    			# set_vbound!(m.v,it,id,NaN)
 
     			# precomputed next period's cash on hand on all income states
     			# what's next period's cash on hand given you work/not today?
     			mm1 = m.m1[it+1][id]
 
-                # get next period's value functions
+                # fedor floors this for min consumption
+                # but i want negative assets.
 
-                # get next period's consumtion function
+                # get next period's conditional value functions
+                v1 = [vfun(jd,mm1,getLine(m.v[it+1],jd),p) for jd in 1:p.nD]
 
-                # get choice probs
+                # get ccp to be a worker
+                pwork = ccp(v1) * working
+
+                # interpolate all d-choice next period's consumtion function on next cash on hand
+                c1 = interp(m.c[it+1],mm1)
 
                 # get marginal utility of that consumption
+                mu1 = pwork .* up(c1[1,:],p) .+ (1-pwork) .* up(c1[2,:],p)
 
                 # get RHS of euler
 
