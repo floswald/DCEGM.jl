@@ -2,8 +2,14 @@ module DCEGM
 
 
 using MultiLine
-using Interpolations
+using JSON
+using Interpolations: interpolate, Gridded, Linear
 using MiniLogging
+using Distributions: Normal
+using FastGaussQuadrature
+using Plots
+
+pyplot()
 
 include("param.jl")
 include("utils.jl")

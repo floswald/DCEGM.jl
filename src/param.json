@@ -66,21 +66,21 @@
 	},
 	"inc0" : {
 		"value" : 0.75,
-		"description" : "scale of EV shocks",
-		"symbol" : "\\lambda"
+		"description" : "income intercept",
+		"symbol" : "\\beta_0"
 	},
 	"inc1" : {
 		"value" : 0.04,
-		"description" : "scale of EV shocks",
-		"symbol" : "\\lambda"
+		"description" : "income age",
+		"symbol" : "\\beta_1"
 	},
 	"inc2" : {
 		"value" : 0.0002,
-		"description" : "scale of EV shocks",
-		"symbol" : "\\lambda"
+		"description" : "income age2",
+		"symbol" : "\\beta_2"
 	},
 	"cfloor" : {
-		"value" : 0.001,
+		"value" : 0.0001,
 		"description" : "consumption floor",
 		"symbol" : "\\underline{c}"
 	}

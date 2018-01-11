@@ -42,10 +42,10 @@ function dc_EGM!(m::Model,p::Param)
     		if it==p.nT
     			# final period: consume everyting.
                 # set the consumption function
-                set!(m.c[it],id,Line(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high))
+                set!(m.c[it],id,Line(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)))
 
                 # initialize value function with vf(1) = 0
-                set!(m.v[it],id,Line(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN))
+                set!(m.v[it],id,Line(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)))
 
                 # set the value function
     			# this line assumes that you cannot die in debt

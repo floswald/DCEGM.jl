@@ -26,7 +26,7 @@ Holds the user-set parameter values.
 
 
 """
-struct Param
+mutable struct Param
 
 	gamma                 :: Float64  # CRRA
 	neg_gamma             :: Float64
@@ -34,6 +34,8 @@ struct Param
 	oneover_oneminusgamma :: Float64
 	neg_oneover_gamma     :: Float64
 	beta                  :: Float64
+	sigma                 :: Float64
+	lambda                :: Float64
 	R                     :: Float64
 	na                    :: Int 	# asset grid
 	ny                    :: Int   # income grid (support points)
@@ -44,6 +46,9 @@ struct Param
 	nD                    :: Int # number of discrete choices
 	cfloor                :: Float64
 	alpha                 :: Float64
+	inc0                 :: Float64
+	inc1                 :: Float64
+	inc2                 :: Float64
 
 	# constructor 
     function Param(;par::Dict=Dict())
@@ -65,7 +70,7 @@ struct Param
     	# derived
 		this.neg_gamma             = (-1.0) * this.gamma
 		this.oneminusgamma         = 1.0 - this.gamma
-		this.oneover_oneminusgamma = 1.0 / oneminusgamma
+		this.oneover_oneminusgamma = 1.0 / this.oneminusgamma
 		this.neg_oneover_gamma     = (-1.0) / this.gamma
 
 		return this
@@ -93,35 +98,38 @@ mutable struct Model
 	ev::Matrix{Float64}
 
 	# result objects
-	m :: Matrix{Envelope}
-	v :: Matrix{Envelope}
-	c :: Matrix{Envelope}
+	m :: Vector{Envelope}
+	v :: Vector{Envelope}
+	c :: Vector{Envelope}
 
 	"""
-	Constructor for Dchoice Model
+	Constructor for discrete choice Model
 	"""
 	function Model(p::Param)
 
 		this = new()
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
 		this.avec          = collect(linspace(p.a_low,p.a_high,p.na))
-		# nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-		nodes,weights = quadpoints(p.ny,0,1)  # from FastGaussQuadrature
-		N = Normal(0,1)
-		nodes = quantile(N,nodes)
 
+		# fedors vesion:
+		# nodes,weights = quadpoints(p.ny,0,1) 
+		# N = Normal(0,1)
+		# nodes = quantile.(N,nodes)
+		# this.yvec = nodes * p.sigma
+		# this.ywgt = weights
+
+		# my version:
 		# for y ~ N(mu,sigma), integrate y with 
 		# http://en.wikipedia.org/wiki/Gauss-Hermite_quadrature
-		# yvec = sqrt(2.0) * p.sigma .* nodes .+ p.mu
-		this.yvec = nodes * p.sigma
-		# ywgt = weights .* pi^(-0.5)
-		this.ywgt = weights
+		nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+		this.yvec = sqrt(2.0) * p.sigma .* nodes
+		this.ywgt = weights .* pi^(-0.5)
 
 		# precompute next period's cash on hand.
 		# (na,ny,nD)
 		# iD = 1: no work
 		# iD = 2: work
-		this.m1 = [it => [id => Float64[avec[ia]*p.R + income(it,p,yvec[iy]) * (id-1) for ia in 1:p.na, iy in 1:p.ny  ] for id=1:p.nD] for it=1:p.nT]
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R + income(it,p,this.yvec[iy]) * (id-1) for ia in 1:p.na, iy in 1:p.ny  ] for id=1:p.nD) for it=1:p.nT)
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 
@@ -130,10 +138,37 @@ mutable struct Model
 		# this.m = [it => Envelope(0.0) for it in 1:p.nT]
 
 		# each of those a Line object with x=m and y=v or y=c
-		this.v = [Envelope([Line(fill(NaN,(p.na,1)),fill(NaN,(p.na,1))) for id in 1:p.nD]) for it in 1:p.nT]
-		this.c = [Envelope([Line(fill(NaN,(p.na,1)),fill(NaN,(p.na,1))) for id in 1:p.nD]) for it in 1:p.nT]
+		this.v = [Envelope([Line(fill(NaN,(p.na)),fill(NaN,(p.na))) for id in 1:p.nD]) for it in 1:p.nT]
+		this.c = [Envelope([Line(fill(NaN,(p.na)),fill(NaN,(p.na))) for id in 1:p.nD]) for it in 1:p.nT]
 		# dchoice = [it => ["d" => zeros(Int,p.na), "Vzero" => 0.0, "threshold" => 0.0] for it=1:p.nT]
 
 		return this
 	end
+end
+
+
+function minimal_EGM()
+	p = Param()
+	nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+	yvec = sqrt(2.0) * p.sigma .* nodes
+	ywgt = weights .* pi^(-0.5)
+	avec = collect(linspace(p.a_low,p.a_high,p.na))
+	m = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
+	c = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
+	m[p.nT] = [p.a_low,p.a_high]
+	c[p.nT] = [0.0,p.a_high]
+	plot(m[p.nT],c[p.nT],label="$(p.nT)",xlim=(-1,20),ylim=(0,20),leg=false)
+	for it in p.nT-1:-1:1
+		w1 = 1.0 .+ exp.(yvec).*p.R.*avec'   # next period wealth at all states. (p.ny,p.na)
+		c1 = reshape(interpolate((m[it+1],),c[it+1],Gridded(Linear()))[w1[:]] ,p.ny,p.na)  # next period consumption. (p.ny,p.na)
+		c1[c1.<0] = p.cfloor
+		rhs = ywgt' * (1./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
+		c[it] = vcat(0, 1./(p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)
+		m[it] = vcat(p.a_low, avec.+c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
+		plot!(m[it],c[it],label="$it")
+	end
+
+	gui()
+
+	return (m,c)
 end
