@@ -98,8 +98,7 @@ mutable struct Model
 	ev::Matrix{Float64}
 
 	# result objects
-	m :: Vector{Envelope}
-	v :: Vector{Envelope}
+	v :: Vector{Envelope}  # a vector of Envelope objects
 	c :: Vector{Envelope}
 
 	"""
@@ -133,11 +132,6 @@ mutable struct Model
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 
-		# dicts
-		# m = [it => Envelope([id => zeros(p.na) for id in 1:2],[id => 0.0 for id in 1:2], 0.0, zeros(p.na)) for it in 1:p.nT]
-		# this.m = [it => Envelope(0.0) for it in 1:p.nT]
-
-		# each of those a Line object with x=m and y=v or y=c
 		this.v = [Envelope([Line(fill(NaN,(p.na)),fill(NaN,(p.na))) for id in 1:p.nD]) for it in 1:p.nT]
 		this.c = [Envelope([Line(fill(NaN,(p.na)),fill(NaN,(p.na))) for id in 1:p.nD]) for it in 1:p.nT]
 		# dchoice = [it => ["d" => zeros(Int,p.na), "Vzero" => 0.0, "threshold" => 0.0] for it=1:p.nT]
