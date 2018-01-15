@@ -98,8 +98,8 @@ mutable struct Model
 	ev::Matrix{Float64}
 
 	# result objects
-	v :: Vector{Envelope}  # a vector of Envelope objects
-	c :: Vector{Envelope}
+	v :: Matrix{Envelope}  # a vector of Envelope objects
+	c :: Matrix{Envelope}
 
 	"""
 	Constructor for discrete choice Model
@@ -132,8 +132,8 @@ mutable struct Model
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 
-		this.v = [Envelope([Line(fill(NaN,(p.na)),fill(NaN,(p.na))) for id in 1:p.nD]) for it in 1:p.nT]
-		this.c = [Envelope([Line(fill(NaN,(p.na)),fill(NaN,(p.na))) for id in 1:p.nD]) for it in 1:p.nT]
+		this.v = [Envelope(Line(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
+		this.c = [Envelope(Line(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
 		# dchoice = [it => ["d" => zeros(Int,p.na), "Vzero" => 0.0, "threshold" => 0.0] for it=1:p.nT]
 
 		return this
@@ -141,7 +141,7 @@ mutable struct Model
 end
 
 
-function minimal_EGM()
+function minimal_EGM(;dplot=false)
 	p = Param()
 	nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
 	yvec = sqrt(2.0) * p.sigma .* nodes
@@ -151,7 +151,9 @@ function minimal_EGM()
 	c = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
 	m[p.nT] = [p.a_low,p.a_high]
 	c[p.nT] = [0.0,p.a_high]
-	plot(m[p.nT],c[p.nT],label="$(p.nT)",xlim=(-1,20),ylim=(0,20),leg=false)
+	if dplot
+		plot(m[p.nT],c[p.nT],label="$(p.nT)",xlim=(-1,20),ylim=(0,20),leg=false)
+	end
 	for it in p.nT-1:-1:1
 		w1 = 1.0 .+ exp.(yvec).*p.R.*avec'   # next period wealth at all states. (p.ny,p.na)
 		c1 = reshape(interpolate((m[it+1],),c[it+1],Gridded(Linear()))[w1[:]] ,p.ny,p.na)  # next period consumption. (p.ny,p.na)
@@ -159,10 +161,13 @@ function minimal_EGM()
 		rhs = ywgt' * (1./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
 		c[it] = vcat(0, 1./(p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)
 		m[it] = vcat(p.a_low, avec.+c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
-		plot!(m[it],c[it],label="$it")
+		if dplot
+			plot!(m[it],c[it],label="$it")
+		end
 	end
-
-	gui()
+	if dplot
+		gui()
+	end
 
 	return (m,c)
 end

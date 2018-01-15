@@ -34,7 +34,7 @@ end
 Conditional Choice probability of working
 """
 function ccp(x::Matrix,p::Param) 
-    #choice probability of the first row in multirow matrix
+    #choice probability of the first row in 2-row matrix
     mx = maximum(x,1)
     mxx = x.-repmat(mx,size(x)[1],1)   # center values at max for numerical stability
     exp.(mxx[1,:]./p.lambda)./sum(exp.(mxx./p.lambda),1)[:]
@@ -45,7 +45,7 @@ end
 
 Logsum of conditional values used in Expected value function.
 """
-function logsum(x::Matrix,p::Param) 
+function logsum(x::Matrix,p::Param)
     mx = maximum(x,1)
     mxx = x.-repmat(mx,size(x)[1],1)
     mx .+ p.lambda * log.( sum(exp.(mxx./p.lambda),1) )
@@ -56,7 +56,6 @@ end
 
 Main body of the DC-EGM algorithm
 """
-
 function dc_EGM!(m::Model,p::Param)
     for it in p.nT:-1:1
     	for id in 1:p.nD
@@ -103,7 +102,7 @@ function dc_EGM!(m::Model,p::Param)
                 c0 = iup(RHS,p)
 
                 # set optimal consumption function today. endo grid m and cons c0
-                m.c[it][id] = Line(m.avec .+ c0, c0)
+                cline = Line(m.avec .+ c0, c0)
 
     			# compute value function
     			# ----------------------
@@ -111,39 +110,67 @@ function dc_EGM!(m::Model,p::Param)
                 if working
                     ev = m.ywgt' * repmat(logsum(v1,p),p.ny,1)
                 else
-                    ev = m.ywgt' * vfun(2,mm1,m.v[it+1],p)
+                    ev = m.ywgt' * vfun(2,mm1,m.v[2,it+1],p)
                 end
-                m.v[it][id] = Line(m.avec .+ c0, u(c0,id,p) + p.beta * ev)
-                # this value function may have backward-bending regions: let's prune those
+                vline = Line(m.avec .+ c0, u(c0,id,p) + p.beta * ev)
 
-                if id==1
-                    minx = minimum(m.v[it][id].x)
-                    if minx < m.v[it][id].x[1]
+                # vline and cline may have backward-bending regions: let's prune those
+                # SECONDARY ENVELOPE COMPUTATION
+
+                if id==1   # only for workers
+                    minx = minimum(vline.x)
+                    if minx < vline.x[1]
                         # non-convex region lies inside credit constraint.
                         # endogenous x grid bends back before the first x grid point.
-                        x0 = linspace(minx,m.v[it][id].x[1],floor(p.na/10)) # some points to the left of first x point
+                        x0 = linspace(minx,vline.x[1],floor(p.na/10)) # some points to the left of first x point
                         x0 = x0[1:end-1]
                         y0 = u(x0,working,p) + p.beta * ev[1]
-                        prepend!(m.v[it][id],x0,y0)
-                    end
-                    env = create_envelope(m.v[it][id])
-                    upper_env!(env)   # compute upper envelope of this
-                end
-
-                # now need to clean the policy function as well
-                if length(m.v[it].removed) > 0
-                    # 1. remove m.v[it].removed from m.c[it]
-                    # 2. i.e. from m.c[it].env and all m.c[it].L objects
-                    for idel in 
-                    # for isec in m.v[it].isects
-                        # for each intersection in cond value functions
-                        # drop the indices of removed points
-
+                        prepend!(vline,x0,y0)
+                        prepend!(cline,x0,x0)  # cons policy in credit constrained is 45 degree line
                     end
 
-                end
+                    # split the vline at potential backward-bending points
+                    # and save as Envelope object
+                    m.v[id,it] = splitLine(vline)  # splits line at backward bends
+                    upper_env!(m.v[id,it])   # compute upper envelope of this
 
-    		end  # if final period
-    	end  # loop over discrete choice
-    end
+                    # now need to clean the policy function as well
+                    removed = getr(m.v[id,it])
+                    for r in 1:length(removed)
+                        if length(removed[r]) > 0
+                            for ir in removed[r]
+                                delete!(m.c[id,it].L[r],ir.i)   # delete index i.r
+                            end
+                        end
+                    end
+                    # insert new intersections into consumption function
+                    isecs = gets(m.v[id,it])
+                    if length(isecs) > 0
+                        for isec in 1:length(isecs)
+                            I = isecs[isec]
+
+                            # if that intersection is a new point
+                            # i.e. intersection was not a member of any `Line`
+                            if I.new_point
+                                # insert intersection into env over cons function
+                                insert!(m.c[id,it].env,I.x,interp(m.c[id,it].env,[I.x]),I.i)
+
+                                # add to both adjacent `Line` segments:
+                                # 1) append to end of segment preceding intersection:
+                                newy = interp(m.c[id,it].L[I.i],[I.x])
+                                append!(m.c[id,it].L[I.i],I.x,newy)
+                                # 1) prepend to beginning of segment following intersection:
+                                prepend!(m.c[id,it].L[I.i+1],I.x,newy)
+                            end
+                        end
+                    end
+                end     # if id==1
+
+                # add special point to Envelopes for saving exactly on the borrowing constraint
+                # this creates the credit constrained region (i.e. a 45 degree line)
+                prepend!(m.c[id,it].env,p.a_low,0.0)
+                prepend!(m.v[id,it].env,p.a_low,ev[1])
+    		end   # if final period
+    	end    # loop over discrete choice
+    end     # loop over time
 end
