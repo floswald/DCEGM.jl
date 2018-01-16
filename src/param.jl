@@ -142,21 +142,25 @@ end
 
 
 function minimal_EGM(;dplot=false)
-	p = Param()
+	p             = Param()
 	nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-	yvec = sqrt(2.0) * p.sigma .* nodes
-	ywgt = weights .* pi^(-0.5)
-	avec = collect(linspace(p.a_low,p.a_high,p.na))
-	m = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
-	c = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
-	m[p.nT] = [p.a_low,p.a_high]
-	c[p.nT] = [0.0,p.a_high]
+	yvec          = sqrt(2.0) * p.sigma .* nodes
+	ywgt          = weights .* pi^(-0.5)
+	avec          = collect(linspace(p.a_low,p.a_high,p.na))
+	m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
+	c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
+	m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
+	c[p.nT]       = [0.0,p.a_high]
 	if dplot
-		plot(m[p.nT],c[p.nT],label="$(p.nT)",xlim=(-1,20),ylim=(0,20),leg=false)
+		plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false)
 	end
+	# cycle back in time
 	for it in p.nT-1:-1:1
-		w1 = 1.0 .+ exp.(yvec).*p.R.*avec'   # next period wealth at all states. (p.ny,p.na)
-		c1 = reshape(interpolate((m[it+1],),c[it+1],Gridded(Linear()))[w1[:]] ,p.ny,p.na)  # next period consumption. (p.ny,p.na)
+		w1 = 1.0 .+ exp.(yvec).*p.R.*avec'   # w1 = y + yshock*R*savings:  next period wealth at all states. (p.ny,p.na)
+		# get next period consumption on that wealth w1
+		# interpolate on next period's endogenous grid m[it+1].
+		# notice that the `interpolate` object needs to be able to extrapolate
+		c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Linear())[w1[:]] ,p.ny,p.na)  
 		c1[c1.<0] = p.cfloor
 		rhs = ywgt' * (1./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
 		c[it] = vcat(0, 1./(p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)

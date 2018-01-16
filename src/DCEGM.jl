@@ -3,13 +3,13 @@ module DCEGM
 
 using MultiLine
 using JSON
-using Interpolations: interpolate, Gridded, Linear
+using Interpolations: interpolate, Gridded, Linear, extrapolate
 using MiniLogging
 using Distributions: Normal
 using FastGaussQuadrature
 using Plots
 
-pyplot()
+plotlyjs()
 
 include("param.jl")
 include("utils.jl")

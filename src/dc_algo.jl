@@ -9,7 +9,7 @@ function vfun(id::Int,x::Vector{Float64},en::Envelope,p::Param)
 
     # L = en.L[id]
 
-    if length(en.L) < 2
+    if length(en.env.x) < 2
         error("need more than 2 points in envelope object")
     end
 
@@ -48,7 +48,7 @@ Logsum of conditional values used in Expected value function.
 function logsum(x::Matrix,p::Param)
     mx = maximum(x,1)
     mxx = x.-repmat(mx,size(x)[1],1)
-    mx .+ p.lambda * log.( sum(exp.(mxx./p.lambda),1) )
+    mx .+ p.lambda * log.( sum(exp.(mxx./p.lambda), 1) )
 end
 
 """
@@ -58,22 +58,24 @@ Main body of the DC-EGM algorithm
 """
 function dc_EGM!(m::Model,p::Param)
     for it in p.nT:-1:1
-    	for id in 1:p.nD
-    		@debug(logger,"id: $id")
-    		working = id==1
 
-    		if it==p.nT
+		if it==p.nT
+            for id in 1:p.nD
     			# final period: consume everyting.
                 # set the consumption function
                 # remember this is a `Line`, i.e. it has an x and a y Vector
                 # x: endogenous grid m
                 # y: optimal consumption at that grid x
-                m.c[it][id] = Line(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high))
+                m.c[id,it] = Envelope(Line(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
 
                 # initialize value function with vf(1) = 0
-                m.v[it][id] = Line(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN))
+                m.v[id,it] = Envelope(Line(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
+            end
 
-    		else
+		else
+            for id in 1:p.nD
+                working = id==1
+                info("id: $id")
     			# previous periods
 
     			# precomputed next period's cash on hand on all income states
@@ -82,7 +84,7 @@ function dc_EGM!(m::Model,p::Param)
 
                 # get next period's conditional value functions
                 # as a matrix where each row is another discrete choice
-                v1 = hcat([vfun(jd,mm1,m.v[it+1],p) for jd in 1:p.nD]...)'
+                v1 = hcat([vfun(jd,mm1[:],m.v[it+1],p) for jd in 1:p.nD]...)'
 
                 # get ccp to be a worker
                 pwork = ccp(v1) * working
@@ -173,4 +175,11 @@ function dc_EGM!(m::Model,p::Param)
     		end   # if final period
     	end    # loop over discrete choice
     end     # loop over time
+end
+
+function run()
+    p = Param()
+    m = Model(p)
+    dc_EGM!(m,p)
+    return (m,p)
 end

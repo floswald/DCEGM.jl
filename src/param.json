@@ -45,7 +45,7 @@
 		"symbol" : "ny"
 	},
 	"nT" : {
-		"value" : 25,
+		"value" : 10,
 		"description" : "number of years",
 		"symbol" : "nT"
 	},
