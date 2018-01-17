@@ -71,7 +71,7 @@ function iup(u::Float64,p::Param)
 		u ^ p.neg_oneover_gamma
 	end
 end
-function iup(u::Array{Float64},p::Param)
+function iup(u::Vector{Float64},p::Param)
 	n = length(u)
 	x = zeros(n)
 	for i in 1:n

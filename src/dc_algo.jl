@@ -5,26 +5,28 @@
 
 Calculate the period `it`, discrete choice `id`-specific value function. Avoids interpolation in credit constrained region by using the analytic form of the value function (no need to interpolate expected value function when on the lower bound of assets.)
 """
-function vfun(id::Int,x::Vector{Float64},en::Envelope,p::Param)
+function vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},en::Matrix{Envelope},p::Param)
 
     # L = en.L[id]
+    v = en[id,it]
 
-    if length(en.env.x) < 2
+    if length(getx(v)) < 2
         error("need more than 2 points in envelope object")
     end
 
-    r = fill(NaN,size(x))
-    mask = x.<en.L[id].x[2]
+    r = fill(NaN,size(m1))
+    mask = m1.<getx(v)[2]
     mask = it==p.nT ? trues(mask) : mask
 
-    if any(mask)
+    if all(mask)
         # in the credit constrained region:
-        r[mask] = u(x[mask],p,id==1) + p.beta * en.L[id].y[1]
-
+        r[:] = u(c1,id==1,p) + p.beta * gety(v)[1]
+    elseif any(mask)
+        r[mask] = u(c1[mask],id==1,p) + p.beta * gety(v)[1]
         # elsewhere
-        r[.!mask] = interp(en.L[id],x[.!mask])
+        r[.!mask] = interp(v.env,m1[.!mask])
     else
-        r[:] = interp(en.L[id],x)
+        r[:] = interp(v.env,m1)
     end
 end
 
@@ -81,24 +83,29 @@ function dc_EGM!(m::Model,p::Param)
     			# precomputed next period's cash on hand on all income states
     			# what's next period's cash on hand given you work/not today?
     			mm1 = m.m1[it+1][id]
-
-                # get next period's conditional value functions
-                # as a matrix where each row is another discrete choice
-                v1 = hcat([vfun(jd,mm1[:],m.v[it+1],p) for jd in 1:p.nD]...)'
-
-                # get ccp to be a worker
-                pwork = ccp(v1) * working
+                # println("mm1 = $(mm1[1:10])")
 
                 # interpolate all d-choice next period's consumtion function on next cash on hand
-                c1 = interp(m.c[it+1],mm1)
+                c1 = interp([m.c[i,it+1] for i in 1:2],mm1[:])
                 c1[c1.<p.cfloor] = p.cfloor   # no negative consumption
+                println("c1 = $(c1[:,1:10])")
+                       
+                # get next period's conditional value functions
+                # as a matrix where each row is another discrete choice
+                v1 = hcat([vfun(jd,it+1,c1[jd,:],mm1[:],m.v,p) for jd in 1:p.nD]...)'
+                println("v1 = $(v1[:,1:10])")
+
+                # get ccp to be a worker
+                pwork = ccp(v1,p) * working
 
                 # get marginal utility of that consumption
-                mu1 = pwork .* up(c1[1,:],p) .+ (1-pwork) .* up(c1[2,:],p)
+                mu1 = reshape(pwork .* up(c1[1,:],p) .+ (1-pwork) .* up(c1[2,:],p),p.na,p.ny)
+                println("mu1 = $(mu1[1:10,:])")
 
                 # get expected marginal value of saving: RHS of euler equation
                 # beta * R * E[ u'(c_{t+1}) ] 
-                RHS = p.beta * p.R * m.ywgt' * mu1
+                RHS = p.beta * p.R * mu1 * m.ywgt
+                println("RHS = $(RHS[1:10])")
 
                 # optimal consumption today: invert the RHS of euler equation
                 c0 = iup(RHS,p)
@@ -110,11 +117,19 @@ function dc_EGM!(m::Model,p::Param)
     			# ----------------------
 
                 if working
-                    ev = m.ywgt' * repmat(logsum(v1,p),p.ny,1)
+                    ev = reshape(logsum(v1,p),size(mm1)) * m.ywgt
                 else
-                    ev = m.ywgt' * vfun(2,mm1,m.v[2,it+1],p)
+                    ev = reshape(vfun(2,it+1,c1[2,:],mm1[:],m.v,p),size(mm1)) * m.ywgt
                 end
-                vline = Line(m.avec .+ c0, u(c0,id,p) + p.beta * ev)
+                # println(size(m.avec))
+                # println(size(c0))
+                println("c0 = $(c0)")
+                # println("ev = $(ev)")
+                # println("u = $(u(c0,id==1,p))")
+                # println(m.avec .+ c0)
+                vline = Line(m.avec .+ c0, u(c0,id==1,p) .+ p.beta * ev)
+
+                println(vline)
 
                 # vline and cline may have backward-bending regions: let's prune those
                 # SECONDARY ENVELOPE COMPUTATION
@@ -134,39 +149,41 @@ function dc_EGM!(m::Model,p::Param)
                     # split the vline at potential backward-bending points
                     # and save as Envelope object
                     m.v[id,it] = splitLine(vline)  # splits line at backward bends
-                    upper_env!(m.v[id,it])   # compute upper envelope of this
-
-                    # now need to clean the policy function as well
-                    removed = getr(m.v[id,it])
-                    for r in 1:length(removed)
-                        if length(removed[r]) > 0
-                            for ir in removed[r]
-                                delete!(m.c[id,it].L[r],ir.i)   # delete index i.r
+                    if !m.v[id,it].env_set
+                        upper_env!(m.v[id,it])   # compute upper envelope of this
+                        # now need to clean the policy function as well
+                        removed = getr(m.v[id,it])
+                        for r in 1:length(removed)
+                            if length(removed[r]) > 0
+                                for ir in removed[r]
+                                    delete!(m.c[id,it].L[r],ir.i)   # delete index i.r
+                                end
                             end
                         end
-                    end
-                    # insert new intersections into consumption function
-                    isecs = gets(m.v[id,it])
-                    if length(isecs) > 0
-                        for isec in 1:length(isecs)
-                            I = isecs[isec]
+                        # insert new intersections into consumption function
+                        isecs = gets(m.v[id,it])
+                        if length(isecs) > 0
+                            for isec in 1:length(isecs)
+                                I = isecs[isec]
 
-                            # if that intersection is a new point
-                            # i.e. intersection was not a member of any `Line`
-                            if I.new_point
-                                # insert intersection into env over cons function
-                                insert!(m.c[id,it].env,I.x,interp(m.c[id,it].env,[I.x]),I.i)
+                                # if that intersection is a new point
+                                # i.e. intersection was not a member of any `Line`
+                                if I.new_point
+                                    # insert intersection into env over cons function
+                                    insert!(m.c[id,it].env,I.x,interp(m.c[id,it].env,[I.x]),I.i)
 
-                                # add to both adjacent `Line` segments:
-                                # 1) append to end of segment preceding intersection:
-                                newy = interp(m.c[id,it].L[I.i],[I.x])
-                                append!(m.c[id,it].L[I.i],I.x,newy)
-                                # 1) prepend to beginning of segment following intersection:
-                                prepend!(m.c[id,it].L[I.i+1],I.x,newy)
+                                    # add to both adjacent `Line` segments:
+                                    # 1) append to end of segment preceding intersection:
+                                    newy = interp(m.c[id,it].L[I.i],[I.x])
+                                    append!(m.c[id,it].L[I.i],I.x,newy)
+                                    # 1) prepend to beginning of segment following intersection:
+                                    prepend!(m.c[id,it].L[I.i+1],I.x,newy)
+                                end
                             end
                         end
-                    end
-                end     # if id==1
+                    end     # if id==1
+                end
+
 
                 # add special point to Envelopes for saving exactly on the borrowing constraint
                 # this creates the credit constrained region (i.e. a 45 degree line)
