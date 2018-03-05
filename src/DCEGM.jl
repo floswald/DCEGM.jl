@@ -9,7 +9,6 @@ using Distributions: Normal
 using FastGaussQuadrature
 using Plots
 
-plotlyjs()
 
 include("param.jl")
 include("utils.jl")
