@@ -1,6 +1,6 @@
 {
 	"gamma" : {
-		"value" : 2.1,
+		"value" : 1.2,
 		"description" : "CRRA",
 		"symbol" : "\\gamma"
 	},
@@ -10,7 +10,7 @@
 		"symbol" : "\\beta"
 	},
 	"R" : {
-		"value" : 1.04,
+		"value" : 1.05,
 		"description" : "gross interest rate",
 		"symbol" : "R"
 	},
@@ -80,7 +80,7 @@
 		"symbol" : "\\beta_2"
 	},
 	"cfloor" : {
-		"value" : 0.0001,
+		"value" : 0.001,
 		"description" : "consumption floor",
 		"symbol" : "\\underline{c}"
 	}

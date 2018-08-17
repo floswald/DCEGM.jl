@@ -10,6 +10,8 @@ function vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},en::Matrix
     # L = en.L[id]
     v = en[id,it]
 
+    # computes v_{it}(m) = u(c) + beta v_{it+1}(m1)
+
     if length(getx(v)) < 2
         error("need more than 2 points in envelope object")
     end
@@ -20,14 +22,16 @@ function vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},en::Matrix
 
     if all(mask)
         # in the credit constrained region:
-        r[:] = u(c1,id==1,p) + p.beta * gety(v)[1]
+        r[:] = u(c1,id==2,p) + p.beta * bound(v)
     elseif any(mask)
-        r[mask] = u(c1[mask],id==1,p) + p.beta * gety(v)[1]
+        r[mask] = u(c1[mask],id==2,p) + p.beta * bound(v)
         # elsewhere
         r[.!mask] = interp(v.env,m1[.!mask])
     else
         r[:] = interp(v.env,m1)
     end
+
+    return r
 end
 
 """
@@ -39,7 +43,7 @@ function ccp(x::Matrix,p::Param)
     #choice probability of the first row in 2-row matrix
     mx = maximum(x,1)
     mxx = x.-repmat(mx,size(x)[1],1)   # center values at max for numerical stability
-    exp.(mxx[1,:]./p.lambda)./sum(exp.(mxx./p.lambda),1)[:]
+    exp.(mxx[2,:]./p.lambda)./sum(exp.(mxx./p.lambda),1)[:]
 end
 
 """
@@ -59,7 +63,10 @@ end
 Main body of the DC-EGM algorithm
 """
 function dc_EGM!(m::Model,p::Param)
+    vzero = zeros(p.nT,p.nD)
     for it in p.nT:-1:1
+        println()
+        info("period = $it")
 
 		if it==p.nT
             for id in 1:p.nD
@@ -72,46 +79,60 @@ function dc_EGM!(m::Model,p::Param)
 
                 # initialize value function with vf(1) = 0
                 m.v[id,it] = Envelope(Line(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
+                # note that 0.0 as first value of the vfun is not innocuous here!
             end
 
 		else
             for id in 1:p.nD
-                working = id==1
+                working = id==2
                 info("id: $id")
+                println()
     			# previous periods
 
     			# precomputed next period's cash on hand on all income states
     			# what's next period's cash on hand given you work/not today?
     			mm1 = m.m1[it+1][id]
-                # println("mm1 = $(mm1[1:10])")
+                # println("mm1 = ")
+                # display(mm1)
 
                 # interpolate all d-choice next period's consumtion function on next cash on hand
-                c1 = interp([m.c[i,it+1] for i in 1:2],mm1[:])
+                # println("next periods cons functions")
+                # println([m.c[i,it+1].env for i in 1:2])
+                c1 = interp([m.c[i,it+1].env for i in 1:2],mm1[:])
                 c1[c1.<p.cfloor] = p.cfloor   # no negative consumption
-                println("c1 = $(c1[:,1:10])")
+                # println("interpolated on next periods cash on hand. c1 = ")
+                # display(c1)
                        
                 # get next period's conditional value functions
                 # as a matrix where each row is another discrete choice
                 v1 = hcat([vfun(jd,it+1,c1[jd,:],mm1[:],m.v,p) for jd in 1:p.nD]...)'
-                println("v1 = $(v1[:,1:10])")
+
+                # println("v1 = ")
+                # display(v1[:,1:10])
 
                 # get ccp to be a worker
                 pwork = ccp(v1,p) * working
 
                 # get marginal utility of that consumption
-                mu1 = reshape(pwork .* up(c1[1,:],p) .+ (1-pwork) .* up(c1[2,:],p),p.na,p.ny)
-                println("mu1 = $(mu1[1:10,:])")
+                mu1 = reshape(pwork .* up(c1[2,:],p) .+ (1-pwork) .* up(c1[1,:],p),p.na,p.ny)
+                # println("mu1 = ")
+                # display(mu1[1:10,:])
 
                 # get expected marginal value of saving: RHS of euler equation
                 # beta * R * E[ u'(c_{t+1}) ] 
                 RHS = p.beta * p.R * mu1 * m.ywgt
-                println("RHS = $(RHS[1:10])")
+                # println("RHS = $(RHS[1:10])")
 
                 # optimal consumption today: invert the RHS of euler equation
                 c0 = iup(RHS,p)
 
                 # set optimal consumption function today. endo grid m and cons c0
                 cline = Line(m.avec .+ c0, c0)
+                # store
+                m.c[id,it] = Envelope(cline)
+                # consumption function done.
+
+
 
     			# compute value function
     			# ----------------------
@@ -119,22 +140,17 @@ function dc_EGM!(m::Model,p::Param)
                 if working
                     ev = reshape(logsum(v1,p),size(mm1)) * m.ywgt
                 else
-                    ev = reshape(vfun(2,it+1,c1[2,:],mm1[:],m.v,p),size(mm1)) * m.ywgt
+                    ev = reshape(vfun(1,it+1,c1[1,:],mm1[:],m.v,p),size(mm1)) * m.ywgt
                 end
-                # println(size(m.avec))
-                # println(size(c0))
-                println("c0 = $(c0)")
-                # println("ev = $(ev)")
-                # println("u = $(u(c0,id==1,p))")
-                # println(m.avec .+ c0)
-                vline = Line(m.avec .+ c0, u(c0,id==1,p) .+ p.beta * ev)
+                vline = Line(m.avec .+ c0, u(c0,id==2,p) .+ p.beta * ev)
 
-                println(vline)
+                # println(vline)
+
 
                 # vline and cline may have backward-bending regions: let's prune those
                 # SECONDARY ENVELOPE COMPUTATION
 
-                if id==1   # only for workers
+                if id==2   # only for workers
                     minx = minimum(vline.x)
                     if minx < vline.x[1]
                         # non-convex region lies inside credit constraint.
@@ -149,7 +165,12 @@ function dc_EGM!(m::Model,p::Param)
                     # split the vline at potential backward-bending points
                     # and save as Envelope object
                     m.v[id,it] = splitLine(vline)  # splits line at backward bends
+
+                    # if there is just one line (i.e. nothing was split in preceding step)
+                    # then this IS a valid envelope
+                    # else, need to compute the upper envelope.
                     if !m.v[id,it].env_set
+                        error()
                         upper_env!(m.v[id,it])   # compute upper envelope of this
                         # now need to clean the policy function as well
                         removed = getr(m.v[id,it])
@@ -181,22 +202,32 @@ function dc_EGM!(m::Model,p::Param)
                                 end
                             end
                         end
-                    end     # if id==1
+                    end   
+                else   # if id==1
+                    m.v[id,it] = Envelope(vline)  
                 end
 
+                # store the expected value at the lower boundary
+                # in a separate object
+                # NOT as the first value in the vfun as Fedor.
+                m.v[id,it].vbound = ev[1]
 
-                # add special point to Envelopes for saving exactly on the borrowing constraint
-                # this creates the credit constrained region (i.e. a 45 degree line)
+                # this creates the credit constrained region
                 prepend!(m.c[id,it].env,p.a_low,0.0)
-                prepend!(m.v[id,it].env,p.a_low,ev[1])
-    		end   # if final period
-    	end    # loop over discrete choice
+                # prepend!(m.v[id,it].env,p.a_low,ev[1])
+                # do NOT prepend the value function with the special value from above.
+    		end   # loop over discrete choice
+    	end    # if final perio
     end     # loop over time
 end
 
-function run()
+function runit()
     p = Param()
     m = Model(p)
     dc_EGM!(m,p)
     return (m,p)
+end
+function pp()
+    m,p = runit()
+    plot(m.v[1,1].env)
 end
