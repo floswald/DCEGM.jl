@@ -1,10 +1,8 @@
-module DCEGM
 
+module MultiLine
 
-using JSON
-using Interpolations: interpolate, Gridded, Linear, extrapolate
-using Distributions: Normal
-using FastGaussQuadrature
+# using StaticArrays
+using Interpolations
 using Roots
 using Plots
 gr()
@@ -13,7 +11,7 @@ gr()
 export Line, Point, Envelope
 
 # methods
-export interp, splitat,upper_env!, getx, gety, gets, splitLine, getr
+export interp, splitat,upper_env!, getx, gety, gets, splitLine, getr, bound
 
 import Base.size, 
        Base.getindex, 
@@ -27,15 +25,13 @@ import Base.size,
        Base.length,
        Base.show
 
-# includes for MultiLine
+
+# includes
 include("line.jl")
 include("envelope.jl")
 include("plotting.jl")
 
-# includes for dcegm
-include("param.jl")
-include("utils.jl")
-include("dc_algo.jl")
-
 
 end # module
+
+
