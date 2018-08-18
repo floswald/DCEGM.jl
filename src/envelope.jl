@@ -89,6 +89,7 @@ function splitLine(o::Line{T}) where T<:Number
     ii = o.x[2:end].>o.x[1:end-1]  
     info("splitLine: ii = $(find(.!(ii)))")
     info("splitLine: x = $(o.x[find(.!(ii))])")
+    display(o.x)
 
     # 2) if no backjumps at all, exit
     if all(ii)  

@@ -7,6 +7,7 @@ using Distributions: Normal
 using FastGaussQuadrature
 using Roots
 using Plots
+using ASTInterpreter2
 gr()
 
 # Types

@@ -92,7 +92,7 @@ end
 
 Interpolate a `Line` on a vector of valuels `x`
 """
-function interp(l::Line{T},ix::Vector{T},extrap::Bool=false) where {T<:Number}
+function interp(l::Line{T},ix::Vector{T},extrap::Bool=true) where {T<:Number}
     # whenever 
     xex = extrema(ix)
     # @debug(logger,"interpolating $ix ")
