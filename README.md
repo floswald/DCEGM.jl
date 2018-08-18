@@ -16,16 +16,16 @@ Here are some examples of the `Envelope` type. It can split backwards-folding EG
 
 #### case 1
 
-![case2](p2.png)
+![case2](images/p2.png)
 
 #### case 2a
-![case3a](p3a.png)
+![case3a](images/p3a.png)
 #### case 2b
-![case3b](f3b.png)
+![case3b](images/f3b.png)
 #### case 2c
-![case3c](f3c.png)
+![case3c](images/f3c.png)
 #### case 3
-![case4](f4.png)
+![case4](images/f4.png)
 
 #### splitting wrong EGM lines
-![split](split.png)
+![split](images/split.png)
