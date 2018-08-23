@@ -355,7 +355,7 @@ function dc_EGM!(m::Model2,p::Param)
 
 
                     # get marginal utility of that consumption
-                    mu1 = reshape(pwork .* up(c1[2,iy,:],p) .+ (1-pwork) .* up(c1[1,iy,:],p),p.na,p.ny)
+                    mu1 = reshape(pwork .* up(c1[2,:],p) .+ (1-pwork) .* up(c1[1,:],p),p.na,p.ny)
                     # println("mu1 = ")
                     # display(mu1[1:10,:])
 
@@ -379,7 +379,7 @@ function dc_EGM!(m::Model2,p::Param)
                     # compute value function
                     # ----------------------
                     if any(isnan(logsum(v1,p)))
-                        @enter logsum(v1,p)
+                        # @enter logsum(v1,p)
                     end
 
                     if working
@@ -422,15 +422,39 @@ function dc_EGM!(m::Model2,p::Param)
                         # else, need to compute the upper envelope.
                         if !m.v[id,iy,it].env_set
                             upper_env!(m.v[id,iy,it])   # compute upper envelope of this
-                            # now need to clean the policy function as well
+                            # println(m.c[id,iy,it].env)
+
+                            # TODO
+                            # bug
+                            # this is not working properly. 
+                            # for some reason i cannot get the set of removed points right
+                            # here.
                             removed = getr(m.v[id,iy,it])
+                                    println(removed)
                             for r in 1:length(removed)
                                 if length(removed[r]) > 0
+                                    # println(removed)
                                     for ir in removed[r]
-                                        delete!(m.c[id,iy,it].L[r],ir.i)   # delete index i.r
+                                        # println(ir)
+                                        # println("id=$id,iy=$iy,it=$it,r=$r")
+                                        # println(size(m.c))
+                                        # println(m.c[id,iy,it].env)
+                                        delete!(m.c[id,iy,it].env,ir.i)   # delete index i.r
                                     end
                                 end
                             end
+
+                            # c can only contain x points from v
+                            # keep = findin(getx(m.c[id,iy,it]),getx(m.v[id,iy,it]))
+                            # # println(keep)
+                            # m.c[id,iy,it].env.x = m.c[id,iy,it].env.x[keep]
+                            # m.c[id,iy,it].env.y = m.c[id,iy,it].env.y[keep]
+                            plot(m.v[id,iy,it].env)
+                            gui()
+
+                            @assert(issorted(getx(m.v[id,iy,it])))
+                            # display(hcat(getx(m.v[id,iy,it]),getx(m.c[id,iy,it])))
+                            @assert(issorted(getx(m.c[id,iy,it])))
                             # insert new intersections into consumption function
                             isecs = gets(m.v[id,iy,it])
                             if length(isecs) > 0
@@ -441,6 +465,14 @@ function dc_EGM!(m::Model2,p::Param)
                                     # i.e. intersection was not a member of any `Line`
                                     if I.new_point
                                         # insert intersection into env over cons function
+                                        println("I.x = $(I.x)")
+                                        println("I.i = $(I.i)")
+
+                                        if !issorted(m.c[id,iy,it].env.x)
+                                            println("m.c[id,iy,it].env.x = $(m.c[id,iy,it].env.x)")
+                                            println("m.c[id,iy,it].env.y = $(m.c[id,iy,it].env.y)")
+                                        end
+
                                         insert!(m.c[id,iy,it].env,I.x,interp(m.c[id,iy,it].env,[I.x]),I.i)
 
                                         # add to both adjacent `Line` segments:

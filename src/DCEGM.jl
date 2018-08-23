@@ -31,12 +31,22 @@ import Base.size,
 # includes for MultiLine
 include("line.jl")
 include("envelope.jl")
-include("plotting.jl")
 
 # includes for dcegm
 include("param.jl")
 include("utils.jl")
 include("dc_algo.jl")
+include("plotting.jl")
 
 
+function doi()
+
+        x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
+        y = [1,1.5,1.7,1.6,1.55,1.4,1.3,1.2,1.8,2.1]
+       L1 = Line(x,y)
+       e = splitLine(L1)
+       # upper_env!(e)
+       # plot(e)
+       e
+end
 end # module

@@ -52,13 +52,17 @@ mutable struct Envelope{T<:Number}
         return this
     end
 end
-function show(io::IO,en::Envelope{T}) where {T<:Number}
+function show(io::IO, ::MIME"text/plain", en::Envelope{T}) where {T<:Number}
     print(io,"$T Envelope\n")
     print(io,"env Line set?: $(en.env_set) \n")
     print(io,"num of `Line`s: $(length(en.L))\n")
     print(io,"num of intersections: $(length(en.isects))\n")
     print(io,"num of pts removed: $(sum(length(i) for i in en.removed))\n")
 end
+function show(io::IO, en::Envelope{T}) where {T<:Number}
+    print(io,length(en.env),"-point $T Envelope")
+end
+
 size(e::Envelope) = size(e.L)
 eltype(e::Envelope) = eltype(e.L) 
 bound(e::Envelope) = e.vbound
@@ -77,6 +81,34 @@ getr(en::Envelope) = en.removed
 Base.getindex(en::Envelope,id::Int) = en.L[id]
 
 
+
+"""
+    removed!(e::Envelope)
+
+Find which points from each `Line` did not end up in the 
+`env` and write them to `removed`.
+"""
+function removed!(e::Envelope)
+    if !e.env_set
+        error("you need to set an `upper_env!` first.")
+    end
+    for l in e.L
+        ix = findin(getx(e),l.x) # find indices in e.x of values that appear (somewhere) in l
+        iy = findin(gety(e),l.y) # find indices in e.y of values that appear (somewhere) in l
+        # if ix == iy , (ix,iy) is a valid point
+        points = findin(ix,iy) 
+        iix = ix[points]
+        # iiy = iy[points]
+        nx = setdiff(l.x,getx(e)[iix])   # x points l but not in env
+        ny = setdiff(l.y,gety(e)[iix])   # y points l but not in env
+        @assert(length(nx)==length(ny))
+        if length(nx) > 0
+            push!(e.removed,[Point(nx[jx],ny[jx]) for jx in 1:length(nx)])
+        end
+    end
+end
+
+
 """
     splitLine(m::Line)
 
@@ -89,7 +121,6 @@ function splitLine(o::Line{T}) where T<:Number
     ii = o.x[2:end].>o.x[1:end-1]  
     info("splitLine: ii = $(find(.!(ii)))")
     info("splitLine: x = $(o.x[find(.!(ii))])")
-    display(o.x)
 
     # 2) if no backjumps at all, exit
     if all(ii)  
@@ -120,16 +151,28 @@ function splitLine(o::Line{T}) where T<:Number
             i += 1
         end
 
-        # all the ones with 2 un-sorted x corrdinates are illegal lines from connection two proper ones
+        # all the ones with 2 un-sorted x corrdinates are illegal lines from connection of two proper ones
         # discard those
+        # l2 = [length(s.x)==2 for s in sections]
         ns = [!issorted(s.x) && length(s.x)==2 for s in sections]
-        info("which illegal $ns")
 
         # 4) get rid of illegal sections on x
+        # e = Envelope(0.0)
+        # for s in eachindex(sections)
+        #     if issorted(sections[s])
+        #         push!(e.L,sections[s])
+        #     else
+        #         push!(e.removed,[Point(l.x[jx],l.y[jx],i=jx) for jx in ix_nenv])
+        #         push!(blacklist,sections[s].x)
+        #     end
+        # end
+
         for s in eachindex(sections)
             if !ns[s]
+                if !issorted(sections[s])
+                    sort!(sections[s])
+                end
                 push!(new_sections,sections[s])
-                @assert(issorted(sections[s].x))
             end
         end
         return Envelope(new_sections)
@@ -160,6 +203,9 @@ function upper_env!(e::Envelope{T}) where T<:Number
     subs = map(x->ind2sub(yy,x),lin_ind)  # get subsript indices of colwise maxima
     r_idx = [i[1] for i in subs] # get row indices only: the row index tells us which Line was optimal at that point.
 
+    # from r_idx we could get which points of each line will be included in the envelope?
+
+
     # Identify changes in optimal Line
     # switch in top line after index s (indexing global support xx)
     # s tells us after which position in xx we have a change in optimal line
@@ -177,6 +223,7 @@ function upper_env!(e::Envelope{T}) where T<:Number
         # there is one complete upper envelope already
         # return
         e.env = Line(xx,yy[r_idx[1],:])
+        @assert(issorted(getx(e)))
         # e.isects = [Point(NaN,NaN)]
         # e.removed = [[Point(NaN,NaN)]]
     else
@@ -230,16 +277,26 @@ function upper_env!(e::Envelope{T}) where T<:Number
             else
                 # need to to compute intersection
                 f_closure(z) = interp(e.L[to],[z])[1] - interp(e.L[from],[z])[1]
-                x_x = fzero(f_closure, x_from, x_to)
-                v_x = interp(e.L[from],[x_x])[1]
+                if f_closure(x_from) * f_closure(x_to) > 0
+                    # not opposite signs, no zero to be found
+                    x_x = e.L[to]
+                    v_x = interp(e.L[to],[x_x])[1]
+                else
+                    x_x = fzero(f_closure,x_from,x_to)
+                    v_x = interp(e.L[to],[x_x])[1]
+                    # record intersection as new point
+                    isec[id_s] = Point(x_x,v_x,i=id_s,newpoint=true)
+                end
 
-                # record intersection as new point
-                isec[id_s] = Point(x_x,v_x,i=id_s,newpoint=true)
                 # and add to envelope
                 append!(env,x_x,v_x)
-                info("added $(Point(x_x,v_x,i=id_s)) to envelope")
-                info("x in env? $(in(x_x,env.x))")
+                # info("added $(isec[id_s]) to envelope")
+                # info("x in env? $(in(x_x,env.x))")
             end
+
+            # sometimes we cannot find an intersection point.
+            # either you extrapolate all lines, or you dont
+            # 
 
             # add next line segment to envelope
             # index range s[id_s]+1:s[id_s+1] is
@@ -251,18 +308,25 @@ function upper_env!(e::Envelope{T}) where T<:Number
 
         e.env = env 
         e.isects = isec
-        info("x = $(getx(e))")
+        # info("x = $(getx(e))")
         for l in e.L
-            # collect points that were removed from Lines
-            info("l.x = $(l.x)")
-            info("setdiff(l.x,x) = $(setdiff(getx(e),l.x))")
-            ix = map(x->!in(x,getx(e)),l.x) 
-            iy = map(x->!in(x,gety(e)),l.y) 
-            jj = find(ix .| iy)
-            if length(jj) > 0
-                push!(e.removed,[Point(l.x[jx],l.y[jx],i=jx) for jx in jj])
+            # collect points that were removed from each line
+            ix_env = findin(l.x,getx(e))
+            iy_env = findin(l.y,gety(e))
+            info("ix_env = $ix_env")
+            # info("1:length(l.x) = $(ix_env)")
+            ix_nenv = setdiff(1:length(l.x),ix_env)
+            # y_nenv = setdiff(l.y,gety(e))
+            @assert(issorted(getx(e)))
+            info("setdiff(l.x,x) = $ix_nenv")
+            # ix = map(x->!in(x,getx(e)),l.x) 
+            # iy = map(x->!in(x,gety(e)),l.y) 
+            # jj = find(ix .| iy)
+            if length(ix_nenv) > 0
+                push!(e.removed,[Point(l.x[jx],l.y[jx],i=jx) for jx in ix_nenv])
             end
         end
+        @assert(issorted(getx(e)))
         # say that you have now set an upper envelope on this object
         e.env_set = true
         return nothing

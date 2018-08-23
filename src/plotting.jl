@@ -1,5 +1,37 @@
 
-@recipe function f(l::Line;numerate=false,m=false)
+@recipe function f(m::Model2;id=1,iy=2)
+    grid --> true
+    xticks := true
+    legend --> true
+    for i in 1:(size(m.v)[3]-1)
+        @series begin
+            linetype --> :path 
+            linewidth --> 1
+            legend --> :bottomright
+            seriescolor --> ColorGradient(:magma)
+            m.v[id,iy,i].env.x,m.v[id,iy,i].env.y
+        end
+    end
+end
+
+
+struct tester
+    m :: Matrix
+end
+
+@recipe function f(tt::tester)
+    n,m = size(tt.m)
+    for i in 1:n
+        @series begin
+            linetype --> :path
+            series_annotations := ["$i" for i in 1:m]
+            (1:m,tt.m[i,:])
+        end
+    end
+end
+
+
+@recipe function f(l::Line;numerate=false,marker=false)
     # defaults
     grid --> true
     xticks := true
@@ -8,14 +40,14 @@
         linetype --> :path 
         linecolor --> :black
         linewidth --> 1
-        if m
+        if marker
             markershape --> :circle
             markerstrokecolor --> :black
             markercolor --> :white
             markersize --> 2
-            if numerate
-                series_annotations := ["$i" for i in 1:length(l.x)]
-            end
+        end
+        if numerate
+            series_annotations := ["$i" for i in 1:length(l.x)]
         end
         (l.x,l.y)
     end
@@ -23,29 +55,34 @@ end
 
 
 
-@recipe function f(x::Envelope; removed=false,numerate=false,m=false)
+# @recipe function f(x::Envelope; removed=false,num=false,marker=false)
+@recipe function f(x::Envelope;numerate=false,removed=false,marker=true)
 
     # defaults
     grid --> true
     xticks := true
-    legend := false
+
+    if !x.env_set
+        legend --> :bottomright
+    else
+        legend --> false
+    end
 
     # if line array exists, plot
     if length(x.L) > 0
         for l in x.L
             @series begin
                 # subplot := 1
-                linetype := :line 
-                linecolor := :black
+                linetype := :path
                 linewidth := 1
-                if m
-                    markershape := :circle
-                    markerstrokecolor := :black
-                    markercolor := :white
-                    markersize := 2
-                    if numerate
-                        series_annotations := ["$i" for i in 1:length(l.x)]
-                    end
+                if marker
+                    markershape --> :circle
+                    markerstrokecolor --> :black
+                    markercolor --> :white
+                    markersize := 3
+                end
+                if numerate
+                    series_annotations := ["$i" for i in sortperm(l.x)]
                 end
                 (l.x,l.y)
             end
@@ -57,16 +94,16 @@ end
             # subplot := 1
             linetype := :line 
             linecolor --> :red
-            linewidth --> 4
-            if m
+            linewidth --> 2
+            if marker
                 markershape := :circle
                 markercolor := :white
                 # markeralpha := 0.5
                 markerstrokecolor := :black
                 markersize := 3
-                if numerate
-                    series_annotations := ["$i" for i in 1:length(getx(x))]
-                end
+            end
+            if numerate
+                series_annotations := ["$i" for i in 1:length(getx(x))]
             end
             (getx(x),gety(x))
         end
@@ -183,6 +220,7 @@ function tplot3c()
     p1 = plot(en)
 
     upper_env!(en)
+    removed!(en)
     p2 = plot(en,removed=true)
 
     plot(p1,p2)
@@ -218,4 +256,36 @@ function splitf()
     p2 = plot(e,title="split Line",numerate=true)
     plot(p1,p2)
 end
+
+function splitf2()
+    x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
+    y = [1,1.5,1.7,1.6,1.55,1.4,1.3,1.2,1.8,2.1]
+    L = Line(x,y)
+    p1 = plot(L,title="original",numerate=true)
+    e = splitLine(L)
+    p2 = plot(e,title="split Line",numerate=true)
+    plot(p1,p2)
+end
+
+function splitf3()
+    x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
+    y = [1,1.5,1.7,1.6,1.55,1.4,1.3,1.2,1.8,2.1]
+    L = Line(x,y)
+    e = splitLine(L)
+    upper_env!(e)
+    p1 = plot(e,title="upper enveloped")
+    removed!(e)
+    p2 = plot(e,title="with removed points",removed=true)
+    plot(p1,p2)
+end
+
+function allplots()
+    p = joinpath(dirname(@__FILE__),"..","images")
+    splitf2()
+    savefig(joinpath(p,"split1.png"))
+    splitf3()
+    savefig(joinpath(p,"split2.png"))
+end
+
+
 
