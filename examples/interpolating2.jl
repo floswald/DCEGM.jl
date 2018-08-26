@@ -19,7 +19,7 @@ struct Point{T}
 	y::T
 end
 
-doit = false
+doit = true
 
 # Having defined the `Point` struct, we next define some arithmetic operations that will allow us to use the type with the `Interpolations.jl` package:
 
@@ -73,8 +73,19 @@ y = [i.y for i in data]
 # but also interpolates the x-grid :-(
 function itp_points(d,rd)
 	## itp = scale(interpolate(d, BSpline(Quadratic(Flat())),OnGrid()),linspace(d[1].x,d[end].x,length(d)))
-	itp = scale(interpolate(d, BSpline(Linear()),OnGrid()),linspace(d[1].x,d[end].x,length(d)))
+	# itp = scale(interpolate(d, BSpline(Linear()),OnGrid()),linspace(d[1].x,d[end].x,length(d)))
+	itp = interpolate(([i.x for i in d],),d, Gridded(Linear()))
 	out = similar(d)
+	for i in 1:length(rd)
+		out[i] = itp[rd[i]]
+	end
+	out
+end
+function itp_points2(d,rd)
+	## itp = scale(interpolate(d, BSpline(Quadratic(Flat())),OnGrid()),linspace(d[1].x,d[end].x,length(d)))
+	# itp = scale(interpolate(d, BSpline(Linear()),OnGrid()),linspace(d[1].x,d[end].x,length(d)))
+	itp = interpolate(([i.x for i in d],),[i.y for i in d], Gridded(Linear()))
+	out = similar(rd)
 	for i in 1:length(rd)
 		out[i] = itp[rd[i]]
 	end
@@ -84,7 +95,8 @@ end
 # traditional version
 # only interpolate the y vector
 function itp_x_y(x,y,rd)
-	itp = scale(interpolate(y, BSpline(Linear()),OnGrid()),linspace(x[1],x[end],length(x)))
+	itp = interpolate((x,),y, Gridded(Linear()))
+	# itp = scale(interpolate(y, BSpline(Linear()),OnGrid()),linspace(x[1],x[end],length(x)))
 	out = similar(rd)
 	for i in 1:length(rd)
 		out[i] = itp[rd[i]]
@@ -109,6 +121,7 @@ end
 
 # compile
 itp_points(data[1:10],rdata[1:5])
+itp_points2(data[1:10],rdata[1:5])
 itp_x_y(x[1:10],y[1:10],rdata[1:5])
 itp_pointsxy(data[1:10],rdata[1:5])
 
@@ -116,6 +129,7 @@ itp_pointsxy(data[1:10],rdata[1:5])
 if doit
 # BenchmarkTools
 t1 = @benchmark itp_points($data,$rdata)
+t11 = @benchmark itp_points2($data,$rdata)
 t2 = @benchmark itp_x_y($x,$y,$rdata)
 t3 = @benchmark itp_pointsxy($data,$rdata)
 end
@@ -154,118 +168,3 @@ end
 
 # # a hacked arithmetic for this type 
 
-# now lets redefine the module, in particular let's change the arithmetics:
-
-module Points
-using Interpolations
-using BenchmarkTools
-
-import Base: +, -, *, /, ==
-
-struct Point{T}
-	x::T
-	y::T
-end
-
-doit = false
-
-## (+)(p1::Point, p2::Point) = Point(p1.x+p2.x, p1.y+p2.y)
-## (-)(p1::Point, p2::Point) = Point(p1.x-p2.x, p1.y-p2.y)
-## (*)(n::Number, p::Point) = Point(n*p.x, n*p.y)
-## (*)(p::Point, n::Number) = n*p
-## (/)(p::Point, n::Number) = Point(p.x/n, p.y/n)
-
-Base.zero(::Type{Point{T}}) where {T} = Point(zero(T),zero(T))
-Base.promote_rule(::Type{Point{T1}}, ::Type{T2}) where {T1,T2<:Number} = Point{promote_type(T1,T2)}
-Base.promote_op(::typeof(*), ::Type{Point{T1}}, ::Type{T2}) where {T1,T2<:Number} = Point{promote_type(T1,T2)}
-Base.promote_op(::typeof(*), ::Type{T1}, ::Type{Point{T2}}) where {T1<:Number,T2} = Point{promote_type(T1,T2)}
-
-(+)(p1::Point, p2::Point) = p1.y+p2.y
-(-)(p1::Point, p2::Point) = p1.y-p2.y
-(*)(n::Number, p::Point) = n*p.y
-(*)(p::Point, n::Number) = n*p
-(/)(p::Point, n::Number) =  p.y/n
-(==)(p1::Point, p2::Point) = (p1.x == p2.x) && (p1.y == p2.y)
-
-n = 1_000_000
-m = 10_000
-data = reinterpret(Point{Float64},hcat(collect(1:n),rand(n))',(n,))
-rdata = rand(m)
-x = [i.x for i in data]
-y = [i.y for i in data]
-
-function itp_points(d,rd)
-	## itp = scale(interpolate(d, BSpline(Quadratic(Flat())),OnGrid()),linspace(d[1].x,d[end].x,length(d)))
-	itp = scale(interpolate(d, BSpline(Linear()),OnGrid()),linspace(d[1].x,d[end].x,length(d)))
-	out = similar(rd)
-	for i in 1:length(rd)
-		out[i] = itp[rd[i]]
-	end
-	out
-end
-
-function itp_x_y(x,y,rd)
-	itp = scale(interpolate(y, BSpline(Linear()),OnGrid()),linspace(x[1],x[end],length(x)))
-	out = similar(rd)
-	for i in 1:length(rd)
-		out[i] = itp[rd[i]]
-	end
-	out
-end
-
-function itp_pointsxy(d,rd)
-	x = [i.x for i in data]
-	y = [i.y for i in data]
-	itp = scale(interpolate(y, BSpline(Linear()),OnGrid()),linspace(x[1],x[end],length(x)))
-	out = similar(rd)
-	for i in 1:length(rd)
-		out[i] = itp[rd[i]]
-	end
-	out
-end
-
-itp_points(data[1:10],rdata[1:5])
-itp_x_y(x[1:10],y[1:10],rdata[1:5])
-itp_pointsxy(data[1:10],rdata[1:5])
-
-if doit
-# BenchmarkTools
-t1 = @benchmark itp_points($data,$rdata)
-t2 = @benchmark itp_x_y($x,$y,$rdata)
-t3 = @benchmark itp_pointsxy($data,$rdata)
-end
-
-end
-
-# This shows that the *hacked* method is a bit faster, and has much less memory allocs.
-
-# ```julia
-# julia v0.6.2> Points.t1
-# BenchmarkTools.Trial: 
-#   memory estimate:  15.34 MiB
-#   allocs estimate:  8
-#   --------------
-#   minimum time:     3.760 ms (0.00% GC)
-#   median time:      6.865 ms (13.17% GC)
-#   mean time:        5.885 ms (26.24% GC)
-#   maximum time:     20.627 ms (32.43% GC)
-#   --------------
-#   samples:          848
-#   evals/sample:     1
-# 
-# julia v0.6.2> Points.itp_points(Points.data[1:10],Points.rdata[1:5])
-# 5-element Array{Float64,1}:
-#  0.178303
-#  0.171897
-#  0.184147
-#  0.179542
-#  0.159741
-# 
-# julia v0.6.2> Points.itp_x_y(Points.x[1:10],Points.y[1:10],Points.rdata[1:5])
-# 5-element Array{Float64,1}:
-#  0.178303
-#  0.171897
-#  0.184147
-#  0.179542
-#  0.159741
-# ```

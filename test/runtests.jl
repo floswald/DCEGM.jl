@@ -5,7 +5,8 @@ using TestSetExtensions
 
 @testset ExtendedTestSet "Running DCEGM tests" begin
 
-    @includetests ARGS
+    # @includetests ARGS
+    include("linetests.jl")
 
 end
     

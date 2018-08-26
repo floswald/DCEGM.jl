@@ -10,6 +10,9 @@ using Plots
 
 gr()
 
+import Base: +, -, *, /, ==
+import Base: start, next, done
+
 # Types
 export Line, Point, Envelope
 
@@ -18,6 +21,7 @@ export interp, splitat,upper_env!, getx, gety, gets, splitLine, getr
 
 import Base.size, 
        Base.getindex, 
+       Base.length, 
        Base.setindex!, 
        Base.eltype,
        Base.prepend!,
@@ -25,18 +29,18 @@ import Base.size,
        Base.insert!,
        Base.delete!,
        Base.sort!,
-       Base.length,
-       Base.show
+       Base.show,
+       Base.isless
 
 # includes for MultiLine
 include("line.jl")
-include("envelope.jl")
+# include("envelope.jl")
 
-# includes for dcegm
-include("param.jl")
-include("utils.jl")
-include("dc_algo.jl")
-include("plotting.jl")
+# # includes for dcegm
+# include("param.jl")
+# include("utils.jl")
+# include("dc_algo.jl")
+# include("plotting.jl")
 
 
 function doi()
