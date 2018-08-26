@@ -108,17 +108,15 @@ end
             (getx(x),gety(x))
         end
         if removed
-            for ir in x.removed
-                if length(ir) > 0
-                    @series begin
-                        seriestype = :scatter
-                        markershape := :rect
-                        markersize := 3
-                        markerstrokecolor := :black
-                        markercolor := :white
-                        markeralpha := 0.5
-                        [ir[i].x for i in 1:length(ir)],[ir[i].y for i in 1:length(ir)]
-                    end
+            for l in 1:length(x.L)
+                @series begin
+                    seriestype = :scatter
+                    markershape := :rect
+                    markersize := 3
+                    markerstrokecolor := :black
+                    markercolor := :white
+                    markeralpha := 0.5
+                    (x.L[l].x[x.removed[l]], x.L[l].y[x.removed[l]])
                 end
             end
         end
@@ -224,6 +222,8 @@ function tplot3c()
     p2 = plot(en,removed=true)
 
     plot(p1,p2)
+    gui()
+    return en
 
 end
 

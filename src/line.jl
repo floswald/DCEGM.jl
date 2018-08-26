@@ -125,7 +125,7 @@ function prepend!(m::Line,x,y)
 end
 
 "delete an index"
-function delete!(m::Line,idx::Int)
+function delete!(m::Line,idx)
     deleteat!(m.x,idx)
     deleteat!(m.y,idx)
     reconfigure!(m)

@@ -429,28 +429,10 @@ function dc_EGM!(m::Model2,p::Param)
                             # this is not working properly. 
                             # for some reason i cannot get the set of removed points right
                             # here.
-                            removed = getr(m.v[id,iy,it])
-                                    println(removed)
-                            for r in 1:length(removed)
-                                if length(removed[r]) > 0
-                                    # println(removed)
-                                    for ir in removed[r]
-                                        # println(ir)
-                                        # println("id=$id,iy=$iy,it=$it,r=$r")
-                                        # println(size(m.c))
-                                        # println(m.c[id,iy,it].env)
-                                        delete!(m.c[id,iy,it].env,ir.i)   # delete index i.r
-                                    end
-                                end
-                            end
-
-                            # c can only contain x points from v
-                            # keep = findin(getx(m.c[id,iy,it]),getx(m.v[id,iy,it]))
-                            # # println(keep)
-                            # m.c[id,iy,it].env.x = m.c[id,iy,it].env.x[keep]
-                            # m.c[id,iy,it].env.y = m.c[id,iy,it].env.y[keep]
-                            plot(m.v[id,iy,it].env)
-                            gui()
+                            removed!(m.v[id,iy,it])
+                            remove_c!(m.v[id,iy,it],m.c[id,iy,it])
+                            # plot(m.c[id,iy,it].env)
+                            # gui()
 
                             @assert(issorted(getx(m.v[id,iy,it])))
                             # display(hcat(getx(m.v[id,iy,it]),getx(m.c[id,iy,it])))
