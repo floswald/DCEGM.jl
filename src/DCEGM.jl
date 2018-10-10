@@ -37,7 +37,7 @@ include("line.jl")
 include("envelope.jl")
 
 # # includes for dcegm
-# include("param.jl")
+include("param.jl")
 # include("utils.jl")
 # include("dc_algo.jl")
 # include("plotting.jl")

@@ -120,7 +120,7 @@ function splitLine(o::Line{T}) where T<:Number
 
     # 1) find all jump-backs in x-grid
     # println(o.x)
-    ii = o.x[2:end].>o.x[1:end-1]  
+    ii = o.xvec[2:end].>o.xvec[1:end-1]  
     # info("splitLine: ii = $(find(.!(ii)))")
     # info("splitLine: x = $(o.x[find(.!(ii))])")
 
@@ -192,7 +192,7 @@ function upper_env!(e::Envelope{T}) where T<:Number
     end
 
     # - get all x's from all Lines and sort into a vector xx
-    xx = sort(unique(vcat([l.x for l in e.L]...)))
+    xx = sort(unique(vcat([l.xvec for l in e.L]...)))
     n = length(xx)
 
     # - interpolate(extrapolate) all Ls on xx

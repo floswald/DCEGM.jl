@@ -168,13 +168,13 @@ function interp(l::Line{T},ix::Vector{T},extrap::Bool=false) where {T<:Number}
     end
     return itp[ix]
 end 
-# function interp(e::Array{Line{T}},ix::Vector{T};extrap::Bool=false) where {T<:Number}
-#     y = zeros(T,length(e),length(ix))
-#     for i in eachindex(e)
-#         y[i,:] = interp(e[i],ix,extrap)
-#     end
-#     return y
-# end 
+function interp(e::Array{Line{T}},ix::Vector{T};extrap::Bool=false) where {T<:Number}
+    y = zeros(T,length(e),length(ix))
+    for i in eachindex(e)
+        y[i,:] = interp(e[i],ix,extrap)
+    end
+    return y
+end 
 
 # appending, prepending , deleting and splitting at
 
