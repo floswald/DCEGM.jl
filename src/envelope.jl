@@ -310,24 +310,6 @@ function upper_env!(e::Envelope{T}) where T<:Number
 
         e.env = env 
         e.isects = isec
-        # info("x = $(getx(e))")
-        # for l in e.L
-        #     # collect points that were removed from each line
-        #     ix_env = findin(l.x,getx(e))
-        #     iy_env = findin(l.y,gety(e))
-        #     info("ix_env = $ix_env")
-        #     # info("1:length(l.x) = $(ix_env)")
-        #     ix_nenv = setdiff(1:length(l.x),ix_env)
-        #     # y_nenv = setdiff(l.y,gety(e))
-        #     @assert(issorted(getx(e)))
-        #     info("setdiff(l.x,x) = $ix_nenv")
-        #     # ix = map(x->!in(x,getx(e)),l.x) 
-        #     # iy = map(x->!in(x,gety(e)),l.y) 
-        #     # jj = find(ix .| iy)
-        #     if length(ix_nenv) > 0
-        #         push!(e.removed,[Point(l.x[jx],l.y[jx],i=jx) for jx in ix_nenv])
-        #     end
-        # end
         @assert(issorted(getx(e)))
         # say that you have now set an upper envelope on this object
         e.env_set = true

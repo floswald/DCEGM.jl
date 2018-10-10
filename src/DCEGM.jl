@@ -34,7 +34,7 @@ import Base.size,
 
 # includes for MultiLine
 include("line.jl")
-# include("envelope.jl")
+include("envelope.jl")
 
 # # includes for dcegm
 # include("param.jl")

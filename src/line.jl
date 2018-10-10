@@ -24,7 +24,7 @@ show(io::IO,p::Point{T}) where T = print(io,"($(p.x),$(p.y)")
 """
 # Line
 
-A `Line` is a vector of `Point`s. The x-coordinates of the points can be regularly spaced.
+A `Line` is a vector of `Point`s. The x-coordinates of the points can be irregularly spaced.
 
 ## Fields
 

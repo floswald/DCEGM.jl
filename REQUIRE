@@ -3,7 +3,6 @@ JSON
 Interpolations
 Distributions
 FastGaussQuadrature
-julia 0.6
 Plots
 Interpolations
 Roots

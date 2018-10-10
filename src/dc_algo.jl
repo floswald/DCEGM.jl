@@ -243,17 +243,11 @@ function dc_EGM!(m::Model,p::Param)
                     # then this IS a valid envelope
                     # else, need to compute the upper envelope.
                     if !m.v[id,it].env_set
-                        error()
+                        # error()
                         upper_env!(m.v[id,it])   # compute upper envelope of this
                         # now need to clean the policy function as well
-                        removed = getr(m.v[id,it])
-                        for r in 1:length(removed)
-                            if length(removed[r]) > 0
-                                for ir in removed[r]
-                                    delete!(m.c[id,it].L[r],ir.i)   # delete index i.r
-                                end
-                            end
-                        end
+                        removed!(m.v[id,it])
+                        remove_c!(m.v[id,it],m.c[id,it])
                         # insert new intersections into consumption function
                         isecs = gets(m.v[id,it])
                         if length(isecs) > 0
