@@ -196,7 +196,7 @@ end
         @test issorted(getx(en))
         @test length(gets(en)) == 3
         xx = sort(vcat(X,vcat([gets(en)[i].x for i in 1:3]...)))
-        @test_broken getx(en) == unique(xx)
+        @test getx(en) == unique(xx)
         yy = reshape(vcat([[f1(ix) f2(ix) f3(ix) f4(ix)] for ix in xx]...),length(xx),4)
         # @test isapprox(gety(en)[:],findmax(yy,2)[1][:])
 
