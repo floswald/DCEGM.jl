@@ -5,8 +5,6 @@
 
 [![Build status](https://ci.appveyor.com/api/projects/status/dxcqu2mfiskgw90m?svg=true)](https://ci.appveyor.com/project/floswald/dcegm-jl)
 
-[![codecov](https://codecov.io/gh/floswald/DCEGM.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/floswald/DCEGM.jl)
-
 Julia implementation of https://github.com/fediskhakov/dcegm
 
 
