@@ -11,7 +11,7 @@ Holds an array of `Line`s, the upper envelope of those lines, and a vector of `P
 * `env    `: The upper envelope (i.e pointwise maximum) over `L`, itself a [`Line`]@ref
 * `env_set`: `true` if envelope vector was set.
 * `isects `: Vector of intersections between `Line`s in `L`
-* `removed`: Vector of Points removed from each Line `env` during assembly
+* `removed`: Vector of indices of Points removed from each Line `env` during assembly
 
 """
 mutable struct Envelope{T<:Number}
@@ -93,18 +93,16 @@ function removed!(e::Envelope)
         error("you need to set an `upper_env!` first.")
     end
     for l in 1:length(e.L)
-        # version 0.7 uses
-        # findall((!in)(b),a)
-        nix = map(x->!in(x,getx(e)),e.L[l].x)
-        niy = map(x->!in(x,gety(e)),e.L[l].y)
-        push!(e.removed, find(nix .| niy))
+        nix = findall((!in)(getx(e)),e.L[l].x)
+        niy = findall((!in)(gety(e)),e.L[l].y)
+        push!(e.removed, unique(vcat(nix,niy)))  # points or indices of points?
     end
 end
 
 function remove_c!(ve::Envelope,ce::Envelope)
     for il in 1:length(ve.L)
         if length(ve.removed[il]) > 0
-            del = findin(ce.L[il].x,[i.x for i in ve.removed[il]])
+            del = findall((in)(ce.L[il].x),[i.x for i in ve.removed[il]])
             delete!(ce.L[iL],del)
         end
     end
@@ -139,7 +137,7 @@ function splitLine(o::Line{T}) where T<:Number
             # println(j)
 
             # if no more kinks
-            if j==0
+            if j==nothing
                 if i > 1
                     # add remaining Line
                     push!(sections,o)
@@ -201,8 +199,9 @@ function upper_env!(e::Envelope{T}) where T<:Number
     yy = interp(e.L,xx)
 
     # find the top line at each point in xx
-    val,lin_ind = findmax(yy,1)  # colwise max
-    subs = map(x->ind2sub(yy,x),lin_ind)  # get subsript indices of colwise maxima
+    val,lin_ind = findmax(yy,dims = 1)  # colwise max
+    subs = map(x->CartesianIndices(yy)[x],lin_ind)  # get subsript indices of colwise maxima
+    # subs = map(x->ind2sub(yy,x),lin_ind)  # get subsript indices of colwise maxima
     r_idx = [i[1] for i in subs] # get row indices only: the row index tells us which Line was optimal at that point.
 
     # from r_idx we could get which points of each line will be included in the envelope?
@@ -211,7 +210,7 @@ function upper_env!(e::Envelope{T}) where T<:Number
     # Identify changes in optimal Line
     # switch in top line after index s (indexing global support xx)
     # s tells us after which position in xx we have a change in optimal line
-    s = find(r_idx[2:end].!=r_idx[1:end-1])
+    s = findall(r_idx[2:end].!=r_idx[1:end-1])
 
     # info("upper_env: jumps after $s")
     # info("upper_env: jumps at $(xx[s])")
@@ -260,8 +259,8 @@ function upper_env!(e::Envelope{T}) where T<:Number
             # info("x_to   = $(xx[jjx])")  # only pick col coordinate
 
             # values of both lines at those corrdinates
-            v_from = yy[subs[js]...]
-            v_to   = yy[subs[js+1]...]
+            v_from = yy[subs[js]]
+            v_to   = yy[subs[js+1]]
             # info("v_from = $(yy[subs[js]...])")
             # info("v_to   = $(yy[subs[js+1]...])")
 

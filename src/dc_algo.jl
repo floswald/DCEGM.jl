@@ -6,7 +6,7 @@ function minimal_EGM(;dplot=false)
     nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
     yvec          = sqrt(2.0) * p.sigma .* nodes
     ywgt          = weights .* pi^(-0.5)
-    avec          = collect(linspace(p.a_low,p.a_high,p.na))
+    avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
     m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
     m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
@@ -22,9 +22,9 @@ function minimal_EGM(;dplot=false)
         # notice that the `interpolate` object needs to be able to extrapolate
         c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Linear())[w1[:]] ,p.ny,p.na)  
         c1[c1.<0] = p.cfloor
-        rhs = ywgt' * (1./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
-        c[it] = vcat(0, 1./(p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)
-        m[it] = vcat(p.a_low, avec.+c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
+        rhs = ywgt' * (1 ./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
+        c[it] = vcat(0, 1 ./ (p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)
+        m[it] = vcat(p.a_low, avec .+ c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
         if dplot
             plot!(m[it],c[it],label="$it")
         end
@@ -56,13 +56,13 @@ function vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},en::Matrix
 
     r = fill(NaN,size(m1))
     mask = m1.<getx(v)[2]
-    mask = it==p.nT ? trues(mask) : mask
+    mask = it==p.nT ? trues(size(mask)) : mask
 
     if all(mask)
         # in the credit constrained region:
-        r[:] = u(c1,id==2,p) + p.beta * bound(v)
+        r[:] = u(c1,id==2,p) .+ p.beta * bound(v)
     elseif any(mask)
-        r[mask] = u(c1[mask],id==2,p) + p.beta * bound(v)
+        r[mask] = u(c1[mask],id==2,p) .+ p.beta * bound(v)
         # elsewhere
         r[.!mask] = interp(v.env,m1[.!mask])
     else
@@ -115,9 +115,9 @@ Conditional Choice probability of working
 """
 function ccp(x::Matrix,p::Param) 
     #choice probability of the first row in 2-row matrix
-    mx = maximum(x,1)
-    mxx = x.-repmat(mx,size(x)[1],1)   # center values at max for numerical stability
-    exp.(mxx[2,:]./p.lambda)./sum(exp.(mxx./p.lambda),1)[:]
+    mx = maximum(x,dims = 1)
+    mxx = x.-repeat(mx,size(x)[1],1)   # center values at max for numerical stability
+    exp.(mxx[2,:]./p.lambda)./sum(exp.(mxx./p.lambda),dims = 1)[:]
 end
 
 """
@@ -126,9 +126,9 @@ end
 Logsum of conditional values used in Expected value function.
 """
 function logsum(x::Matrix,p::Param)
-    mx = maximum(x,1)
-    mxx = x.-repmat(mx,size(x)[1],1)
-    mx .+ p.lambda * log.( sum(exp.(mxx./p.lambda), 1) )
+    mx = maximum(x,dims = 1)
+    mxx = x .- repeat(mx,size(x)[1],1)
+    mx .+ p.lambda * log.( sum(exp.(mxx./p.lambda), dims = 1) )
 end
 
 """
@@ -139,7 +139,7 @@ Main body of the DC-EGM algorithm
 function dc_EGM!(m::Model,p::Param)
     for it in p.nT:-1:1
         println()
-        info("period = $it")
+        @info("period = $it")
 
 		if it==p.nT
             for id in 1:p.nD
@@ -158,11 +158,11 @@ function dc_EGM!(m::Model,p::Param)
 		else
             for id in 1:p.nD
                 working = id==2
-                info("id: $id")
+                @info("id: $id")
                 println()
     			# previous periods
 
-    			# precomputed next period's cash on hand on all income states
+    			# precomputed next period's cash on hand on all income state
     			# what's next period's cash on hand given you work/not today?
     			mm1 = m.m1[it+1][id]
                 # println("mm1 = ")
@@ -172,13 +172,13 @@ function dc_EGM!(m::Model,p::Param)
                 # println("next periods cons functions")
                 # println([m.c[i,it+1].env for i in 1:2])
                 c1 = interp([m.c[i,it+1].env for i in 1:2],mm1[:])
-                c1[c1.<p.cfloor] = p.cfloor   # no negative consumption
+                c1[c1.<p.cfloor] .= p.cfloor   # no negative consumption
                 # println("interpolated on next periods cash on hand. c1 = ")
                 # display(c1)
                        
                 # get next period's conditional value functions
                 # as a matrix where each row is another discrete choice
-                v1 = hcat([vfun(jd,it+1,c1[jd,:],mm1[:],m.v,p) for jd in 1:p.nD]...)'
+                v1 = Matrix(hcat([vfun(jd,it+1,c1[jd,:],mm1[:],m.v,p) for jd in 1:p.nD]...)')
 
                 # println("v1 = ")
                 # display(v1[:,1:10])
@@ -187,7 +187,7 @@ function dc_EGM!(m::Model,p::Param)
                 pwork = ccp(v1,p) * working
 
                 # get marginal utility of that consumption
-                mu1 = reshape(pwork .* up(c1[2,:],p) .+ (1-pwork) .* up(c1[1,:],p),p.na,p.ny)
+                mu1 = reshape(pwork .* up(c1[2,:],p) .+ (1 .- pwork) .* up(c1[1,:],p),p.na,p.ny)
                 # println("mu1 = ")
                 # display(mu1[1:10,:])
 
@@ -228,7 +228,7 @@ function dc_EGM!(m::Model,p::Param)
                     if minx < vline.x[1]
                         # non-convex region lies inside credit constraint.
                         # endogenous x grid bends back before the first x grid point.
-                        x0 = linspace(minx,vline.x[1],floor(p.na/10)) # some points to the left of first x point
+                        x0 = range(minx,stop = vline.x[1],length = floor(p.na/10)) # some points to the left of first x point
                         x0 = x0[1:end-1]
                         y0 = u(x0,working,p) + p.beta * ev[1]
                         prepend!(vline,x0,y0)
@@ -243,7 +243,7 @@ function dc_EGM!(m::Model,p::Param)
                     # then this IS a valid envelope
                     # else, need to compute the upper envelope.
                     if !m.v[id,it].env_set
-                        error()
+                        # error()
                         upper_env!(m.v[id,it])   # compute upper envelope of this
                         # now need to clean the policy function as well
                         removed = getr(m.v[id,it])
@@ -303,7 +303,7 @@ Main body of the DC-EGM algorithm version 2
 function dc_EGM!(m::Model2,p::Param)
     for it in p.nT:-1:1
         println()
-        info("period = $it")
+        @info("period = $it")
 
         if it==p.nT
             for iy in 1:p.ny
@@ -323,10 +323,10 @@ function dc_EGM!(m::Model2,p::Param)
 
         else
             for iy in 1:p.ny
-                info("iy: $iy")
+                @info("iy: $iy")
                 for id in 1:p.nD
                     working = id==2
-                    info("id: $id")
+                    @info("id: $id")
                     # previous periods
 
                     # precomputed next period's cash on hand on all income states
@@ -355,7 +355,7 @@ function dc_EGM!(m::Model2,p::Param)
 
 
                     # get marginal utility of that consumption
-                    mu1 = reshape(pwork .* up(c1[2,:],p) .+ (1-pwork) .* up(c1[1,:],p),p.na,p.ny)
+                    mu1 = reshape(pwork .* up(c1[2,:],p) .+ (1 .- pwork) .* up(c1[1,:],p),p.na,p.ny)
                     # println("mu1 = ")
                     # display(mu1[1:10,:])
 
@@ -406,7 +406,7 @@ function dc_EGM!(m::Model2,p::Param)
                         if minx < vline.x[1]
                             # non-convex region lies inside credit constraint.
                             # endogenous x grid bends back before the first x grid point.
-                            x0 = linspace(minx,vline.x[1],floor(p.na/10)) # some points to the left of first x point
+                            x0 = range(minx,stop = vline.x[1],length = floor(p.na/10)) # some points to the left of first x point
                             x0 = x0[1:end-1]
                             y0 = u(x0,working,p) + p.beta * ev[1]
                             prepend!(vline,x0,y0)

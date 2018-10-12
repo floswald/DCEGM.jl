@@ -7,6 +7,7 @@ using Test
 
     # @includetests ARGS
     include("linetests.jl")
+    include("Envtests.jl")
 
 end
     

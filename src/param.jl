@@ -108,7 +108,7 @@ mutable struct Model
 
 		this = new()
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
-		this.avec          = collect(linspace(p.a_low,p.a_high,p.na))
+		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
 		# fedors vesion:
 		# nodes,weights = quadpoints(p.ny,0,1) 
@@ -172,7 +172,7 @@ mutable struct Model2
 
 		this = new()
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
-		this.avec          = collect(linspace(p.a_low,p.a_high,p.na))
+		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
 		# fedors vesion:
 		# nodes,weights = quadpoints(p.ny,0,1) 
