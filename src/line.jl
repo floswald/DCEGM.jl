@@ -30,7 +30,7 @@ A `Line` is composed of two vectors, `x` and `y`, representing abszissa and ordi
 * `n`: number of points in line
 * `dom`: the domain of the line, i.e. the range of `x`.
 """
-mutable struct Line{T<:Number} <: AbstractArray{T<:Number,1}
+mutable struct Line{T} <: AbstractArray{T,1}
     x::Vector{T}
     y::Vector{T}
     n::Int
@@ -67,13 +67,13 @@ function reconfigure!(m::Line)
     @assert m.n == length(m.y)
 end
 
-eltype(l::Line) = eltype(l.x) 
-size(l::Line) = (l.n,)
-length(l::Line) = l.n
-function getindex(l::Line,i::Int)
+Base.eltype(l::Line) = eltype(l.x) 
+Base.size(l::Line) = (l.n,)
+Base.length(l::Line) = l.n
+function Base.getindex(l::Line,i::Int)
     (l.x[i],l.y[i])
 end
-function getindex(l::Line,i::UnitRange{Int})
+function Base.getindex(l::Line,i::UnitRange{Int})
     Line(l.x[i],l.y[i])
 end
 function setindex!(l::Line{T},x::T,y::T,i::Int) where {T<:Number}
@@ -84,6 +84,12 @@ function setindex!(l::Line{T},x::Vector{T},y::Vector{T},i::UnitRange{Int}) where
     l.x[i] = x
     l.y[i] = y
 end
+# function Base.lastindex(l::Line)
+#     l[l.n]
+# end
+# function Base.firstindex(l::Line) 
+#     l[1]
+# end
 
 # interpolating a line
 
@@ -105,7 +111,7 @@ function interp(l::Line{T},ix::Vector{T},extrap::Bool=false) where {T<:Number}
     else
         itp = interpolate((l.x,),l.y,Gridded(Linear()))
     end
-    return itp[ix]
+    return itp(ix)
 end 
 function interp(e::Array{Line{T}},ix::Vector{T};extrap::Bool=false) where {T<:Number}
     y = zeros(T,length(e),length(ix))

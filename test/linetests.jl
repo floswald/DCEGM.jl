@@ -11,7 +11,7 @@ end
 @testset "Interpolations" begin
     @testset "interpolate at log(1)" begin
         x = collect(0:0.1:1)
-        y = log.(1.+x)
+        y = log.(1 .+ x)
         m = Line(x,y)
         i = interp(m,[0.0])
         @test i[1] == 0.0
@@ -43,7 +43,7 @@ end
 
     @testset "prepend" begin
         x = collect(0:0.1:1)
-        y = log.(1.+x)
+        y = log.(1 .+ x)
         L = Line(x,y)
         prepend!(L,18.0,-1.1)
         @test size(L)==(12,)
@@ -53,7 +53,7 @@ end
     
     @testset "append" begin
         x = collect(0:0.1:1)
-        y = log.(1.+x)
+        y = log.(1. + x)
         L = Line(x,y)
         append!(L,18.0,-1.1)
         @test size(L)==(12,)
@@ -71,7 +71,7 @@ end
     end
     @testset "insert!" begin
         x = collect(0:0.1:1)
-        y = log.(1.+x)
+        y = log.(1 .+ x)
         L = Line(x,y)
         insert!(L,1.1,3.3,9)
         @test size(L)==(12,)
@@ -81,7 +81,7 @@ end
     end
     @testset "splitat" begin
         x = collect(0:0.1:1)
-        y = log.(1.+x)
+        y = log.(1 .+ x)
         L = Line(x,y)
         n,o=splitat(L,1)
         @test size(n)==(1,)

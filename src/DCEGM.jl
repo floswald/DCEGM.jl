@@ -6,9 +6,9 @@ using Interpolations: interpolate, Gridded, Linear, extrapolate
 using Distributions: Normal
 using FastGaussQuadrature
 using Roots
-using Plots
+# using Plots
 
-gr()
+# gr()
 
 # Types
 export Line, Point, Envelope
@@ -30,13 +30,13 @@ import Base.size,
 
 # includes for MultiLine
 include("line.jl")
-include("envelope.jl")
+# include("envelope.jl")
 
-# includes for dcegm
-include("param.jl")
-include("utils.jl")
-include("dc_algo.jl")
-include("plotting.jl")
+# # includes for dcegm
+# include("param.jl")
+# include("utils.jl")
+# include("dc_algo.jl")
+# include("plotting.jl")
 
 
 function doi()
