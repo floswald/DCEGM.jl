@@ -53,7 +53,7 @@ end
     
     @testset "append" begin
         x = collect(0:0.1:1)
-        y = log.(1. + x)
+        y = log.(1 .+ x)
         L = Line(x,y)
         append!(L,18.0,-1.1)
         @test size(L)==(12,)
