@@ -6,9 +6,11 @@ using Interpolations: interpolate, Gridded, Linear, extrapolate
 using Distributions: Normal
 using FastGaussQuadrature
 using Roots
-# using Plots
+if VERSION > v"0.7"
+    using Plots
+    gr()
+end
 
-# gr()
 
 # Types
 export Line, Point, Envelope
