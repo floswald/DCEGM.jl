@@ -21,7 +21,7 @@ end
 """
 # Line
 
-A `Line` is composed of two vectors, `x` and `y`, representing abszissa and ordinate axis in a standard cartesian coordinate system.
+A `Line` is composed of two vectors, `x` and `y`, representing abscissa and ordinate axis in a standard cartesian coordinate system.
 
 ## Fields
 
