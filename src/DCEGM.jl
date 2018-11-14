@@ -11,10 +11,10 @@ gr()
 
 
 # Types
-export Line, Point, Envelope
+export MLine, Point, Envelope
 
 # methods
-export interp, splitat,upper_env!, getx, gety, gets, splitLine, getr
+export interp, splitat,upper_env!, getx, gety, gets, splitMLine, getr
 
 import Base.size, 
        Base.getindex, 

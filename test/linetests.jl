@@ -3,7 +3,7 @@
 @testset "setup" begin
     x = collect(0:0.1:1)
     y = rand(11)
-    m = Line(x,y)
+    m = MLine(x,y)
     @test m.n == 11
     @test size(m) == (11,)
 end
@@ -12,7 +12,7 @@ end
     @testset "interpolate at log(1)" begin
         x = collect(0:0.1:1)
         y = log.(1 .+ x)
-        m = Line(x,y)
+        m = MLine(x,y)
         i = interp(m,[0.0])
         @test i[1] == 0.0
     end
@@ -21,11 +21,11 @@ end
 @testset "getter and setters" begin
     x = [1,3,4,10]
     y = [6,0,8,1]
-    l = Line(x,y)
+    l = MLine(x,y)
     @test size(l) == (4,)
 
     @test l[1] == (1,6)
-    @test isa(l[1:2],Line{Int64})
+    @test isa(l[1:2],MLine{Int64})
     @test l[1:2].x == [1,3]
     @test l[1:2].y == [6,0]
 
@@ -39,12 +39,12 @@ end
     
 end
 
-@testset "Modifying Line methods" begin
+@testset "Modifying MLine methods" begin
 
     @testset "prepend" begin
         x = collect(0:0.1:1)
         y = log.(1 .+ x)
-        L = Line(x,y)
+        L = MLine(x,y)
         prepend!(L,18.0,-1.1)
         @test size(L)==(12,)
         @test L[1] == (18.0,-1.1)
@@ -54,7 +54,7 @@ end
     @testset "append" begin
         x = collect(0:0.1:1)
         y = log.(1 .+ x)
-        L = Line(x,y)
+        L = MLine(x,y)
         append!(L,18.0,-1.1)
         @test size(L)==(12,)
         @test L[end] == (18.0,-1.1)
@@ -64,7 +64,7 @@ end
     @testset "delete!" begin
         x = collect(0:0.1:1)
         y = rand(11)
-        L = Line(x,y)
+        L = MLine(x,y)
         delete!(L,9)
         @test size(L)==(10,)
         @test L[9] == (x[10],y[10])
@@ -72,7 +72,7 @@ end
     @testset "insert!" begin
         x = collect(0:0.1:1)
         y = log.(1 .+ x)
-        L = Line(x,y)
+        L = MLine(x,y)
         insert!(L,1.1,3.3,9)
         @test size(L)==(12,)
         @test L[9] == (1.1,3.3)
@@ -82,7 +82,7 @@ end
     @testset "splitat" begin
         x = collect(0:0.1:1)
         y = log.(1 .+ x)
-        L = Line(x,y)
+        L = MLine(x,y)
         n,o=splitat(L,1)
         @test size(n)==(1,)
         @test size(o)==(11,)
@@ -105,7 +105,7 @@ end
     @testset "sort!" begin
         x = collect(0:0.1:1)
         y = rand(11)
-        L = Line(x,y)
+        L = MLine(x,y)
         insert!(L,2.0,2.0,2)
         @test !(issorted(L.x))
         sort!(L)
