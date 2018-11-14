@@ -329,8 +329,8 @@ function upper_env!(e::Envelope{T}) where T<:Number
         # end
         @assert(issorted(getx(e)))
         # say that you have now set an upper envelope on this object
-        e.env_set = true
-        return nothing
     end
+    e.env_set = true
+    return nothing
 end
 
