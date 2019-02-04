@@ -11,7 +11,7 @@ function show(io::IO, ::MIME"text/plain", p::Point{T}) where T
     print(io,"      y = $(p.y)\n")
 end
 
-show(io::IO,p::Point{T}) where T = print(io,"($(p.x),$(p.y)")
+show(io::IO,p::Point{T}) where T = print(io,"($(p.x),$(p.y))")
 
 # arithmetics
 (+)(p1::Point, p2::Point) = Point(p1.x+p2.x, p1.y+p2.y)
@@ -161,14 +161,20 @@ function interp(l::Line{T},ix::Vector{T},extrap::Bool=false) where {T<:Number}
             # itp = scale(interpolate(l.v, BSpline(Linear()),OnGrid()),linspace(d[1].x,d[end].x,length(d)))
             itp = extrapolate(interpolate((l.xvec,),l.v,Gridded(Linear())),Linear())
         else
-            itp = extrapolate(interpolate((l.xvec,),l.v,Gridded(Linear())),-Inf)
+            itp = extrapolate(interpolate((l.xvec,),l.v,Gridded(Linear())),NaN)
         end
     else
         itp = interpolate((l.xvec,),l.v,Gridded(Linear()))
     end
-    return itp[ix]
+    println(l.xvec)
+    println(l.v)
+    println(typeof(l.xvec))
+    println(typeof(l.v))
+    return itp(ix)
 end 
+
 function interp(e::Array{Line{T}},ix::Vector{T};extrap::Bool=false) where {T<:Number}
+    warn("cannot return a float matrix but a matrix of Point!")
     y = zeros(T,length(e),length(ix))
     for i in eachindex(e)
         y[i,:] = interp(e[i],ix,extrap)
