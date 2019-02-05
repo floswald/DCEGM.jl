@@ -2,7 +2,8 @@ module DCEGM
 
 
 using JSON
-using Interpolations: interpolate, Gridded, Linear, extrapolate
+using Interpolations
+# using Interpolations: interpolate, Gridded, Linear, extrapolate, Throw
 using Distributions: Normal
 using FastGaussQuadrature
 using Roots
@@ -10,8 +11,8 @@ using Plots
 
 gr()
 
-import Base: +, -, *, /, ==
-import Base: start, next, done
+import Base: +, -, *, /, ==, isless
+import Base: start, next, done, typemin, isapprox
 
 # Types
 export Line, Point, Envelope

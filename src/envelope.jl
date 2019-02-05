@@ -201,119 +201,49 @@ function upper_env!(e::Envelope{T}) where T<:Number
     yy = interp(e.L,xx)
 
     # find the top line at each point in xx
-    val,lin_ind = findmax(yy,1)  # colwise max
-    subs = map(x->ind2sub(yy,x),lin_ind)  # get subsript indices of colwise maxima
-    r_idx = [i[1] for i in subs] # get row indices only: the row index tells us which Line was optimal at that point.
+    r_idx = linemax(yy)  # get row indices only: the row index tells us which Line was optimal at that point.
 
-    # from r_idx we could get which points of each line will be included in the envelope?
-
+    env = Line([yy[r_idx[i]][i] for i in 1:length(r_idx)]) # envelope over all lines: just pick max points from each line
 
     # Identify changes in optimal Line
     # switch in top line after index s (indexing global support xx)
     # s tells us after which position in xx we have a change in optimal line
     s = find(r_idx[2:end].!=r_idx[1:end-1])
+    isec = Point[]
+    isec_s = Int[]
 
-    # info("upper_env: jumps after $s")
-    # info("upper_env: jumps at $(xx[s])")
-
-
-
-    # Assemble Upper Envelope from Line segments
-    # ==========================================
-
-    if length(s)==0
-        # there is one complete upper envelope already
-        # return
-        e.env = Line(xx,yy[r_idx[1],:])
-        @assert(issorted(getx(e)))
-        # e.isects = [Point(NaN,NaN)]
-        # e.removed = [[Point(NaN,NaN)]]
-    else
-        # sort out which line is top at which index of xx and compute intersection points in between switches
-        # s = 1: there is a switch in top line after the first index
-        # s = i: there is a switch in top line after the i-th index
-
-        # return Line 
-        # The envelope starts with the first line that is on top
-        # that line is on top until index s[1] in xx, after which the 
-        # top line changes.
-        env = Line(xx[1:s[1]],yy[r_idx[s[1]],1:s[1]] )
-        isec = [Point(NaN,NaN) for i in 1:length(s)]
-
-        for id_s in eachindex(s)   # id_s indexes line segment in resulting envelope: for n intersecting lines, there are n-1 segments
-
-            js = s[id_s]  # value of index: position in xx
-            jx  = subs[js][2]   # colindex of element in yy before switch takes place
-            jjx = subs[js+1][2] # colindex of element in yy after switch took place
-
-            # switching from Line to Line
-            from = r_idx[js]
-            to   = r_idx[js+1]
-            # info("from L number $(r_idx[js])")
-            # info("to L Number $(r_idx[js+1])")
-
-            # xx coordinates between which the switching occurs
-            # remember xx is a vector as long as size(yy,2)
-            x_from = xx[jx ]  # only pick col coordinate
-            x_to   = xx[jjx]  # only pick col coordinate
-            # info("x_from = $(xx[jx ])")  # only pick col coordinate
-            # info("x_to   = $(xx[jjx])")  # only pick col coordinate
-
-            # values of both lines at those corrdinates
-            v_from = yy[subs[js]...]
-            v_to   = yy[subs[js+1]...]
-            # info("v_from = $(yy[subs[js]...])")
-            # info("v_to   = $(yy[subs[js+1]...])")
-
-            # The intersction of both lines ∈ [x_from,x_to]
-            # complication: intersection could also be on the egdes of this interval.
-            # this is easy to check:
-            if isapprox(yy[from,jx] , yy[to,jx])
-                # intersection is on lower bound of interval
-                isec[id_s] = Point(x_from,v_from,i=id_s)
-                # don't add intersection to envelope!
-            elseif isapprox(yy[from,jjx] , yy[to,jjx])
-                # intersection is on upper bound of interval
-                isec[id_s] = Point(x_to,v_to,i=id_s)
-                # don't add intersection to envelope!
+    if length(s) > 0
+        println("r_idx = $r_idx")
+        println("s = $s")
+        # add intersection points between lines
+        # an intersection occurs after index s
+        for i in s
+            if isapprox(yy[r_idx[i]][i],yy[r_idx[i+1]][i])
+                # same point:
+                # push!(isec,yy[r_idx[i]][i])
+            elseif isapprox(yy[r_idx[i]][i+1],yy[r_idx[i+1]][i+1])
+                # same point:
+                # push!(isec,yy[r_idx[i]][i+1])
             else
-                # need to to compute intersection
-                f_closure(z) = interp(e.L[to],[z])[1] - interp(e.L[from],[z])[1]
-                if f_closure(x_from) * f_closure(x_to) > 0
-                    # not opposite signs, no zero to be found
-                    x_x = e.L[to]
-                    v_x = interp(e.L[to],[x_x])[1]
-                else
-                    x_x = fzero(f_closure,x_from,x_to)
-                    v_x = interp(e.L[to],[x_x])[1]
-                    # record intersection as new point
-                    isec[id_s] = Point(x_x,v_x,i=id_s,newpoint=true)
-                end
-
-                # and add to envelope
-                append!(env,x_x,v_x)
-                # info("added $(isec[id_s]) to envelope")
-                # info("x in env? $(in(x_x,env.x))")
+                push!(isec_s, i) # record index position
+                push!(isec,intersect(yy[r_idx[i]],yy[r_idx[i+1]], i ))
             end
-
-            # sometimes we cannot find an intersection point.
-            # either you extrapolate all lines, or you dont
-            # 
-
-            # add next line segment to envelope
-            # index range s[id_s]+1:s[id_s+1] is
-            #     from current switch (next index after): s[id_s]+1
-            #     to last index before next switch: s[id_s+1]
-            last_ind = id_s==length(s) ? n : s[id_s+1]
-            append!(env,xx[js+1:last_ind],yy[to,js+1:last_ind])
-        end  # eachindex(s)
-
-        e.env = env 
-        e.isects = isec
-        @assert(issorted(getx(e)))
-        # say that you have now set an upper envelope on this object
-        e.env_set = true
-        return nothing
+        end
+        # add isecs to env
+        if length(isec) > 0
+            ic = 0
+            for i in 1:length(isec)
+                insert!(env,isec[i],isec_s[i] + ic)
+                ic += 1  # if you already inserted something before, need to shift indices
+            end
+        end
     end
+
+    e.env = env 
+    e.isects = isec
+    @assert(issorted(e.env))
+    # say that you have now set an upper envelope on this object
+    e.env_set = true
+    return nothing
 end
 

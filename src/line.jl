@@ -19,7 +19,12 @@ show(io::IO,p::Point{T}) where T = print(io,"($(p.x),$(p.y))")
 (*)(n::Number, p::Point) = Point(n*p.x, n*p.y)
 (*)(p::Point, n::Number) = n*p
 (/)(p::Point, n::Number) = Point(p.x/n, p.y/n)
+
+
+# comparison
 (==)(p1::Point, p2::Point) = (p1.x == p2.x) && (p1.y == p2.y)
+isapprox(p1::Point, p2::Point) = isapprox(p1.x, p2.x) && isapprox(p1.y, p2.y)
+isless(p1::Point,p2::Point) = p1.x < p2.x   # caution we sort on x only here! 
 
 """
 # Line
@@ -63,6 +68,17 @@ mutable struct Line{T<:Number} <: AbstractArray{T<:Number,1}
     end
 end
 
+# typemin
+eltype(l::Line) = eltype(l.v) 
+function typemin(L::Line{T}) where {T<:Number}
+    typemin(eltype(L))
+end
+
+# iteration
+Base.start(::Line) = 1
+Base.next(L::Line,state) = (L[state],state+1)
+Base.done(L::Line,state) = state > length(L)
+
 # printing
 function show(io::IO, ::MIME"text/plain", L::Line{T}) where {T<:Number}
     print(io,"$T Line\n")
@@ -73,7 +89,6 @@ end
 show(io::IO,L::Line{T}) where {T<:Number} = print(io,"$(L.n) point $T Line")
 
 # indexing
-eltype(l::Line) = eltype(l.v) 
 size(l::Line) = (l.n,)
 length(l::Line) = l.n
 function getindex(l::Line,i)
@@ -87,15 +102,7 @@ end
 endof(l::Line) = l.n
 
 
-# iteration
-Base.start(::Line) = 1
-Base.next(L::Line,state) = (L[state],state+1)
-Base.done(L::Line,state) = state > length(L)
 
-# min max
-function isless(p1::Point{T},p2::Point{T})  where T
-    p1.x < p2.x
-end
 function max_x(l::Line{T}) where {T<:Number}
     lo = typemin(T)
     for i in l
@@ -122,6 +129,19 @@ function max_y(l::Line{T}) where {T<:Number}
         end
     end
     return lo
+end
+function findmax_y(l::Line{T}) where {T<:Number}
+    lo = typemin(T)
+    ix = 0
+    imax = 0
+    for i in l
+        ix += 1
+        if i.y > lo
+            lo = i.y
+            imax = ix
+        end
+    end
+    return (lo,imax)
 end
 function min_y(l::Line{T}) where {T<:Number}
     hi = typemax(T)
@@ -150,7 +170,8 @@ end
 """
    interp(l::Line{T},ix::Vector{T},extrap::Bool=false) where {T<:Number}
 
-Interpolate a `Line` on a vector of valuels `x`
+Interpolate a `Line` on a vector of values `x`.
+Importantly, this returns a new vector of `Point` (i.e. tuples of (x,y)).
 """
 function interp(l::Line{T},ix::Vector{T},extrap::Bool=false) where {T<:Number}
     # whenever 
@@ -161,26 +182,50 @@ function interp(l::Line{T},ix::Vector{T},extrap::Bool=false) where {T<:Number}
             # itp = scale(interpolate(l.v, BSpline(Linear()),OnGrid()),linspace(d[1].x,d[end].x,length(d)))
             itp = extrapolate(interpolate((l.xvec,),l.v,Gridded(Linear())),Linear())
         else
-            itp = extrapolate(interpolate((l.xvec,),l.v,Gridded(Linear())),NaN)
+            itp = extrapolate(interpolate((l.xvec,),l.v,Gridded(Linear())),Flat())
         end
     else
         itp = interpolate((l.xvec,),l.v,Gridded(Linear()))
     end
-    println(l.xvec)
-    println(l.v)
-    println(typeof(l.xvec))
-    println(typeof(l.v))
     return itp(ix)
 end 
 
 function interp(e::Array{Line{T}},ix::Vector{T};extrap::Bool=false) where {T<:Number}
-    warn("cannot return a float matrix but a matrix of Point!")
-    y = zeros(T,length(e),length(ix))
-    for i in eachindex(e)
-        y[i,:] = interp(e[i],ix,extrap)
-    end
-    return y
+    [Line(interp(e[i],ix,extrap)) for i in eachindex(e)]
 end 
+
+function linemax(e::Array{Line{T}}) where {T<:Number}
+    out = zeros(Int,length(e[1]))
+    rows = length(e)
+    for j in eachindex(e[1])
+        ic = 0
+        iv = 0
+        v = typemin(T)
+        for row in 1:rows
+            ic += 1
+            if e[row][j].y > v
+                v = e[row][j].y
+                iv = ic
+            end
+        end
+        out[j] = iv
+    end
+    return out
+end 
+
+function t1()
+    n = 15
+    x1 = collect(linspace(0,10,n))
+    x2 = collect(linspace(-1,9,n))
+    L1 = DCEGM.Line(x1,x1)
+    L2 = Line(x2,ones(n)*5)
+    e = DCEGM.Envelope([L1,L2])
+    upper_env!(e)
+    # ix = [1.1,1.2,6.0]
+    # y=DCEGM.interp(e.L,ix)
+    # linemax(y)
+    return e
+end
 
 # appending, prepending , deleting and splitting at
 
@@ -237,3 +282,19 @@ function sortx!(m::Line)
     reconfigure!(m)
 end
 
+
+function intersect(L1::Line,L2::Line,s::Int)
+    xlo,vlo = (L1[s].x,L1[s].y)
+    xhi,vhi = (L2[s+1].x,L2[s+1].y)
+    f_closure(z) = interp(L1,[z])[1] - interp(L2,[z])[1]
+    if f_closure(xlo).y * f_closure(xhi).y > 0
+        # not opposite signs, no zero to be found
+        x_x = xlo
+        v_x = vhi
+        return (x_x,v_x)
+    else
+        x_x = fzero(f_closure,xlo,xhi).x
+        v_x = interp(L1[x_x])[1].y
+        return (x_x,v_x)
+    end
+end
