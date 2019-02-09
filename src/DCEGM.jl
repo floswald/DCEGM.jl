@@ -41,7 +41,7 @@ include("envelope.jl")
 include("param.jl")
 # include("utils.jl")
 # include("dc_algo.jl")
-# include("plotting.jl")
+include("plotting.jl")
 
 
 function doi()

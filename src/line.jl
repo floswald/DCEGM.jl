@@ -26,6 +26,7 @@ show(io::IO,p::Point{T}) where T = print(io,"($(p.x),$(p.y))")
 isapprox(p1::Point, p2::Point) = isapprox(p1.x, p2.x) && isapprox(p1.y, p2.y)
 isless(p1::Point,p2::Point) = p1.x < p2.x   # caution we sort on x only here! 
 
+
 """
 # Line
 
@@ -87,6 +88,9 @@ function show(io::IO, ::MIME"text/plain", L::Line{T}) where {T<:Number}
     print(io,"yrange: $(L.yrange)\n")
 end
 show(io::IO,L::Line{T}) where {T<:Number} = print(io,"$(L.n) point $T Line")
+
+getx(l::Line{T}) where {T<:Number}= T[l.v[i].x for i in 1:l.n] 
+gety(l::Line{T}) where {T<:Number} = T[l.v[i].y for i in 1:l.n]
 
 # indexing
 size(l::Line) = (l.n,)
@@ -227,6 +231,20 @@ function t1()
     return e
 end
 
+function t2()
+
+    n = 15
+    x1 = collect(linspace(0,10,n))
+    x2 = collect(linspace(-1,9,n))
+    x3 = collect(linspace(-0.1,10,n))
+    L1 = Line(x1,x1)
+    L2 = Line(x2,ones(n)*5)
+    L3 = Line(x3,(x3.^2)/8)
+    e = Envelope([L1,L2,L3])
+    upper_env!(e)
+    e
+end
+
 # appending, prepending , deleting and splitting at
 
 "prepend `Point`s to a Line"
@@ -283,18 +301,23 @@ function sortx!(m::Line)
 end
 
 
+"""
+    intersect(L1::Line,L2::Line,s::Int)
+
+Intersecting two lines returns a [`Point`](@ref)
+"""
 function intersect(L1::Line,L2::Line,s::Int)
     xlo,vlo = (L1[s].x,L1[s].y)
     xhi,vhi = (L2[s+1].x,L2[s+1].y)
-    f_closure(z) = interp(L1,[z])[1] - interp(L2,[z])[1]
-    if f_closure(xlo).y * f_closure(xhi).y > 0
+    f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
+    if f_closure(xlo) * f_closure(xhi) > 0
         # not opposite signs, no zero to be found
         x_x = xlo
         v_x = vhi
-        return (x_x,v_x)
+        return Point(x_x,v_x)
     else
-        x_x = fzero(f_closure,xlo,xhi).x
-        v_x = interp(L1[x_x])[1].y
-        return (x_x,v_x)
+        x_x = fzero(f_closure,xlo,xhi)
+        v_x = interp(L1,[x_x])[1].y
+        return Point(x_x,v_x)
     end
 end

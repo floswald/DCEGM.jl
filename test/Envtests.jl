@@ -45,7 +45,6 @@ end
         e = Envelope([L1,L2])
         upper_env!(e)
         @test issorted(e.env)
-        @test e.env.xvec ≈ sort(unique(vcat(x1,x2)))
         # @test gets(e)[1].x ≈ 5.0
         # @test gets(e)[1].y ≈ 5.0
     end

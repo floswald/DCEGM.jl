@@ -66,8 +66,8 @@ end
 size(e::Envelope) = size(e.L)
 eltype(e::Envelope) = eltype(e.L) 
 bound(e::Envelope) = e.vbound
-getx(en::Envelope) = en.env.x
-gety(en::Envelope) = en.env.y
+# getx(en::Envelope) = en.env.x
+# gety(en::Envelope) = en.env.y
 gets(en::Envelope) = en.isects
 getr(en::Envelope) = en.removed
 # getLine(en::Envelope,j::Int) = en.L[j]
@@ -95,9 +95,7 @@ function removed!(e::Envelope)
     for l in 1:length(e.L)
         # version 0.7 uses
         # findall((!in)(b),a)
-        nix = map(x->!in(x,getx(e)),e.L[l].x)
-        niy = map(x->!in(x,gety(e)),e.L[l].y)
-        push!(e.removed, find(nix .| niy))
+        push!(e.removed,find(map(x->!in(x,e.L[l]),e.env)))   # the in(env,L) is AMAZING.
     end
 end
 
@@ -241,7 +239,7 @@ function upper_env!(e::Envelope{T}) where T<:Number
 
     e.env = env 
     e.isects = isec
-    @assert(issorted(e.env))
+    # @assert(issorted(e.env))
     # say that you have now set an upper envelope on this object
     e.env_set = true
     return nothing

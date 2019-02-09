@@ -84,7 +84,7 @@ end
                 if numerate
                     series_annotations := ["$i" for i in sortperm(l.x)]
                 end
-                (l.x,l.y)
+                (getx(l),gety(l))
             end
         end
     end
@@ -105,7 +105,7 @@ end
             if numerate
                 series_annotations := ["$i" for i in 1:length(getx(x))]
             end
-            (getx(x),gety(x))
+            (getx(x.env),gety(x.env))
         end
         if removed
             for l in 1:length(x.L)
