@@ -47,9 +47,9 @@ end
             markersize --> 2
         end
         if numerate
-            series_annotations := ["$i" for i in 1:length(l.x)]
+            series_annotations := ["$i" for i in 1:length(l)]
         end
-        (l.x,l.y)
+        (getx(l),gety(l))
     end
 end
 
@@ -62,11 +62,11 @@ end
     grid --> true
     xticks := true
 
-    if !x.env_set
+    # if !x.env_set
         legend --> :bottomright
-    else
-        legend --> false
-    end
+    # else
+    #     legend --> false
+    # end
 
     # if line array exists, plot
     if length(x.L) > 0
@@ -82,7 +82,7 @@ end
                     markersize := 3
                 end
                 if numerate
-                    series_annotations := ["$i" for i in sortperm(l.x)]
+                    series_annotations := ["$i" for i in sortperm(l)]
                 end
                 (getx(l),gety(l))
             end
@@ -90,11 +90,26 @@ end
     end
     # plot envelope, if exists
     if x.env_set
+        if removed
+            legend := false
+            for l in 1:length(x.L)
+                @series begin
+                    seriestype = :scatter
+                    markershape := :rect
+                    markersize := 3
+                    markerstrokecolor := :black
+                    markercolor := :white
+                    markeralpha := 0.5
+                    (getx(x.L[l])[x.removed[l]], gety(x.L[l])[x.removed[l]])
+                end
+            end
+        end
         @series begin
             # subplot := 1
             linetype := :line 
             linecolor --> :red
             linewidth --> 2
+            label --> "Envelope"
             if marker
                 markershape := :circle
                 markercolor := :white
@@ -106,19 +121,6 @@ end
                 series_annotations := ["$i" for i in 1:length(getx(x))]
             end
             (getx(x.env),gety(x.env))
-        end
-        if removed
-            for l in 1:length(x.L)
-                @series begin
-                    seriestype = :scatter
-                    markershape := :rect
-                    markersize := 3
-                    markerstrokecolor := :black
-                    markercolor := :white
-                    markeralpha := 0.5
-                    (x.L[l].x[x.removed[l]], x.L[l].y[x.removed[l]])
-                end
-            end
         end
     end
 end
@@ -194,8 +196,8 @@ function tplot3a()
     p1 = plot(en)
 
     upper_env!(en)
-    p2 = plot(en,removed=true)
-    plot(p1,p2)
+    p2 = plot(en)
+    plot(p1,p2,legend=:topleft)
 
 end
 
@@ -206,6 +208,7 @@ function tplot3b()
     p1 = plot(en)
 
     upper_env!(en)
+    removed!(en)
     p2 = plot(en,removed=true)
 
     plot(p1,p2)
@@ -221,7 +224,7 @@ function tplot3c()
     removed!(en)
     p2 = plot(en,removed=true)
 
-    plot(p1,p2)
+    plot(p1,p2,legend=:topleft)
     gui()
     return en
 
@@ -242,9 +245,9 @@ function tplot4()
 
     upper_env!(e)
 
-    p2 = plot(e,removed=true)
+    p2 = plot(e)
 
-    plot(p1,p2)
+    plot(p1,p2,legend=:topleft)
 end
 
 function splitf()

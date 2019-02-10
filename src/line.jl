@@ -242,6 +242,7 @@ function t2()
     L3 = Line(x3,(x3)*1.9 .- 7.0)
     e = Envelope([L1,L2,L3])
     upper_env!(e)
+    removed!(e)
     e
 end
 

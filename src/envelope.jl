@@ -11,7 +11,7 @@ Holds an array of `Line`s, the upper envelope of those lines, and a vector of `P
 * `env    `: The upper envelope (i.e pointwise maximum) over `L`, itself a [`Line`]@ref
 * `env_set`: `true` if envelope vector was set.
 * `isects `: Vector of intersections between `Line`s in `L`
-* `removed`: Vector of Points removed from each Line `env` during assembly
+* `removed`: Vector of point indices removed from each Line `env` during assembly
 
 """
 mutable struct Envelope{T<:Number}
@@ -95,7 +95,7 @@ function removed!(e::Envelope)
     for l in 1:length(e.L)
         # version 0.7 uses
         # findall((!in)(b),a)
-        push!(e.removed,find(map(x->!in(x,e.L[l]),e.env)))   # the in(env,L) is AMAZING.
+        push!(e.removed,find(map(x->!in(x,e.env),e.L[l])))   # the in(env,L) is AMAZING.
     end
 end
 
@@ -154,7 +154,7 @@ function splitLine(o::Line{T}) where T<:Number
         # all the ones with 2 un-sorted x corrdinates are illegal lines from connection of two proper ones
         # discard those
         # l2 = [length(s.x)==2 for s in sections]
-        ns = [!issorted(s.x) && length(s.x)==2 for s in sections]
+        ns = [!issorted(s.v) && length(s.v)==2 for s in sections]
 
         # 4) get rid of illegal sections on x
         # e = Envelope(0.0)
@@ -170,7 +170,7 @@ function splitLine(o::Line{T}) where T<:Number
         for s in eachindex(sections)
             if !ns[s]
                 if !issorted(sections[s])
-                    sort!(sections[s])
+                    sortx!(sections[s])
                 end
                 push!(new_sections,sections[s])
             end
