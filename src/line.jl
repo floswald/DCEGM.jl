@@ -236,10 +236,10 @@ function t2()
     n = 15
     x1 = collect(linspace(0,10,n))
     x2 = collect(linspace(-1,9,n))
-    x3 = collect(linspace(-0.1,10,n))
+    x3 = collect(linspace(6.1,10,n))
     L1 = Line(x1,x1)
     L2 = Line(x2,ones(n)*5)
-    L3 = Line(x3,(x3.^2)/8)
+    L3 = Line(x3,(x3)*1.9 .- 7.0)
     e = Envelope([L1,L2,L3])
     upper_env!(e)
     e
