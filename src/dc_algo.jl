@@ -20,8 +20,8 @@ function minimal_EGM(;dplot=false)
         # get next period consumption on that wealth w1
         # interpolate on next period's endogenous grid m[it+1].
         # notice that the `interpolate` object needs to be able to extrapolate
-        c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Line())[w1[:]] ,p.ny,p.na)  
-        c1[c1.<0] = p.cfloor
+        c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Line())(w1[:]) ,p.ny,p.na)  
+        c1[c1.<0] .= p.cfloor
         rhs = ywgt' * (1 ./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
         c[it] = vcat(0, 1 ./ (p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)
         m[it] = vcat(p.a_low, avec .+ c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)

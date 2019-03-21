@@ -2,7 +2,7 @@ module DCEGM
 
 
 using JSON
-using Interpolations: interpolate, Gridded, Linear, extrapolate
+using Interpolations
 using Distributions: Normal
 using FastGaussQuadrature
 using Roots
