@@ -2,19 +2,19 @@ module DCEGM
 
 
 using JSON
-using Interpolations: interpolate, Gridded, Linear, extrapolate
+using Interpolations
 using Distributions: Normal
 using FastGaussQuadrature
 using Roots
 using Plots
-
 gr()
 
+
 # Types
-export Line, Point, Envelope
+export MLine, Point, Envelope
 
 # methods
-export interp, splitat,upper_env!, getx, gety, gets, splitLine, getr
+export interp, splitat,upper_env!, getx, gety, gets, splitMLine, getr
 
 import Base.size, 
        Base.getindex, 
@@ -32,7 +32,7 @@ import Base.size,
 include("line.jl")
 include("envelope.jl")
 
-# includes for dcegm
+# # includes for dcegm
 include("param.jl")
 include("utils.jl")
 include("dc_algo.jl")

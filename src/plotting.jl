@@ -31,7 +31,7 @@ end
 end
 
 
-@recipe function f(l::Line;numerate=false,marker=false)
+@recipe function f(l::MLine;numerate=false,marker=false)
     # defaults
     grid --> true
     xticks := true
@@ -127,8 +127,8 @@ function tplot1()
     n = 15
     x1 = collect(linspace(0,10,n))
     x2 = collect(linspace(-1,9,n))
-    L1 = Line(x1,x1)
-    L2 = Line(x2,ones(n)*5)
+    L1 = MLine(x1,x1)
+    L2 = MLine(x2,ones(n)*5)
     e = Envelope([L1,L2])
     plot(e)
 end
@@ -137,8 +137,8 @@ function tplot2()
     n = 15
     x1 = collect(linspace(0,10,n))
     x2 = collect(linspace(-1,9,n))
-    L1 = Line(x1,x1)
-    L2 = Line(x2,ones(n)*5)
+    L1 = MLine(x1,x1)
+    L2 = MLine(x2,ones(n)*5)
     en = Envelope([L1,L2])
     p1 = plot(en)
 
@@ -155,7 +155,7 @@ function f3a()
          collect(linspace(1,7,19)),
          collect(linspace(2,7,15)),
          collect(linspace(4,8,25))]
-    ls = [Line(i[1],i[2](i[1])) for i in zip(xs,fs)]
+    ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
     # create an envelope
     e = Envelope(ls)
     return e
@@ -168,7 +168,7 @@ function f3b()
          collect(linspace(1,7,19)),
          collect(linspace(2,7,15)),
          collect(linspace(4,8,25))]
-    ls = [Line(i[1],i[2](i[1])) for i in zip(xs,fs)]
+    ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
     # create an envelope
     e = Envelope(ls)
     return e
@@ -181,7 +181,7 @@ function f3c()
          collect(linspace(1,7,19)),
          collect(linspace(2,7,15)),
          collect(linspace(4,8,25))]
-    ls = [Line(i[1],i[2](i[1])) for i in zip(xs,fs)]
+    ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
     # create an envelope
     e = Envelope(ls)
     return e
@@ -235,7 +235,7 @@ function tplot4()
          collect(linspace(1,7,19)),
          collect(linspace(2,7,15)),
          collect(linspace(4,8,25))]
-    ls = [Line(i[1],i[2](i[1])) for i in zip(xs,fs)]
+    ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
     e = Envelope(ls)
 
     p1 = plot(e)
@@ -250,28 +250,28 @@ end
 function splitf()
     x = [1,2,3,1.5,2.1,2.9]
     y = [1,1.5,1.7,1.2,1.8,2.1]
-    L = Line(x,y)
+    L = MLine(x,y)
     p1 = plot(L,title="original",numerate=true)
-    e = splitLine(L)
-    p2 = plot(e,title="split Line",numerate=true)
+    e = splitMLine(L)
+    p2 = plot(e,title="split MLine",numerate=true)
     plot(p1,p2)
 end
 
 function splitf2()
     x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
     y = [1,1.5,1.7,1.6,1.55,1.4,1.3,1.2,1.8,2.1]
-    L = Line(x,y)
+    L = MLine(x,y)
     p1 = plot(L,title="original",numerate=true)
-    e = splitLine(L)
-    p2 = plot(e,title="split Line",numerate=true)
+    e = splitMLine(L)
+    p2 = plot(e,title="split MLine",numerate=true)
     plot(p1,p2)
 end
 
 function splitf3()
     x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
     y = [1,1.5,1.7,1.6,1.55,1.4,1.3,1.2,1.8,2.1]
-    L = Line(x,y)
-    e = splitLine(L)
+    L = MLine(x,y)
+    e = splitMLine(L)
     upper_env!(e)
     p1 = plot(e,title="upper enveloped")
     removed!(e)

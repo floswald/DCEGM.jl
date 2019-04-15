@@ -108,7 +108,7 @@ mutable struct Model
 
 		this = new()
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
-		this.avec          = collect(linspace(p.a_low,p.a_high,p.na))
+		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
 		# fedors vesion:
 		# nodes,weights = quadpoints(p.ny,0,1) 
@@ -132,8 +132,8 @@ mutable struct Model
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 
-		this.v = [Envelope(Line(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
-		this.c = [Envelope(Line(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
+		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
+		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
 		# dchoice = [it => ["d" => zeros(Int,p.na), "Vzero" => 0.0, "threshold" => 0.0] for it=1:p.nT]
 
 		return this
@@ -172,7 +172,7 @@ mutable struct Model2
 
 		this = new()
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
-		this.avec          = collect(linspace(p.a_low,p.a_high,p.na))
+		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
 		# fedors vesion:
 		# nodes,weights = quadpoints(p.ny,0,1) 
@@ -188,7 +188,7 @@ mutable struct Model2
 		this.yvec = sqrt(2.0) * p.sigma .* nodes
 		ywgt = weights .* pi^(-0.5)
 		ywgt = ywgt .+ ywgt'
-		this.ywgt = ywgt ./ sum(ywgt,2)
+		this.ywgt = ywgt ./ sum(ywgt,dims=2)
 
 
 		# precompute next period's cash on hand.
@@ -199,8 +199,8 @@ mutable struct Model2
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 
-		this.v = [Envelope(Line(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny, it in 1:p.nT]
-		this.c = [Envelope(Line(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny,it in 1:p.nT]
+		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny, it in 1:p.nT]
+		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny,it in 1:p.nT]
 		# dchoice = [it => ["d" => zeros(Int,p.na), "Vzero" => 0.0, "threshold" => 0.0] for it=1:p.nT]
 
 		return this

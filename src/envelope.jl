@@ -3,37 +3,39 @@
 
 ## Envelope
 
-Holds an array of `Line`s, the upper envelope of those lines, and a vector of `Point`s marking the intersections between lines.
+Holds an array of `MLine`s, the upper envelope of those MLines, and a vector of `Point`s marking the intersections between MLines.
 
 ### Fields
 
-* `L      `: Vector of [`Line`]@ref
-* `env    `: The upper envelope (i.e pointwise maximum) over `L`, itself a [`Line`]@ref
+* `L      `: Vector of [`MLine`]@ref
+* `env    `: The upper envelope (i.e pointwise maximum) over `L`, itself a [`MLine`]@ref
 * `env_set`: `true` if envelope vector was set.
-* `isects `: Vector of intersections between `Line`s in `L`
-* `removed`: Vector of Points removed from each Line `env` during assembly
+* `isects `: Vector of intersections between `MLine`s in `L`
+* `removed`: Vector of indices of Points removed from each MLine `env` during assembly
 
 """
 mutable struct Envelope{T<:Number}
-    L      :: Vector{Line{T}}
-    env    :: Line{T}
+    L      :: Vector{MLine{T}}
+    env    :: MLine{T}
     env_set :: Bool
     isects :: Vector{Point{T}}
     removed :: Vector{Vector{Int}}
     vbound :: T
+    # Envelope(1) builds a test object with env_set = false
     function Envelope(x::T) where {T<:Number}
         this = new{T}()
-        this.L = Line{T}[]
-        this.env = Line([typemin(T)],[typemin(T)])
+        this.L = MLine{T}[]
+        this.env = MLine([typemin(T)],[typemin(T)])
         this.env_set = false
         this.isects = Point{T}[]
         this.removed = Vector{Vector{Int}}[ ]
         this.vbound = zero(T)
         return this
     end
-    function Envelope(e::Line{T}) where {T<:Number}
+    # Envelope(MLine) builds an object with the MLine as THE envelope
+    function Envelope(e::MLine{T}) where {T<:Number}
         this = new{T}()
-        this.L = Line{T}[]
+        this.L = MLine{T}[]
         this.env = deepcopy(e)
         this.env_set = true
         this.isects = Point{T}[]
@@ -41,10 +43,11 @@ mutable struct Envelope{T<:Number}
         this.vbound = zero(T)
         return this
     end
-    function Envelope(l::Vector{Line{T}}) where {T<:Number}
+    # Envelope(Vector{MLine{T}}) are constituting lines, but no env_set yet
+    function Envelope(l::Vector{MLine{T}}) where {T<:Number}
         this = new{T}()
         this.L = deepcopy(l)
-        this.env = Line([typemin(T)],[typemin(T)])
+        this.env = MLine([typemin(T)],[typemin(T)])
         this.env_set = false
         this.isects = Point{T}[]
         this.removed = Vector{Vector{Int}}[ ]
@@ -54,8 +57,8 @@ mutable struct Envelope{T<:Number}
 end
 function show(io::IO, ::MIME"text/plain", en::Envelope{T}) where {T<:Number}
     print(io,"$T Envelope\n")
-    print(io,"env Line set?: $(en.env_set) \n")
-    print(io,"num of `Line`s: $(length(en.L))\n")
+    print(io,"env MLine set?: $(en.env_set) \n")
+    print(io,"num of `MLine`s: $(length(en.L))\n")
     print(io,"num of intersections: $(length(en.isects))\n")
     print(io,"num of pts removed: $(length(en.removed))\n")
 end
@@ -70,14 +73,14 @@ getx(en::Envelope) = en.env.x
 gety(en::Envelope) = en.env.y
 gets(en::Envelope) = en.isects
 getr(en::Envelope) = en.removed
-# getLine(en::Envelope,j::Int) = en.L[j]
-# function set!(en::Envelope{T},L::Line{T}) where {T<:Number}
+# getMLine(en::Envelope,j::Int) = en.L[j]
+# function set!(en::Envelope{T},L::MLine{T}) where {T<:Number}
 #     en.env = L
 # end
-# function set!(en::Envelope{T},id::Int,l::Line{T}) where {T<:Number}
+# function set!(en::Envelope{T},id::Int,l::MLine{T}) where {T<:Number}
 #     en.L[id] = l
 # end
-# Base.setindex!(en::Envelope,l::Line,id::Int) = en.L[id] = l
+# Base.setindex!(en::Envelope,l::MLine,id::Int) = en.L[id] = l
 Base.getindex(en::Envelope,id::Int) = en.L[id]
 
 
@@ -85,7 +88,7 @@ Base.getindex(en::Envelope,id::Int) = en.L[id]
 """
     removed!(e::Envelope)
 
-Find which points from each `Line` did not end up in the 
+Find which points from each `MLine` did not end up in the 
 `env` and write them to `removed`.
 """
 function removed!(e::Envelope)
@@ -93,18 +96,16 @@ function removed!(e::Envelope)
         error("you need to set an `upper_env!` first.")
     end
     for l in 1:length(e.L)
-        # version 0.7 uses
-        # findall((!in)(b),a)
-        nix = map(x->!in(x,getx(e)),e.L[l].x)
-        niy = map(x->!in(x,gety(e)),e.L[l].y)
-        push!(e.removed, find(nix .| niy))
+        nix = findall((!in)(getx(e)),e.L[l].x)
+        niy = findall((!in)(gety(e)),e.L[l].y)
+        push!(e.removed, unique(vcat(nix,niy)))  # indices of points?
     end
 end
 
 function remove_c!(ve::Envelope,ce::Envelope)
     for il in 1:length(ve.L)
         if length(ve.removed[il]) > 0
-            del = findin(ce.L[il].x,[i.x for i in ve.removed[il]])
+            del = findall((in)(ce.L[il].x),[i.x for i in ve.removed[il]])
             delete!(ce.L[iL],del)
         end
     end
@@ -112,17 +113,17 @@ end
 
 
 """
-    splitLine(m::Line)
+    splitMLine(m::MLine)
 
-splits a `Line` object at wrong EGM solution points. Wrong solutions appear in kinked regions.
+splits a `MLine` object at wrong EGM solution points. Wrong solutions appear in kinked regions.
 """
-function splitLine(o::Line{T}) where T<:Number
+function splitMLine(o::MLine{T}) where T<:Number
 
     # 1) find all jump-backs in x-grid
     # println(o.x)
     ii = o.x[2:end].>o.x[1:end-1]  
-    # info("splitLine: ii = $(find(.!(ii)))")
-    # info("splitLine: x = $(o.x[find(.!(ii))])")
+    # info("splitMLine: ii = $(find(.!(ii)))")
+    # info("splitMLine: x = $(o.x[find(.!(ii))])")
 
     # 2) if no backjumps at all, exit
     if all(ii)  
@@ -131,29 +132,29 @@ function splitLine(o::Line{T}) where T<:Number
     else
     # 3) else, identify subsets
         i = 1
-        sections = Line{T}[]  # an array of Lines
-        new_sections = Line{T}[]  # an array of Lines
+        sections = MLine{T}[]  # an array of MLines
+        new_sections = MLine{T}[]  # an array of MLines
         while true
             # println(ii)
             j = findfirst(ii .!= ii[1])  # identifies all indices within kinked region from left to right until the first kink
             # println(j)
 
             # if no more kinks
-            if j==0
+            if j==nothing
                 if i > 1
-                    # add remaining Line
+                    # add remaining MLine
                     push!(sections,o)
                 end
                 # then break
                 break
             end
-            newm,o = splitat(o,j)  # split old Line at j 
+            newm,o = splitat(o,j)  # split old MLine at j 
             push!(sections,newm)
             ii = ii[j:end] # chop off from jump index
             i += 1
         end
 
-        # all the ones with 2 un-sorted x corrdinates are illegal lines from connection of two proper ones
+        # all the ones with 2 un-sorted x corrdinates are illegal MLines from connection of two proper ones
         # discard those
         # l2 = [length(s.x)==2 for s in sections]
         ns = [!issorted(s.x) && length(s.x)==2 for s in sections]
@@ -182,16 +183,16 @@ function splitLine(o::Line{T}) where T<:Number
 end
 
 function upper_env!(e::Envelope{T}) where T<:Number
-    # 5) compute upper envelope of all lines
+    # 5) compute upper envelope of all MLines
         # - get all x's from all s and sort into a vector xx
         # - interpolate(extrapolate) all s on xx
-        # - how to deal with points at which some Line is infeasible?
+        # - how to deal with points at which some MLine is infeasible?
 
     if length(e.L)<2
-        error("an upper envelope requires by definition at least 2 lines.")
+        error("an upper envelope requires by definition at least 2 MLines.")
     end
 
-    # - get all x's from all Lines and sort into a vector xx
+    # - get all x's from all MLines and sort into a vector xx
     xx = sort(unique(vcat([l.x for l in e.L]...)))
     n = length(xx)
 
@@ -200,53 +201,54 @@ function upper_env!(e::Envelope{T}) where T<:Number
     # i.e. each row is the interpolation 
     yy = interp(e.L,xx)
 
-    # find the top line at each point in xx
-    val,lin_ind = findmax(yy,1)  # colwise max
-    subs = map(x->ind2sub(yy,x),lin_ind)  # get subsript indices of colwise maxima
-    r_idx = [i[1] for i in subs] # get row indices only: the row index tells us which Line was optimal at that point.
+    # find the top MLine at each point in xx
+    val,lin_ind = findmax(yy,dims = 1)  # colwise max
+    subs = map(x->CartesianIndices(yy)[x],lin_ind)  # get subsript indices of colwise maxima
+    # subs = map(x->ind2sub(yy,x),lin_ind)  # get subsript indices of colwise maxima
+    r_idx = [i[1] for i in subs] # get row indices only: the row index tells us which MLine was optimal at that point.
 
-    # from r_idx we could get which points of each line will be included in the envelope?
+    # from r_idx we could get which points of each MLine will be included in the envelope?
 
 
-    # Identify changes in optimal Line
-    # switch in top line after index s (indexing global support xx)
-    # s tells us after which position in xx we have a change in optimal line
-    s = find(r_idx[2:end].!=r_idx[1:end-1])
+    # Identify changes in optimal MLine
+    # switch in top MLine after index s (indexing global support xx)
+    # s tells us after which position in xx we have a change in optimal MLine
+    s = findall(r_idx[2:end].!=r_idx[1:end-1])
 
     # info("upper_env: jumps after $s")
     # info("upper_env: jumps at $(xx[s])")
 
 
 
-    # Assemble Upper Envelope from Line segments
+    # Assemble Upper Envelope from MLine segments
     # ==========================================
 
     if length(s)==0
         # there is one complete upper envelope already
         # return
-        e.env = Line(xx,yy[r_idx[1],:])
+        e.env = MLine(xx,yy[r_idx[1],:])
         @assert(issorted(getx(e)))
         # e.isects = [Point(NaN,NaN)]
         # e.removed = [[Point(NaN,NaN)]]
     else
-        # sort out which line is top at which index of xx and compute intersection points in between switches
-        # s = 1: there is a switch in top line after the first index
-        # s = i: there is a switch in top line after the i-th index
+        # sort out which MLine is top at which index of xx and compute intersection points in between switches
+        # s = 1: there is a switch in top MLine after the first index
+        # s = i: there is a switch in top MLine after the i-th index
 
-        # return Line 
-        # The envelope starts with the first line that is on top
-        # that line is on top until index s[1] in xx, after which the 
-        # top line changes.
-        env = Line(xx[1:s[1]],yy[r_idx[s[1]],1:s[1]] )
+        # return MLine 
+        # The envelope starts with the first MLine that is on top
+        # that MLine is on top until index s[1] in xx, after which the 
+        # top MLine changes.
+        env = MLine(xx[1:s[1]],yy[r_idx[s[1]],1:s[1]] )
         isec = [Point(NaN,NaN) for i in 1:length(s)]
 
-        for id_s in eachindex(s)   # id_s indexes line segment in resulting envelope: for n intersecting lines, there are n-1 segments
+        for id_s in eachindex(s)   # id_s indexes MLine segment in resulting envelope: for n intersecting MLines, there are n-1 segments
 
             js = s[id_s]  # value of index: position in xx
             jx  = subs[js][2]   # colindex of element in yy before switch takes place
             jjx = subs[js+1][2] # colindex of element in yy after switch took place
 
-            # switching from Line to Line
+            # switching from MLine to MLine
             from = r_idx[js]
             to   = r_idx[js+1]
             # info("from L number $(r_idx[js])")
@@ -259,13 +261,13 @@ function upper_env!(e::Envelope{T}) where T<:Number
             # info("x_from = $(xx[jx ])")  # only pick col coordinate
             # info("x_to   = $(xx[jjx])")  # only pick col coordinate
 
-            # values of both lines at those corrdinates
-            v_from = yy[subs[js]...]
-            v_to   = yy[subs[js+1]...]
+            # values of both MLines at those corrdinates
+            v_from = yy[subs[js]]
+            v_to   = yy[subs[js+1]]
             # info("v_from = $(yy[subs[js]...])")
             # info("v_to   = $(yy[subs[js+1]...])")
 
-            # The intersction of both lines ∈ [x_from,x_to]
+            # The intersction of both MLines ∈ [x_from,x_to]
             # complication: intersection could also be on the egdes of this interval.
             # this is easy to check:
             if isapprox(yy[from,jx] , yy[to,jx])
@@ -297,10 +299,10 @@ function upper_env!(e::Envelope{T}) where T<:Number
             end
 
             # sometimes we cannot find an intersection point.
-            # either you extrapolate all lines, or you dont
+            # either you extrapolate all MLines, or you dont
             # 
 
-            # add next line segment to envelope
+            # add next MLine segment to envelope
             # index range s[id_s]+1:s[id_s+1] is
             #     from current switch (next index after): s[id_s]+1
             #     to last index before next switch: s[id_s+1]
@@ -312,7 +314,7 @@ function upper_env!(e::Envelope{T}) where T<:Number
         e.isects = isec
         # info("x = $(getx(e))")
         # for l in e.L
-        #     # collect points that were removed from each line
+        #     # collect points that were removed from each MLine
         #     ix_env = findin(l.x,getx(e))
         #     iy_env = findin(l.y,gety(e))
         #     info("ix_env = $ix_env")
@@ -330,8 +332,8 @@ function upper_env!(e::Envelope{T}) where T<:Number
         # end
         @assert(issorted(getx(e)))
         # say that you have now set an upper envelope on this object
-        e.env_set = true
-        return nothing
     end
+    e.env_set = true
+    return nothing
 end
 

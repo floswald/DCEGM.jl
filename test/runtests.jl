@@ -1,11 +1,12 @@
 using DCEGM
-using Base.Test
-using TestSetExtensions
+using Test
 
 
-@testset ExtendedTestSet "Running DCEGM tests" begin
+@testset "Running DCEGM tests" begin
 
-    @includetests ARGS
+    include("basics.jl")
+    include("linetests.jl")
+    include("Envtests.jl")
 
 end
     

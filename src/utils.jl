@@ -11,7 +11,7 @@ function u(x::Float64,p::Param)
 		p.oneover_oneminusgamma * (x^p.oneminusgamma)
 	end
 end
-function u{T}(x::Array{T},p::Param)
+function u(x::Array{T}, p::Param) where T
 	n = length(x)
 	y = zeros(T,n)
 	for i in 1:n
@@ -28,7 +28,7 @@ function u(x::Float64,working::Bool,p::Param)
 		p.oneover_oneminusgamma * (x^p.oneminusgamma) - p.alpha*working
 	end
 end
-function u{T}(x::Array{T},working::Bool,p::Param)
+function u(x::Array{T}, working::Bool, p::Param) where T
 	n = length(x)
 	y = zeros(T,n)
 	for i in 1:n

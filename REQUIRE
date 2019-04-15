@@ -1,8 +1,1 @@
-julia 0.6
-JSON
-Interpolations
-Distributions
-FastGaussQuadrature
-Plots
-Interpolations
-Roots
+julia 1.1
