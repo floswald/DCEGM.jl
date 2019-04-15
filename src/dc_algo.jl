@@ -12,7 +12,7 @@ function minimal_EGM(;dplot=false)
     m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
     c[p.nT]       = [0.0,p.a_high]
     if dplot
-        plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false)
+        pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false)
     end
     # cycle back in time
     for it in p.nT-1:-1:1
@@ -26,11 +26,11 @@ function minimal_EGM(;dplot=false)
         c[it] = vcat(0, 1 ./ (p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)
         m[it] = vcat(p.a_low, avec .+ c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
         if dplot
-            plot!(m[it],c[it],label="$it")
+            plot!(pl,m[it],c[it],label="$it")
         end
     end
     if dplot
-        gui()
+         display(pl)
     end
 
     return (m,c)
