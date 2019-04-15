@@ -21,6 +21,7 @@ mutable struct Envelope{T<:Number}
     isects :: Vector{Point{T}}
     removed :: Vector{Vector{Int}}
     vbound :: T
+    # Envelope(1) builds a test object with env_set = false
     function Envelope(x::T) where {T<:Number}
         this = new{T}()
         this.L = MLine{T}[]
@@ -31,6 +32,7 @@ mutable struct Envelope{T<:Number}
         this.vbound = zero(T)
         return this
     end
+    # Envelope(MLine) builds an object with the MLine as THE envelope
     function Envelope(e::MLine{T}) where {T<:Number}
         this = new{T}()
         this.L = MLine{T}[]
@@ -41,6 +43,7 @@ mutable struct Envelope{T<:Number}
         this.vbound = zero(T)
         return this
     end
+    # Envelope(Vector{MLine{T}}) are constituting lines, but no env_set yet
     function Envelope(l::Vector{MLine{T}}) where {T<:Number}
         this = new{T}()
         this.L = deepcopy(l)
@@ -95,7 +98,7 @@ function removed!(e::Envelope)
     for l in 1:length(e.L)
         nix = findall((!in)(getx(e)),e.L[l].x)
         niy = findall((!in)(gety(e)),e.L[l].y)
-        push!(e.removed, unique(vcat(nix,niy)))  # points or indices of points?
+        push!(e.removed, unique(vcat(nix,niy)))  # indices of points?
     end
 end
 

@@ -11,10 +11,10 @@
         @test length(en.L)==0
         @test length(en.env)==n
         @test length(gets(en))==0
-        @test_broken length(getr(en))==1
-        @test_broken length(getr(en)[1])==0
+        @test length(getr(en))==0
+        DCEGM.removed!(en)
+        @test length(getr(en))==0
         @test en.env_set
-        @test_broken eltype(getr(en)[1])==Point{Float64}
         @test en.vbound == 0.0
 
         en = Envelope([L1,L1])
@@ -22,10 +22,7 @@
         @test length(en.L)==2
         @test length(en.env)==1
         @test length(gets(en))==0
-        @test_broken length(getr(en))==1
-        @test_broken length(getr(en)[1])==0
-        @test_broken eltype(getr(en)[1])==Point{Float64}
-        @test_broken isa(getr(en)[1],Vector{Point{Float64}})
+        @test length(getr(en))==0
         @test !en.env_set
 
         en = Envelope(1)
@@ -148,7 +145,7 @@ end
         @test length(getx(e))==1
         @test length(gety(e))==1
         @test length(gets(e))==0
-        @test_broken length(getr(e))==1
+        @test length(getr(e))==0
         @test length(e.L) == 3-1
         @test eltype(e.L)== MLine{Float64}
 
@@ -164,7 +161,6 @@ end
         @test length(getx(e))==1
         @test length(gety(e))==1
         @test length(gets(e))==0
-        @test_broken length(getr(e))==1
         @test length(e.L) == 3
         @test eltype(e.L)== MLine{Float64}
 
@@ -189,7 +185,6 @@ end
         @test length(getx(en))==1
         @test length(gety(en))==1
         @test length(gets(en))==0
-        @test_broken length(getr(en))==1
         @test length(en.L) == 7-3
 
         upper_env!(en)
@@ -220,7 +215,6 @@ end
         @test length(getx(en))==1
         @test length(gety(en))==1
         @test length(gets(en))==0
-        @test_broken length(getr(en))==1
         @test length(en.L) == 7-3
 
         upper_env!(en)
