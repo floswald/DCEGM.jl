@@ -175,12 +175,12 @@ function f3b()
 end
 function f3c()
 
-    fs = Function[x->ones(length(x));x->0.5x;x->x-2;x->2x-8.5]
+    fs = Function[x->ones(length(x));x -> 0.5x;x->x .- 2;x -> 2x .- 8.5]
     xs = [
-         collect(linspace(-1,3.1,6)),
-         collect(linspace(1,7,19)),
-         collect(linspace(2,7,15)),
-         collect(linspace(4,8,25))]
+         collect(range(-1 , stop = 3.1 , length= 6))   ,
+         collect(range(1  , stop = 7   , length= 19))  ,
+         collect(range(2  , stop = 7   , length= 15))  ,
+         collect(range(4  , stop = 8   , length= 25))]
     ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
     # create an envelope
     e = Envelope(ls)
