@@ -82,14 +82,30 @@ end
                     markersize := 3
                 end
                 if numerate
-                    series_annotations := ["$i" for i in sortperm(l.x)]
+                    series_annotations := ["$i" for i in sortperm(getx(l))]
                 end
-                (l.x,l.y)
+                (getx(l),gety(l))
             end
         end
     end
     # plot envelope, if exists
     if x.env_set
+        if removed
+            for l in 1:length(x.L)
+                @series begin
+                    seriestype = :scatter
+                    markershape := :rect
+                    markersize := 3
+                    markerstrokecolor := :black
+                    markercolor := :white
+                    markeralpha := 0.5
+                    ir = x.removed[l]
+                    if length(ir) > 0
+                        (getx(x.L[l])[ir],gety(x.L[l])[ir])
+                    end
+                end
+            end
+        end
         @series begin
             # subplot := 1
             linetype := :line 
@@ -103,22 +119,9 @@ end
                 markersize := 3
             end
             if numerate
-                series_annotations := ["$i" for i in 1:length(getx(x))]
+                series_annotations := ["$i" for i in 1:length(getx(x.env))]
             end
-            (getx(x),gety(x))
-        end
-        if removed
-            for l in 1:length(x.L)
-                @series begin
-                    seriestype = :scatter
-                    markershape := :rect
-                    markersize := 3
-                    markerstrokecolor := :black
-                    markercolor := :white
-                    markeralpha := 0.5
-                    (x.L[l].x[x.removed[l]], x.L[l].y[x.removed[l]])
-                end
-            end
+            (getx(x.env),gety(x.env))
         end
     end
 end
@@ -247,6 +250,24 @@ function tplot4()
     plot(p1,p2)
 end
 
+function tplot5()
+
+    x1 = collect(-0.9:0.3:2.7)
+    L1 = MLine(x1, x1)
+    x2 = collect(0.0:0.1:1)
+    L2 = MLine(x2, 2 .* x2, extrap = false)
+    x3 = collect(1.0:0.45:2.9)
+    L3 = MLine(x3, (0.1 .* x3) .+ 1.9, extrap = false)
+    e = Envelope([L1,L2,L3])
+    p1 = plot(e)
+    upper_env!(e)
+    removed!(e)
+    p2 = plot(e)
+    println("env = $(e.env.v)")
+    plot(p1,p2)
+
+end
+
 function splitf()
     x = [1,2,3,1.5,2.1,2.9]
     y = [1,1.5,1.7,1.2,1.8,2.1]
@@ -278,6 +299,8 @@ function splitf3()
     p2 = plot(e,title="with removed points",removed=true)
     plot(p1,p2)
 end
+
+
 
 function allplots()
     p = joinpath(dirname(@__FILE__),"..","images")

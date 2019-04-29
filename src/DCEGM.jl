@@ -10,6 +10,10 @@ using Plots
 gr()
 
 
+import Base: +, -, *, /, ==, isless
+import Base: iterate, typemin, isapprox
+
+
 # Types
 export MLine, Point, Envelope
 
