@@ -1,43 +1,66 @@
 
 
-@testset "setup" begin
+@testset "Point Arithmetic" begin
+    
+    p = Point(1,1)
+    @test eltype(p) == Int
+    @test_throws MethodError Point(1,1.0) 
+
+    p1 = Point(2,2)
+    @test p + p1 == Point(3,3)
+
+    p2 = Point(2.0,2.0)
+    @test p + p1 == Point(3.0,3.0)
+
+    @test 2*p2 == Point(4.0,4.0)
+    @test p2 == Point(2.0,2.0)
+    @test p2 != Point(2.0,1.9999999)
+
+    arr = vcat(p2,Point(1.0,1.9999999))
+    @test in(p2,arr)
+
+end
+
+@testset "MLine construction from vectors" begin
     x = collect(0:0.1:1)
     y = rand(11)
     m = MLine(x,y)
     @test m.n == 11
     @test size(m) == (11,)
+    @test m.xvec == x
+    @test m.yrange == extrema(y)
 end
 
-@testset "Interpolations" begin
-    @testset "interpolate at log(1)" begin
-        x = collect(0:0.1:1)
-        y = log.(1 .+ x)
-        m = MLine(x,y)
-        i = interp(m,[0.0])
-        @test i[1] == 0.0
-    end
+@testset "MLine construction from vector of points" begin
+    p1 = Point(1.0,2.3)
+    p2 = Point(2.0,2.0)
+    p3 = Point(3.0,5.2)
+    m2 = MLine([p1;p2;p3])
+    @test length(m2) == 3
+    @test size(m2) == (3,)
+    @test m2.xrange == (1.0,3.0)
+    @test m2.xvec == [1.0;2.0;3.0]
+    @test m2.yrange == (2.0,5.2)
+    @test eltype(m2) == Point{Float64}
+    @test m2[1] == p1
+    @test m2[3] == p3
+    @test DCEGM.min_x(m2) == 1.0
+    @test DCEGM.max_x(m2) == 3.0
+    @test DCEGM.min_y(m2) == 2.0
+    @test DCEGM.max_y(m2) == 5.2
 end
 
-@testset "getter and setters" begin
-    x = [1,3,4,10]
-    y = [6,0,8,1]
-    l = MLine(x,y)
-    @test size(l) == (4,)
+# @testset "Interpolations" begin
+#     @testset "interpolate at log(1)" begin
+#         x = collect(0:0.1:1)
+#         y = log.(1.+x)
+#         m = MLine(x,y)
+#         i = interp(m,[0.0])
+#         @test i[1] == 0.0
+#     end
+# end
 
-    @test l[1] == (1,6)
-    @test isa(l[1:2],MLine{Int64})
-    @test l[1:2].x == [1,3]
-    @test l[1:2].y == [6,0]
 
-    setindex!(l,-1,-1,1)
-    @test size(l) == (4,)
-    @test l[1] == (-1,-1)
-
-    setindex!(l,[10,11],[90,91],3:4)
-    @test l[3:4].x == [10,11]
-    @test l[3:4].y == [90,91]
-    
-end
 
 @testset "Modifying MLine methods" begin
 
@@ -45,20 +68,20 @@ end
         x = collect(0:0.1:1)
         y = log.(1 .+ x)
         L = MLine(x,y)
-        prepend!(L,18.0,-1.1)
+        prepend!(L,[Point(18.0,-1.1)])
         @test size(L)==(12,)
-        @test L[1] == (18.0,-1.1)
-        @test L[2] == (0.0,0.0)
+        @test L[1] == Point(18.0,-1.1)
+        @test L[2] == Point(0.0,0.0)
     end
     
     @testset "append" begin
         x = collect(0:0.1:1)
         y = log.(1 .+ x)
         L = MLine(x,y)
-        append!(L,18.0,-1.1)
+        append!(L,[Point(18.0,-1.1)])
         @test size(L)==(12,)
-        @test L[end] == (18.0,-1.1)
-        @test L[1] == (0.0,0.0)
+        @test L[end] == Point(18.0,-1.1)
+        @test L[1] == Point(0.0,0.0)
     end
 
     @testset "delete!" begin
@@ -67,17 +90,18 @@ end
         L = MLine(x,y)
         delete!(L,9)
         @test size(L)==(10,)
-        @test L[9] == (x[10],y[10])
+        @test L[9] == Point(x[10],y[10])
+        @test L.xvec == vcat(x[1:8],x[10:11])
     end
     @testset "insert!" begin
         x = collect(0:0.1:1)
         y = log.(1 .+ x)
         L = MLine(x,y)
-        insert!(L,1.1,3.3,9)
+        insert!(L,Point(1.1,3.3),9)
         @test size(L)==(12,)
-        @test L[9] == (1.1,3.3)
-        @test L[10] == (x[9],y[9])
-        @test L[8] == (x[8],y[8])
+        @test L[9] == Point(1.1,3.3)
+        @test L[10] == Point(x[9],y[9])
+        @test L[8] == Point(x[8],y[8])
     end
     @testset "splitat" begin
         x = collect(0:0.1:1)
@@ -102,14 +126,22 @@ end
         @test o[2] == L[4]
         @test o[1] == L[3]
     end
-    @testset "sort!" begin
+    @testset "sortx!" begin
         x = collect(0:0.1:1)
         y = rand(11)
         L = MLine(x,y)
-        insert!(L,2.0,2.0,2)
-        @test !(issorted(L.x))
-        sort!(L)
-        @test issorted(L.x)
+        insert!(L,Point(2.0,2.0),2)
+        @test !(issorted(L))
+        DCEGM.sortx!(L)
+        @test issorted(L)
+        @test issorted(L.xvec)
+    end
+    @testset "intersect" begin
+        x = collect(0.0:0.1:1.5)
+        L1 = MLine(x,log.(x))
+        L2 = MLine(x, 2 .* (x .- 1.0) )
+        y = DCEGM.intersect(L1,L2,findfirst(x .== 1.0))
+        @test y == (Point(1.0,0.0),false)
     end
 end
 
