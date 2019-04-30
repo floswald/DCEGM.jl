@@ -3,7 +3,15 @@ struct Point{T}
     y::T
 end
 eltype(p::Point) = eltype(p.x) 
-zero
+
+"get x coordinates from a vector of `Point`"
+getx(v::Vector{Point{T}})  where T = T[v[i].x for i in 1:length(v)]
+
+"get y coordinates from a vector of `Point`"
+gety(v::Vector{Point{T}})  where T = T[v[i].y for i in 1:length(v)]
+
+"get x-y coordinates from a vector of `Point`"
+coords(v::Vector{Point{T}}) where T = [getx(v) gety(v)]
 
 function show(io::IO, ::MIME"text/plain", p::Point{T}) where T
     print(io,"Point of type $T:\n")
@@ -113,8 +121,9 @@ function show(io::IO, ::MIME"text/plain", L::MLine{T}) where {T<:Number}
 end
 show(io::IO,L::MLine{T}) where {T<:Number} = print(io,"$(L.n) point $T MLine")
 
-getx(l::MLine{T}) where {T<:Number}= T[l.v[i].x for i in 1:l.n] 
-gety(l::MLine{T}) where {T<:Number} = T[l.v[i].y for i in 1:l.n]
+getx(l::MLine{T}) where T = getx(l.v)
+gety(l::MLine{T}) where T = gety(l.v)
+coords(l::MLine{T}) where T = coords(l.v)
 
 
 
@@ -183,7 +192,7 @@ function interp(l::MLine{T},ix::Vector{T}) where {T<:Number}
     xex = extrema(ix)
     # @debug(logger,"interpolating $ix ")
     if l.extrap
-        itp = extrapolate(interpolate((l.xvec,),l.v,Gridded(Linear())),Linear())
+        itp = extrapolate(interpolate((l.xvec,),l.v,Gridded(Linear())),Line())
         out = MLine(itp(ix))
     else
         fi = findall((ix .< l.xrange[1]) .| (ix .> l.xrange[2]))
@@ -217,6 +226,12 @@ end
 #     # [MLine(interp(e[i],ix,extrap)) for i in eachindex(e)]
 # end 
 
+
+"""
+    linemax(e::Array{MLine{T}}) where {T<:Number}
+
+For an array of `MLine`s on identical support `xx`, computes the index in `e` of the `MLine` where the `y`-value is highest for each `xx`. One can imagine `e` as a matrix where each row represents the `y`-values from a different `MLine`; this function returns the index of the column-wise maximum.
+"""
 function linemax(e::Array{MLine{T}}) where {T<:Number}
     out = zeros(Int,length(e[1]))
     rows = length(e)
@@ -275,11 +290,11 @@ end
 Splits a `MLine` object after given index and returns 2 new `MLine`s as a tuple. If `repeat_boundary` is true, then the separating index is the first point of the second new `MLine`.
 """
 function splitat(m::MLine,j::Int,repeat_boundary::Bool=true)
-    m1 = MLine(m.v[1:j])
+    m1 = MLine(m.v[1:j],extrap = m.extrap)
     if repeat_boundary
-        m2 = MLine(m.v[j:end])
+        m2 = MLine(m.v[j:end],extrap = m.extrap)
     else
-        m2 = MLine(m.v[j+1:end])
+        m2 = MLine(m.v[j+1:end],extrap = m.extrap)
     end
     return (m1,m2)
 end

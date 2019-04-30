@@ -96,8 +96,7 @@ function removed!(e::Envelope)
         error("you need to set an `upper_env!` first.")
     end
     for l in 1:length(e.L)
-        push!(e.removed,findall(!in(e.L[l],e.env)))   # the in(env,L) is AMAZING.
-        # this looks for identical `Point`s!
+        push!(e.removed,findall(.!(e.L[l].v .∈ Ref(e.env.v))))   
     end
 end
 
@@ -139,7 +138,7 @@ function splitLine(o::MLine{T}) where T<:Number
             # println(j)
 
             # if no more kinks
-            if j==0
+            if isnothing(j)
                 if i > 1
                     # add remaining MLine
                     push!(sections,o)
@@ -181,7 +180,26 @@ function splitLine(o::MLine{T}) where T<:Number
     end
 end
 
-function upper_env!(e::Envelope{T}) where T<:Number
+
+"""
+    upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
+
+### Outline
+
+This function computes the *upper envelope* over it's constituting lines. 
+In particular:
+
+1. generates a common support `xx` by concatenating the `x` coords of each `MLine` in `e.L`
+2. interpolates all `MLine` in `e.L` on that support `xx`
+3. finds the index of the `MLine` with maximal `y`-value for each `xx`
+4. assembles the *upper envelope* by just combining all values from 3. into a new `MLine`.
+
+### Optional: `do_intersect`
+
+By setting keyword arg `do_intersect = true`, the function will identify the indices in `xx` after which a change of optimal line occurs. Then it will proceed to find the precise *intersection* between the two constituting `MLine`s involved in this change. 
+
+"""
+function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
     # 5) compute upper envelope of all lines
         # - get all x's from all s and sort into a vector xx
         # - interpolate(extrapolate) all s on xx
@@ -205,52 +223,41 @@ function upper_env!(e::Envelope{T}) where T<:Number
     # find the top line at each point in xx
     r_idx = linemax(yy)  # get row indices only: the row index tells us which MLine was optimal at that point.
     
+    # envelope over all lines: just pick max points for each xx
+    env = MLine([yy[r_idx[i]][i] for i in 1:length(r_idx)]) 
 
-    env = MLine([yy[r_idx[i]][i] for i in 1:length(r_idx)]) # envelope over all lines: just pick max points from each line
 
-    # Identify changes in optimal MLine
-    # switch in top line after index s (indexing global support xx)
-    # s tells us after which position in xx we have a change in optimal line
-    s = findall(r_idx[2:end].!=r_idx[1:end-1])
-    isec = Point[]
-    isec_s = Int[]
+    if do_intersect
+        # Identify changes in optimal MLine
+        # switch in top line after index s (indexing global support xx)
+        # s tells us after which position in xx we have a change in optimal line
+        s = findall(r_idx[2:end].!=r_idx[1:end-1])
 
-    if length(s) > 0
-        # println("r_idx = $r_idx")
-        # println("s = $s")
-        # add intersection points between lines
-        # an intersection occurs after index s
-        ioff = 1    # offsetting add indices
-        joff = 1    # isec indices
-        for i in s
-            tmp = intersect(yy[r_idx[i]],yy[r_idx[i+1]], i )
-            push!(isec_s, i) # record index position
-            push!(isec,tmp[1])
-            if tmp[2]
-                insert!(env,isec[joff],isec_s[joff] + ioff)
-                ioff += 1  # added additional index: need to shift right now!
+        isec = Point[]
+        isec_s = Int[]
+
+        if length(s) > 0
+            # println("r_idx = $r_idx")
+            # println("s = $s")
+            # add intersection points between lines
+            # an intersection occurs after index s
+            ioff = 1    # offsetting add indices
+            joff = 1    # isec indices
+            for i in s
+                tmp = intersect(yy[r_idx[i]],yy[r_idx[i+1]], i )
+                push!(isec_s, i) # record index position
+                push!(isec,tmp[1])
+                if tmp[2]
+                    insert!(env,isec[joff],isec_s[joff] + ioff)
+                    ioff += 1  # added additional index: need to shift right now!
+                end
+                joff += 1
             end
-            joff += 1
         end
-        # println("isecs = $isec")
-        # # add only new isecs to env
-        # if length(isec) > 0
-        #     for i in 1:length(isec)
-        #         println("i = $i, ioff = $ioff")
-        #         println("is $(isec[i]) different from $(env[s[i]+ioff]) or $(env[s[i]+ioff-1])?")
-        #         println(!isapprox(isec[i], env[s[i]+ioff]) & !isapprox(isec[i], env[s[i]+ioff-1]))
-        #         if (!isapprox(isec[i], env[s[i]+ioff]) & !isapprox(isec[i], env[s[i]+ioff-1]) )
-        #             insert!(env,isec[i],isec_s[i] + ioff)
-        #             println("inserting new $(isec[i]) at $(isec_s[i] + ioff)")
-        #         end
-        #     end
-        # end
-    end
 
+        e.isects = isec
+    end
     e.env = env 
-    e.isects = isec
-    # @assert(issorted(e.env))
-    # say that you have now set an upper envelope on this object
     e.env_set = true
     return nothing
 end

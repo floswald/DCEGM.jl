@@ -12,25 +12,21 @@ gr()
 
 import Base: +, -, *, /, ==, isless
 import Base: iterate, typemin, isapprox
-
-
-# Types
-export MLine, Point, Envelope
-
-# methods
-export interp, splitat,upper_env!, getx, gety, gets, splitMLine, getr
-
-import Base.size, 
-       Base.getindex, 
-       Base.setindex!, 
-       Base.eltype,
-       Base.prepend!,
+import Base.size, Base.getindex, Base.setindex!, Base.eltype
+import Base.prepend!,
        Base.append!,
        Base.insert!,
        Base.delete!,
        Base.sort!,
        Base.length,
        Base.show
+
+
+# Types
+export MLine, Point, Envelope
+
+# methods
+export interp, splitat,upper_env!, getx, gety, gets, splitLine, getr
 
 # includes for MultiLine
 include("line.jl")
