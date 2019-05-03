@@ -1,7 +1,7 @@
 
 
 
-function minimal_EGM(;dplot=false)
+function minimal_EGM()
     p             = Param()
     nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
     yvec          = sqrt(2.0) * p.sigma .* nodes
@@ -11,9 +11,7 @@ function minimal_EGM(;dplot=false)
     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
     m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
     c[p.nT]       = [0.0,p.a_high]
-    if dplot
-        pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false)
-    end
+    pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false)
     # cycle back in time
     for it in p.nT-1:-1:1
         w1 = 1.0 .+ exp.(yvec).*p.R.*avec'   # w1 = y + yshock*R*savings:  next period wealth at all states. (p.ny,p.na)
@@ -25,15 +23,9 @@ function minimal_EGM(;dplot=false)
         rhs = ywgt' * (1 ./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
         c[it] = vcat(0, 1 ./ (p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)
         m[it] = vcat(p.a_low, avec .+ c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
-        if dplot
-            plot!(pl,m[it],c[it],label="$it")
-        end
+        plot!(pl,m[it],c[it],label="$it")
     end
-    if dplot
-         display(pl)
-    end
-
-    return (m,c)
+    return (m,c,pl)
 end
 
 
@@ -231,13 +223,13 @@ function dc_EGM!(m::Model,p::Param)
                         x0 = range(minx,stop = vline.x[1],length = floor(p.na/10)) # some points to the left of first x point
                         x0 = x0[1:end-1]
                         y0 = u(x0,working,p) + p.beta * ev[1]
-                        prepend!(vline,x0,y0)
-                        prepend!(cline,x0,x0)  # cons policy in credit constrained is 45 degree line
+                        prepend!(vline,convert(x0,y0))
+                        prepend!(cline,convert(x0,x0))  # cons policy in credit constrained is 45 degree line
                     end
 
                     # split the vline at potential backward-bending points
                     # and save as Envelope object
-                    m.v[id,it] = splitMLine(vline)  # splits line at backward bends
+                    m.v[id,it] = splitLine(vline)  # splits line at backward bends
 
                     # if there is just one line (i.e. nothing was split in preceding step)
                     # then this IS a valid envelope
@@ -409,13 +401,13 @@ function dc_EGM!(m::Model2,p::Param)
                             x0 = range(minx,stop = vline.x[1],length = floor(p.na/10)) # some points to the left of first x point
                             x0 = x0[1:end-1]
                             y0 = u(x0,working,p) + p.beta * ev[1]
-                            prepend!(vline,x0,y0)
-                            prepend!(cline,x0,x0)  # cons policy in credit constrained is 45 degree line
+                            prepend!(vline,Point(x0,y0))
+                            prepend!(cline,Point(x0,y0))  # cons policy in credit constrained is 45 degree line
                         end
 
                         # split the vline at potential backward-bending points
                         # and save as Envelope object
-                        m.v[id,iy,it] = splitMLine(vline)  # splits line at backward bends
+                        m.v[id,iy,it] = splitLine(vline)  # splits line at backward bends
 
                         # if there is just one line (i.e. nothing was split in preceding step)
                         # then this IS a valid envelope

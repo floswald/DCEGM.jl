@@ -11,7 +11,7 @@ gr()
 
 
 import Base: +, -, *, /, ==, isless
-import Base: iterate, typemin, isapprox
+import Base: iterate, typemin, isapprox, convert
 import Base.size, Base.getindex, Base.setindex!, Base.eltype
 import Base.prepend!,
        Base.append!,

@@ -2,6 +2,10 @@ struct Point{T}
     x::T
     y::T
 end
+function convert(::Type{Point},x::Vector,y::Vector) where T
+    @assert length(x) == length(y)
+    [Point(x[ix],y[ix]) for ix in 1:length(x)]
+end
 eltype(p::Point) = eltype(p.x) 
 
 "get x coordinates from a vector of `Point`"

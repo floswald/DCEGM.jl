@@ -100,11 +100,17 @@ function removed!(e::Envelope)
     end
 end
 
+
+"""
+    remove_c!(ve::Envelope,ce::Envelope)
+
+Given a value function [`Envelope`](@ref) which has a list of indices of `removed` points,
+this function removes the points with same indices from the associated policy function.
+"""
 function remove_c!(ve::Envelope,ce::Envelope)
     for il in 1:length(ve.L)
         if length(ve.removed[il]) > 0
-            del = findall((in)(ce.L[il].x),[i.x for i in ve.removed[il]])
-            delete!(ce.L[iL],del)
+            delete!(ce.L[il], ve.removed[il])
         end
     end
 end
