@@ -49,6 +49,7 @@ mutable struct Param
 	inc0                 :: Float64
 	inc1                 :: Float64
 	inc2                 :: Float64
+	ρ                    :: Float64
 
 	# constructor 
     function Param(;par::Dict=Dict())
@@ -78,76 +79,76 @@ mutable struct Param
 end
 
 
-"""
-Binary Choice Model with iid income uncertainty
+# """
+# Binary Choice Model with iid income uncertainty
 
-uses cash-on-hand m=y+a as state variable
-"""
-mutable struct Model
+# uses cash-on-hand m=y+a as state variable
+# """
+# mutable struct Model
 
-	# nD is number of discrete choices: nD = 2
+# 	# nD is number of discrete choices: nD = 2
 
-	# computation grids
-	avec::Vector{Float64}
-	yvec::Vector{Float64}   # income support
-	ywgt::Vector{Float64}   # income weights
+# 	# computation grids
+# 	avec::Vector{Float64}
+# 	yvec::Vector{Float64}   # income support
+# 	ywgt::Vector{Float64}   # income weights
 
-	# intermediate objects (na,ny,nD)
-	m1::Dict{Int,Dict}	# a dict[it] for each period
-	c1::Matrix{Float64}
-	ev::Matrix{Float64}
+# 	# intermediate objects (na,ny,nD)
+# 	m1::Dict{Int,Dict}	# a dict[it] for each period
+# 	c1::Matrix{Float64}
+# 	ev::Matrix{Float64}
 
-	# result objects
-	v :: Matrix{Envelope}  # a vector of Envelope objects
-	c :: Matrix{Envelope}
+# 	# result objects
+# 	v :: Matrix{Envelope}  # a vector of Envelope objects
+# 	c :: Matrix{Envelope}
 
-	"""
-	Constructor for discrete choice Model
-	"""
-	function Model(p::Param)
+# 	"""
+# 	Constructor for discrete choice Model
+# 	"""
+# 	function Model(p::Param)
 
-		this = new()
-		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
-		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+# 		this = new()
+# 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
+# 		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
-		# fedors vesion:
-		# nodes,weights = quadpoints(p.ny,0,1) 
-		# N = Normal(0,1)
-		# nodes = quantile.(N,nodes)
-		# this.yvec = nodes * p.sigma
-		# this.ywgt = weights
+# 		# fedors vesion:
+# 		# nodes,weights = quadpoints(p.ny,0,1) 
+# 		# N = Normal(0,1)
+# 		# nodes = quantile.(N,nodes)
+# 		# this.yvec = nodes * p.sigma
+# 		# this.ywgt = weights
 
-		# my version:
-		# for y ~ N(mu,sigma), integrate y with 
-		# http://en.wikipedia.org/wiki/Gauss-Hermite_quadrature
-		nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-		this.yvec = sqrt(2.0) * p.sigma .* nodes
-		this.ywgt = weights .* pi^(-0.5)
+# 		# my version:
+# 		# for y ~ N(mu,sigma), integrate y with 
+# 		# http://en.wikipedia.org/wiki/Gauss-Hermite_quadrature
+# 		nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+# 		this.yvec = sqrt(2.0) * p.sigma .* nodes
+# 		this.ywgt = weights .* pi^(-0.5)
 
-		# precompute next period's cash on hand.
-		# (na,ny,nD)
-		# iD = 1: no work
-		# iD = 2: work
-		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R + income(it,p,this.yvec[iy]) * (id-1) for ia in 1:p.na, iy in 1:p.ny  ] for id=1:p.nD) for it=1:p.nT)
-		this.c1 = zeros(p.na,p.ny)
-		this.ev = zeros(p.na,p.ny)
+# 		# precompute next period's cash on hand.
+# 		# (na,ny,nD)
+# 		# iD = 1: no work
+# 		# iD = 2: work
+# 		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R + income(it,p,this.yvec[iy]) * (id-1) for ia in 1:p.na, iy in 1:p.ny  ] for id=1:p.nD) for it=1:p.nT)
+# 		this.c1 = zeros(p.na,p.ny)
+# 		this.ev = zeros(p.na,p.ny)
 
-		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
-		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
-		# dchoice = [it => ["d" => zeros(Int,p.na), "Vzero" => 0.0, "threshold" => 0.0] for it=1:p.nT]
+# 		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
+# 		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
+# 		# dchoice = [it => ["d" => zeros(Int,p.na), "Vzero" => 0.0, "threshold" => 0.0] for it=1:p.nT]
 
-		return this
-	end
-end
+# 		return this
+# 	end
+# end
 
 	
 
 
 
 """
-Model 2
+Model 
 """
-mutable struct Model2
+mutable struct Model
 
 	# nD is number of discrete choices: nD = 2
 
@@ -168,13 +169,13 @@ mutable struct Model2
 	"""
 	Constructor for discrete choice Model
 	"""
-	function Model2(p::Param)
+	function Model(p::Param)
 
 		this = new()
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
 		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
-		# fedors vesion:
+		# fedors version:
 		# nodes,weights = quadpoints(p.ny,0,1) 
 		# N = Normal(0,1)
 		# nodes = quantile.(N,nodes)
@@ -184,18 +185,20 @@ mutable struct Model2
 		# my version:
 		# for y ~ N(mu,sigma), integrate y with 
 		# http://en.wikipedia.org/wiki/Gauss-Hermite_quadrature
-		nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-		this.yvec = sqrt(2.0) * p.sigma .* nodes
-		ywgt = weights .* pi^(-0.5)
-		ywgt = ywgt .+ ywgt'
-		this.ywgt = ywgt ./ sum(ywgt,dims=2)
+		# nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+		# this.yvec = sqrt(2.0) * p.sigma .* nodes
+		# ywgt = weights .* pi^(-0.5)
+		# ywgt = ywgt .+ ywgt'
+		# this.ywgt = ywgt ./ sum(ywgt,dims=2)
 
+		# version with income persistence
+		this.yvec, this.ywgt = rouwenhorst(p.ρ,0,1,p.ny)
 
 		# precompute next period's cash on hand.
 		# (na,ny,nD)
-		# iD = 1: no work
-		# iD = 2: work
-		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R + income(it,p,this.yvec[iy]) * (id-1) for ia in 1:p.na, iy in 1:p.ny  ] for id=1:p.nD) for it=1:p.nT)
+		# iD = 1: tomorrow no work
+		# iD = 2: tomorrow work
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R + income(it,p,this.yvec[iy]) * (id-1) for ia in 1:p.na, iy in 1:p.ny  ] for id=1:p.nD) for it=2:p.nT)
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 

@@ -19,11 +19,12 @@ import Base.prepend!,
        Base.delete!,
        Base.sort!,
        Base.length,
-       Base.show
+       Base.show,
+       Base.IndexStyle
 
 
 # Types
-export MLine, Point, Envelope
+export MLine, Point, Envelope, yisless
 
 # methods
 export interp, splitat,upper_env!, getx, gety, gets, splitLine, getr

@@ -6,7 +6,7 @@ function convert(::Type{Point},x::Vector,y::Vector) where T
     @assert length(x) == length(y)
     [Point(x[ix],y[ix]) for ix in 1:length(x)]
 end
-eltype(p::Point) = eltype(p.x) 
+eltype(p::Point) = eltype(p.x)
 
 "get x coordinates from a vector of `Point`"
 getx(v::Vector{Point{T}})  where T = T[v[i].x for i in 1:length(v)]
@@ -36,7 +36,7 @@ show(io::IO,p::Point{T}) where T = print(io,"($(p.x),$(p.y))")
 # comparison
 (==)(p1::Point, p2::Point) = (p1.x == p2.x) && (p1.y == p2.y)
 isapprox(p1::Point, p2::Point) = isapprox(p1.x, p2.x) && isapprox(p1.y, p2.y)
-isless(p1::Point,p2::Point) = p1.x < p2.x   # caution we sort on x only here! 
+isless(p1::Point,p2::Point) = p1.x < p2.x   # caution we sort on x only here!
 
 # Promotion
 Base.zero(::Type{Point{T}}) where {T} = Point(zero(T),zero(T))
@@ -62,19 +62,19 @@ A `MLine` is a vector of `Point`s. The x-coordinates of the points can be irregu
 """
 mutable struct MLine{T} <: AbstractArray{T,1}
     v::Vector{Point{T}}
-    n::Int
-    xvec ::Vector{T}
-    xrange::Tuple
-    yrange::Tuple
+    # n::Int
+    # xvec ::Vector{T}
+    # xrange::Tuple
+    # yrange::Tuple
     extrap::Bool
     function MLine(v::Vector{Point{T}}; extrap::Bool=true) where {T<:Number}
         this = new{T}()
         this.v = v
-        this.n = length(v)
-        this.xvec = [i.x for i in v]
-        y = [i.y for i in v]
-        this.xrange = extrema(this.xvec)
-        this.yrange = extrema(y)
+        # this.n = length(v)
+        # this.xvec = [i.x for i in v]
+        # y = [i.y for i in v]
+        # this.xrange = extrema(this.xvec)
+        # this.yrange = extrema(y)
         this.extrap = extrap
         return this
     end
@@ -82,52 +82,85 @@ mutable struct MLine{T} <: AbstractArray{T,1}
         this = new{T}()
         n = length(x)
         @assert n == length(y)
-        this.xvec = copy(x)
+        # this.xvec = copy(x)
         this.v = [Point(x[i],y[i]) for i in 1:n]
-        this.n = length(this.v)
-        this.xrange = extrema(this.xvec)
-        this.yrange = extrema(y) 
+        # # this.n = length(this.v)
+        # this.xrange = extrema(this.xvec)
+        # this.yrange = extrema(y)
         this.extrap = extrap
         return this
     end
 end
 
 # typemin
-Base.eltype(l::MLine) = eltype(l.v) 
+Base.eltype(l::MLine) = eltype(l.v)
 function typemin(L::MLine{T}) where {T<:Number}
     typemin(eltype(L))
 end
 
 # indexing
-Base.size(l::MLine) = (l.n,)
-Base.length(l::MLine) = l.n
+Base.size(l::MLine) = (length(l.v),)
+Base.length(l::MLine) = length(l.v)
 
-function getindex(l::MLine,i)
-    @boundscheck checkbounds(l,i)
-    l.v[i...]
+function getindex(l::MLine,i::Int)
+    # @boundscheck checkbounds(l,i)
+    l.v[i]
 end
-function setindex!(l::MLine{T},v::Point{T},i::Int) where {T<:Number}
-    l[i] = v
-    # reconfigure xvec
-    m.xvec = getx(l)
-end
-endof(l::MLine) = l.n
+Base.IndexStyle(::Type{<:MLine}) = IndexLinear()
+getindex(l::MLine, I...) = l.v[I]
+# getindex(l::MLine, I::Vararg{Int, N}) = l.v[I]
+# function setindex!(l::MLine{T},v::Point{T},i::Int) where {T<:Number}
+#     println(l[i])
+#     println(v)
+#     l[i] = v
+#     # reconfigure xvec
+#     # l.xvec = getx(l)
+# end
+endof(l::MLine) = length(l.v)
 
 # iteration
-Base.iterate(L::MLine, state = 1) = state > L.n ? nothing : (L[state], state + 1)
+Base.iterate(L::MLine, state = 1) = state > length(L.v) ? nothing : (L[state], state + 1)
 
 # printing
 function show(io::IO, ::MIME"text/plain", L::MLine{T}) where {T<:Number}
+    xvec = [i.x for i in L.v]
     print(io,"$T MLine\n")
-    print(io,"number of points: $(L.n)\n")
-    print(io,"xrange: $(L.xrange)\n")
-    print(io,"yrange: $(L.yrange)\n")
+    print(io,"number of points: $(length(L.v))\n")
+    print(io,"xrange: $(round.(extrema(getx(L))))\n")
+    print(io,"yrange: $(round.(extrema(gety(L))))\n")
 end
-show(io::IO,L::MLine{T}) where {T<:Number} = print(io,"$(L.n) point $T MLine")
+show(io::IO,L::MLine{T}) where {T<:Number} = print(io,"$(length(L.v)) point $T MLine")
 
 getx(l::MLine{T}) where T = getx(l.v)
 gety(l::MLine{T}) where T = gety(l.v)
 coords(l::MLine{T}) where T = coords(l.v)
+
+function floory!(l::MLine{T},yy::T) where {T<:Number}
+    ix = findall(gety(l) .< yy)
+    if length(ix) > 0
+        newp = l.v[ix]
+        for i in 1:length(newp)
+            splice!(l.v,ix[i],[Point(newp[i].x,yy)])
+        end
+    end
+end
+
+# Array of MLine
+function floory!(L::Array{MLine{T}},x::T) where {T<:Number}
+    for i in eachindex(L)
+        floory!(L[i],x)
+    end
+end
+function gety(L::Vector{MLine{T}}) where {T<:Number}
+    out = fill(zero(T),(length(L),length(L[1].v)))
+    for i in eachindex(L)
+        out[i,:] = gety(L[i])
+    end
+    out
+end
+
+
+
 
 
 
@@ -192,14 +225,17 @@ Interpolate a `MLine` on a vector of values `x`.
 Importantly, this returns a new vector of `Point` (i.e. tuples of (x,y)).
 """
 function interp(l::MLine{T},ix::Vector{T}) where {T<:Number}
-    # whenever 
+    # whenever
     xex = extrema(ix)
     # @debug(logger,"interpolating $ix ")
+    xvec = getx(l)
+    xrange = extrema(xvec)
     if l.extrap
-        itp = extrapolate(interpolate((l.xvec,),l.v,Gridded(Linear())),Line())
+        itp = extrapolate(interpolate((xvec,),l.v,Gridded(Linear())),Line())
         out = MLine(itp(ix))
     else
-        fi = findall((ix .< l.xrange[1]) .| (ix .> l.xrange[2]))
+
+        fi = findall((ix .< xrange[1]) .| (ix .> xrange[2]))
 
         # manually set out of bounds x to -Inf
         if length(fi) > 0
@@ -208,27 +244,27 @@ function interp(l::MLine{T},ix::Vector{T}) where {T<:Number}
                 out.v[xi] = Point(ix[xi],typemin(T))
             end
             for xi in setdiff(1:length(ix),fi)
-                out.v[xi] = interpolate((l.xvec,),l.v,Gridded(Linear()))(ix[xi])
+                out.v[xi] = interpolate((xvec,),l.v,Gridded(Linear()))(ix[xi])
             end
 
         else
-            itp = interpolate((l.xvec,),l.v,Gridded(Linear()))
+            itp = interpolate((xvec,),l.v,Gridded(Linear()))
             out = MLine(itp(ix))
         end
     end
 
     return out
-end 
+end
 
 function interp(e::Array{MLine{T}},ix::Vector{T}) where {T<:Number}
     [interp(e[i],ix) for i in eachindex(e)]
-end 
+end
 # function interp!(o::Matrix{Point{T}},e::Array{MLine{T}},ix::Vector{T};extrap::Bool=false) where {T<:Number}
 #     for i in eachindex(e)
 #         o[i,:] = MLine(interp(e[i],ix,extrap))
 #     end
 #     # [MLine(interp(e[i],ix,extrap)) for i in eachindex(e)]
-# end 
+# end
 
 
 """
@@ -253,39 +289,39 @@ function linemax(e::Array{MLine{T}}) where {T<:Number}
         out[j] = iv
     end
     return out
-end 
+end
 # appending, prepending , deleting and splitting at
 
-"prepend `Point`s to a MLine"
+"prepend `Point`s to a `MLine`[@ref]"
 function prepend!(m::MLine{T},p::Vector{Point{T}}) where T
     prepend!(m.v,p)
-    reconfigure!(m)
+    # reconfigure!(m)
 end
 
-function reconfigure!(m::MLine)
-    # after having updated some objects, need to recompute n
-    m.xvec = [i.x for i in m.v]
-    m.n = length(m.v)
-    m.xrange = extrema(m.xvec)
-    m.yrange = (min_y(m),max_y(m))
-end
+# function reconfigure!(m::MLine)
+#     # after having updated some objects, need to recompute n
+#     m.xvec = [i.x for i in m.v]
+#     m.n = length(m.v)
+#     m.xrange = extrema(m.xvec)
+#     m.yrange = (min_y(m),max_y(m))
+# end
 
 "delete an index"
 function delete!(m::MLine,idx)
     deleteat!(m.v,idx)
-    reconfigure!(m)
+    # reconfigure!(m)
 end
 
 "append points to a MLine"
 function append!(m::MLine{T},p::Vector{Point{T}}) where T
     append!(m.v,p)
-    reconfigure!(m)
+    # reconfigure!(m)
 end
 
 "insert a single value at an interior index"
 function insert!(m::MLine{T},v::Point{T},idx::Int) where T
     insert!(m.v,idx,v)
-    reconfigure!(m)
+    # reconfigure!(m)
 end
 
 """
@@ -306,7 +342,7 @@ end
 "sort a `MLine` along x-grid"
 function sortx!(m::MLine)
     sort!(m.v)  # sorts v
-    reconfigure!(m)
+    # reconfigure!(m)
 end
 
 

@@ -15,7 +15,7 @@
 		"symbol" : "R"
 	},
 	"na" : {
-		"value" : 500,
+		"value" : 200,
 		"description" : "number of asset grid points",
 		"symbol" : "na"
 	},
@@ -25,7 +25,7 @@
 		"symbol" : "nD"
 	},
 	"a_high" : {
-		"value" : 50.0,
+		"value" : 10.0,
 		"description" : "upper bound of asset grid",
 		"symbol" : "\\overline{a}"
 	},
@@ -83,5 +83,11 @@
 		"value" : 0.001,
 		"description" : "consumption floor",
 		"symbol" : "\\underline{c}"
+	},
+	"ρ" : {
+		"value" : 0.95,
+		"description" : "Income shock persistence",
+		"symbol" : "\\rho"
+
 	}
 }

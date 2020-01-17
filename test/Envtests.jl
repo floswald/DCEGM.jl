@@ -32,7 +32,7 @@
     end
 end
 
-@testset "Testing Envelopes over 2 MLines" begin 
+@testset "Testing Envelopes over 2 MLines" begin
     @testset "upper_env test 1" begin
         n = 15
         x1 = collect(range(0,stop = 10,length = n))
@@ -138,7 +138,7 @@ end
         @test_broken gets(e)[3] == Point(1.9/0.9,1.9/0.9)   # something weird going on with intersect()
 
 
-        
+
     end
     @testset "upper_env test: decreasing " begin
         n = 15
@@ -155,7 +155,7 @@ end
         @test gets(e)[1].y ≈ 5.0
     end
 end
-# @testset "Testing Envelopes over more MLines" begin 
+# @testset "Testing Envelopes over more MLines" begin
 #     @testset "upper_env test 1" begin
 #         n = 15
 #         x1 = collect(range(0,stop = 10,length = n))
@@ -206,8 +206,8 @@ end
         @test length(e.L) == 3-1
         @test eltype(e.L)== MLine{Float64}
 
-        @test e.L[1].xrange == (1.0,3.0)
-        @test e.L[2].xrange == (1.5,2.9)
+        @test extrema(getx(e.L[1])) == (1.0,3.0)
+        @test extrema(getx(e.L[2])) == (1.5,2.9)
     end
     @testset "test 2: less simple" begin
         x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
@@ -221,15 +221,15 @@ end
         @test length(e.L) == 3
         @test eltype(e.L)== MLine{Float64}
 
-        @test e.L[1].xrange == (1.0,3.0)
-        @test e.L[2].xrange == (1.5,3.0)
-        @test e.L[3].xrange == (1.5,2.9)
+        @test extrema(getx(e.L[1].v)) == (1.0,3.0)
+        @test extrema(getx(e.L[2].v)) == (1.5,3.0)
+        @test extrema(getx(e.L[3].v)) == (1.5,2.9)
     end
     @testset "4 MLines - fails!" begin
         f1(x) = ones(length(x))
         f2(x) = 0.5x
         f3(x) = x .- 2
-        f4(x) = 2x .- 8 
+        f4(x) = 2x .- 8
         x1 = collect(range(0.9,stop = 1.9,length = 14))
         x2 = collect(range(1,stop = 7,length = 19))
         x3 = collect(range(1,stop = 7,length = 15))
@@ -237,7 +237,7 @@ end
         X = [x1...,x2...,x3...,x4...]
         L = MLine([x1...,x2...,x3...,x4...],vcat(f1(x1),f2(x2),f3(x3),f4(x4)))
         en = splitLine(L)
- 
+
         @test isa(en,Envelope)
         @test length(getx(en.env))==1
         @test length(gety(en.env))==1
@@ -259,7 +259,7 @@ end
         f1(x) = ones(length(x))
         f2(x) = 0.5x
         f3(x) = x .-2
-        f4(x) = 2x .-8 
+        f4(x) = 2x .-8
         x1 = collect(range(0.9,stop = 2.1,length = 14))
         x2 = collect(range(1,stop = 7,length = 19))
         x3 = collect(range(1,stop = 7,length = 15))
@@ -267,7 +267,7 @@ end
         X = [x1...,x2...,x3...,x4...]
         L = MLine([x1...,x2...,x3...,x4...],vcat(f1(x1),f2(x2),f3(x3),f4(x4)))
         en = splitLine(L)
- 
+
         @test isa(en,Envelope)
         @test length(getx(en.env))==1
         @test length(gety(en.env))==1
@@ -289,6 +289,3 @@ end
 
 
 end
-
-
-

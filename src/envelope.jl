@@ -12,6 +12,7 @@ Holds an array of `MLine`s, the upper envelope of those MLines, and a vector of 
 * `env_set`: `true` if envelope vector was set.
 * `isects `: Vector of intersections between `MLine`s in `L`
 * `removed`: Vector of indices of Points removed from each MLine `env` during assembly
+* `vbound` : Value on lower bound of asset domain
 
 """
 mutable struct Envelope{T<:Number}
@@ -67,7 +68,7 @@ function show(io::IO, en::Envelope{T}) where {T<:Number}
 end
 
 size(e::Envelope) = size(e.L)
-eltype(e::Envelope) = eltype(e.L) 
+eltype(e::Envelope) = eltype(e.L)
 bound(e::Envelope) = e.vbound
 # getx(en::Envelope) = en.env.x
 # gety(en::Envelope) = en.env.y
@@ -88,7 +89,7 @@ Base.getindex(en::Envelope,id::Int) = en.L[id]
 """
     removed!(e::Envelope)
 
-Find which points from each `MLine` did not end up in the 
+Find which points from each `MLine` did not end up in the
 `env` and write them to `removed`.
 """
 function removed!(e::Envelope)
@@ -96,7 +97,7 @@ function removed!(e::Envelope)
         error("you need to set an `upper_env!` first.")
     end
     for l in 1:length(e.L)
-        push!(e.removed,findall(.!(e.L[l].v .∈ Ref(e.env.v))))   
+        push!(e.removed,findall(.!(e.L[l].v .∈ Ref(e.env.v))))   # find indices in MLine L[l] that are not in
     end
 end
 
@@ -105,13 +106,20 @@ end
     remove_c!(ve::Envelope,ce::Envelope)
 
 Given a value function [`Envelope`](@ref) which has a list of indices of `removed` points,
-this function removes the points with same indices from the associated policy function.
+this function removes the (x,y) points with same x coordinate from the policy function
 """
 function remove_c!(ve::Envelope,ce::Envelope)
+    cx = getx(ce.env.v)  # x values in consumption function
+    rmidx = Vector{Int}[]
+
     for il in 1:length(ve.L)
         if length(ve.removed[il]) > 0
-            delete!(ce.L[il], ve.removed[il])
+            rmv = ve.L[il].v[ve.removed[il]]  # (x,y) values removed from env
+            push!(rmidx, findall(cx .∈ Ref(getx(rmv))))  # consumption indices to remove
         end
+    end
+    if length(rmidx) > 0
+        deleteat!(ce.env.v, unique(vcat(rmidx...)))
     end
 end
 
@@ -125,12 +133,13 @@ function splitLine(o::MLine{T}) where T<:Number
 
     # 1) find all jump-backs in x-grid
     # println(o.x)
-    ii = o.xvec[2:end].>o.xvec[1:end-1]  
+    xvec = getx(o)
+    ii = xvec[2:end].>xvec[1:end-1]
     # info("splitLine: ii = $(find(.!(ii)))")
     # info("splitLine: x = $(o.x[find(.!(ii))])")
 
     # 2) if no backjumps at all, exit
-    if all(ii)  
+    if all(ii)
         # return as an Envelope
         return Envelope(o)
     else
@@ -192,7 +201,7 @@ end
 
 ### Outline
 
-This function computes the *upper envelope* over it's constituting lines. 
+This function computes the *upper envelope* over it's constituting lines.
 In particular:
 
 1. generates a common support `xx` by concatenating the `x` coords of each `MLine` in `e.L`
@@ -202,7 +211,7 @@ In particular:
 
 ### Optional: `do_intersect`
 
-By setting keyword arg `do_intersect = true`, the function will identify the indices in `xx` after which a change of optimal line occurs. Then it will proceed to find the precise *intersection* between the two constituting `MLine`s involved in this change. 
+By setting keyword arg `do_intersect = true`, the function will identify the indices in `xx` after which a change of optimal line occurs. Then it will proceed to find the precise *intersection* between the two constituting `MLine`s involved in this change.
 
 """
 function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
@@ -216,7 +225,7 @@ function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
     end
 
     # - get all x's from all Lines and sort into a vector xx
-    xx = sort(unique(reduce(vcat,[l.xvec for l in e.L])))
+    xx = sort(unique(reduce(vcat,[getx(l) for l in e.L])))
     n = length(xx)
 
     # - interpolate(extrapolate) all Ls on xx
@@ -228,9 +237,9 @@ function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
     # println("yy[3] = $(yy[3].v)")
     # find the top line at each point in xx
     r_idx = linemax(yy)  # get row indices only: the row index tells us which MLine was optimal at that point.
-    
+
     # envelope over all lines: just pick max points for each xx
-    env = MLine([yy[r_idx[i]][i] for i in 1:length(r_idx)]) 
+    env = MLine([yy[r_idx[i]][i] for i in 1:length(r_idx)])
 
 
     if do_intersect
@@ -263,7 +272,7 @@ function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
 
         e.isects = isec
     end
-    e.env = env 
+    e.env = env
     e.env_set = true
     return nothing
 end

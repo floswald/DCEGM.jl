@@ -1,15 +1,20 @@
 
-@recipe function f(m::Model2;id=1,iy=2)
+@recipe function f(m::Model;id=1,iy=2)
     grid --> true
     xticks := true
     legend --> true
-    for i in 1:(size(m.v)[3]-1)
+    cg = cgrad(:inferno)
+    
+    nT = size(m.v)[3]-1
+    cols = cg[range(0,stop=1,length=nT)]
+    for i in 1:nT
         @series begin
             linetype --> :path 
             linewidth --> 1
             legend --> :bottomright
-            seriescolor --> ColorGradient(:magma)
-            m.v[id,iy,i].env.x,m.v[id,iy,i].env.y
+            seriescolor --> cols[i]
+            label --> "$i"
+            getx(m.v[id,iy,i].env),gety(m.v[id,iy,i].env)
         end
     end
 end

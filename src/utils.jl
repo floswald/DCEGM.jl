@@ -104,8 +104,8 @@ function rouwenhorst(rho::Float64,mu_eps,sigma_eps,n)
 
 	end
 
-	z = linspace(mu_eps/(1-rho)-nu,mu_eps/(1-rho)+nu,n);
-	return (z,P)
+	z = range(mu_eps/(1-rho)-nu,stop = mu_eps/(1-rho)+nu,length = n);
+	return (collect(z),P)
 end
 
 # asset grid scaling
