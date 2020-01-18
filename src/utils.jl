@@ -109,7 +109,7 @@ function rouwenhorst(rho::Float64,mu_eps,sigma_eps,n)
 end
 
 # asset grid scaling
-function scaleGrid(lb::Float64,ub::Float64,n::Int,logorder::Int=1) 
+function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1) 
 	out = zeros(n)
 	if logorder==1
 		off = 1
@@ -118,8 +118,8 @@ function scaleGrid(lb::Float64,ub::Float64,n::Int,logorder::Int=1)
 		end
 		out[1] = log(lb + off) 
 		out[n] = log(ub + off) 
-		out    = linspace(out[1],out[n],n)
-		out    = exp(out) - off  
+		out    = collect(range(out[1],stop = out[n],length = n))
+		out    = exp.(out) .- off  
 	elseif logorder==2
 		off = 1
 		if lb<0 
@@ -127,10 +127,19 @@ function scaleGrid(lb::Float64,ub::Float64,n::Int,logorder::Int=1)
 		end
 		out[1] = log( log(lb + off) + off )
 		out[n] = log( log(ub + off) + off )
-		out    = linspace(out[1],out[n],n)
-		out    = exp( exp(out) - off ) - off
+		out    = collect(range(out[1],stop = out[n],length = n))
+		out    = exp.( exp.(out) .- off ) .- off
+	elseif logorder==3
+		off = 1
+		if lb<0 
+			off = 1 - lb #  adjust in case of neg bound
+		end
+		out[1] = log( log( log(lb + off) + off ) + off )
+		out[n] = log( log( log(ub + off) + off ) + off )
+		out    = collect(range(out[1],stop = out[n],length = n))
+		out    = exp.( exp.( exp.(out) .- off ) .- off ) .- off
 	else
-		error("supports only double log grid")
+		error("supports only up to tripple log grid")
 	end
 end
 

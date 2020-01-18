@@ -4,17 +4,41 @@
     xticks := true
     legend --> true
     cg = cgrad(:inferno)
+    c1 = colorant"red"
+    c2 = colorant"blue"
+    alow,ahi = extrema(m.avec)
+    aspect = (ahi-alow)/(ahi - 0.0)
     
-    nT = size(m.v)[3]-1
-    cols = cg[range(0,stop=1,length=nT)]
+    nT = size(m.v)[3]
+    cols = range(c1,stop=c2,length=nT)
+
+    layout := grid(1,2)
     for i in 1:nT
+        lab = ((i==1)|(i==nT)) ? "$i" : ""
         @series begin
             linetype --> :path 
             linewidth --> 1
             legend --> :bottomright
             seriescolor --> cols[i]
-            label --> "$i"
+            label := lab
+            subplot := 1  # value function
+            yguide := "value"
+            xguide := "Cash on Hand M"
             getx(m.v[id,iy,i].env),gety(m.v[id,iy,i].env)
+        end
+        @series begin
+            linetype --> :path 
+            linewidth --> 1
+            legend --> :bottomright
+            seriescolor --> cols[i]
+            subplot := 2  # 
+            label := lab
+            # xlim := (alow,ahi)
+            # ylim := (0,ahi)
+            yguide := "consumption"
+            xguide := "Cash on Hand M"
+            # aspect_ratio := aspect
+            getx(m.c[id,iy,i].env),gety(m.c[id,iy,i].env)
         end
     end
 end

@@ -173,7 +173,8 @@ mutable struct Model
 
 		this = new()
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
-		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+		# this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+		this.avec          = scaleGrid(p.a_low,p.a_high,p.na,logorder = 2)
 
 		# fedors version:
 		# nodes,weights = quadpoints(p.ny,0,1) 
@@ -192,7 +193,7 @@ mutable struct Model
 		# this.ywgt = ywgt ./ sum(ywgt,dims=2)
 
 		# version with income persistence
-		this.yvec, this.ywgt = rouwenhorst(p.ρ,0,1,p.ny)
+		this.yvec, this.ywgt = rouwenhorst(p.ρ,0,0.5,p.ny)
 
 		# precompute next period's cash on hand.
 		# (na,ny,nD)

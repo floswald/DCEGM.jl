@@ -15,7 +15,7 @@
 		"symbol" : "R"
 	},
 	"na" : {
-		"value" : 200,
+		"value" : 500,
 		"description" : "number of asset grid points",
 		"symbol" : "na"
 	},
@@ -30,7 +30,7 @@
 		"symbol" : "\\overline{a}"
 	},
 	"a_low" : {
-		"value" : 0.0,
+		"value" : -5.0,
 		"description" : "lower bound of asset grid",
 		"symbol" : "\\underline{a}"
 	},
@@ -45,7 +45,7 @@
 		"symbol" : "ny"
 	},
 	"nT" : {
-		"value" : 10,
+		"value" : 30,
 		"description" : "number of years",
 		"symbol" : "nT"
 	},

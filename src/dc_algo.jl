@@ -6,7 +6,8 @@ function minimal_EGM()
     nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
     yvec          = sqrt(2.0) * p.sigma .* nodes
     ywgt          = weights .* pi^(-0.5)
-    avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+    # avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+    avec          = scaleGrid(p.a_low,p.a_high,p.na,logorder = 1)
     m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
     m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
@@ -95,7 +96,7 @@ Main body of the DC-EGM algorithm version
 """
 function dc_EGM!(m::Model,p::Param)
     for it in p.nT:-1:1
-        println()
+        # println()
         # @info("period = $it")
 
         if it==p.nT
@@ -221,16 +222,9 @@ function dc_EGM!(m::Model,p::Param)
                             upper_env!(m.v[id,iy,it])   # compute upper envelope of this
                             # println(m.c[id,iy,it].env)
 
-                            # TODO
-                            # bug
-                            # this is not working properly.
-                            # for some reason i cannot get the set of removed points right
-                            # here.
                             removed!(m.v[id,iy,it])
                             remove_c!(m.v[id,iy,it],m.c[id,iy,it])
                             sortx!(m.c[id,iy,it].env)
-                            # plot(m.c[id,iy,it].env)
-                            # gui()
 
                             @assert(issorted(getx(m.v[id,iy,it].env)))
                             # display(hcat(getx(m.v[id,iy,it]),getx(m.c[id,iy,it])))
@@ -289,8 +283,9 @@ function run2()
     p = Param()
     m = Model(p)
     dc_EGM!(m,p)
-    plot(m,id=2,xlim=(0,4),ylim=(-100,-20))
-    plot!(m,id=1,linestyle=:dash,label="")
+    (m,p)
+    # plot(m,id=2,xlim=(0,4),ylim=(-100,-20))
+    # plot!(m,id=1,linestyle=:dash,label="")
 end
 function runit()
     p = Param()
