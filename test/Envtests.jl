@@ -198,16 +198,19 @@ end
         y = [1,1.5,1.7,1.2,1.8,2.1]
         L1 = MLine(x,y)
         e = splitLine(L1)
+        # DCEGM.plot(e)
+        # DCEGM.savefig("checktests.png")
         @test isa(e,Envelope)
         @test length(getx(e.env))==1
         @test length(gety(e.env))==1
         @test length(gets(e))==0
         @test length(getr(e))==0
-        @test length(e.L) == 3-1
+        @test length(e.L) == 3
         @test eltype(e.L)== MLine{Float64}
 
         @test extrema(getx(e.L[1])) == (1.0,3.0)
-        @test extrema(getx(e.L[2])) == (1.5,2.9)
+        @test extrema(getx(e.L[2])) == (1.5,3.0)
+        @test extrema(getx(e.L[3])) == (1.5,2.9)
     end
     @testset "test 2: less simple" begin
         x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
@@ -242,7 +245,7 @@ end
         @test length(getx(en.env))==1
         @test length(gety(en.env))==1
         @test length(gets(en))==0
-        @test length(en.L) == 7-3
+        @test length(en.L) == 7
 
         upper_env!(en, do_intersect = true)
         @test issorted(getx(en.env))
@@ -272,7 +275,7 @@ end
         @test length(getx(en.env))==1
         @test length(gety(en.env))==1
         @test length(gets(en))==0
-        @test length(en.L) == 7-3
+        @test length(en.L) == 7
 
         upper_env!(en, do_intersect = true)
         @test issorted(getx(en.env))

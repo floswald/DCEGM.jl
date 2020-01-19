@@ -80,6 +80,42 @@ function iup(u::Vector{Float64},p::Param)
 	return x
 end
 
+NBLt(ylow,t::Int,p::Param) = sum(-p.R^(-j) * income(j,p,ylow) for j in t:p.nT-1)
+NBLs(ylow,p::Param) = [-p.R^(-j) * income(j,p,ylow) for j in 1:p.nT-1]
+
+
+"""
+	NBL(m::Model,p::Param)
+
+returns a vector with value corresponding to the natural borrowing limit
+in each period, assuming that ``a_T = 0`` has to hold. This assumes the
+worst case of income draw in each period.
+"""
+function NBL(ylow,p::Param)
+	[NBLt(ylow,it,p) for it in 1:p.nT-1]
+	# n = NBLs(ylow,p)  # vector of borrowing limit in period t
+	# reverse(cumsum(reverse(n)))
+end
+
+
+
+
+allincomes(m::Model,p::Param) = [DCEGM.income(j,p,y) for y in m.yvec, j in 1:p.nT]
+
+"expected borrowing limit"
+function EBL(m::Model,p::Param)
+	yy = [DCEGM.income(j,p,y) for y in m.yvec, j in 1:p.nT]  # income at each age and each state
+	r = similar(yy)
+	r[:,p.nT] = yy[:,p.nT]
+
+	for it in p.nT-1:-1:1
+		r[:,it] = m.ywgt * yy[:,it+1]
+	end
+	return r
+end
+
+
+
 
 
 
@@ -94,14 +130,18 @@ This is taken from [http://karenkopecky.net/RouwenhorstPaperFinal.pdf](Karen Kop
 function rouwenhorst(rho::Float64,mu_eps,sigma_eps,n)
 	q = (rho+1)/2
 	nu = ((n-1)/(1-rho^2))^(1/2) * sigma_eps
-	P = reshape([q,1-q,1-q,q],2,2)
+	P = [q 1-q ; 1-q q]
 
 	for i=2:n-1
 
-		P = q * vcat(hcat(P , zeros(i,1)),zeros(1,i+1)) .+ (1-q).* vcat( hcat(zeros(i,1),P), zeros(1,i+1)) .+ 
-		(1-q) .* vcat(zeros(1,i+1),hcat(P,zeros(i,1))) .+ q .*vcat(zeros(1,i+1),hcat(zeros(i,1),P))
-		P[2:i,:] = P[2:i,:] ./ 2
+		# P = q * vcat(hcat(P , zeros(i,1)),zeros(1,i+1)) .+ (1-q).* vcat( hcat(zeros(i,1),P), zeros(1,i+1)) .+ 
+		# (1-q) .* vcat(zeros(1,i+1),hcat(P,zeros(i,1))) .+ q .*vcat(zeros(1,i+1),hcat(zeros(i,1),P))
+		# P[2:i,:] = P[2:i,:] ./ 2
 
+		P = q .* [P zeros(i,1); zeros(1,i+1)] .+ (1-q) .* [zeros(i,1) P; zeros(1,i+1)] .+
+		(1-q) .* [zeros(1,i+1); P zeros(i,1)] .+   q   .* [zeros(1,i+1); zeros(i,1) P]
+
+		P[2:i,:] = P[2:i,:] ./ 2
 	end
 
 	z = range(mu_eps/(1-rho)-nu,stop = mu_eps/(1-rho)+nu,length = n);
@@ -148,7 +188,7 @@ lifecycle profile in income
 """
 function income(it::Int,p::Param,shock::Float64)
 	age = it + 19
-	exp( p.inc0 + p.inc1*0.04 - p.inc2*(age^2) + shock)
+	exp( p.inc0 + p.inc1*age - p.inc2*(age^2) + shock)
 end
 function income(it::Int,shock::Array{Float64})
 	x = similar(shock)

@@ -50,6 +50,7 @@ mutable struct Param
 	inc1                 :: Float64
 	inc2                 :: Float64
 	ρ                    :: Float64
+	ϵ                    :: Float64
 
 	# constructor 
     function Param(;par::Dict=Dict())
@@ -153,7 +154,7 @@ mutable struct Model
 	# nD is number of discrete choices: nD = 2
 
 	# computation grids
-	avec::Vector{Float64}
+	avec::Vector{Vector{Float64}}   # each period has its own avec
 	yvec::Vector{Float64}   # income support
 	ywgt::Matrix{Float64}   # income weights
 
@@ -172,9 +173,6 @@ mutable struct Model
 	function Model(p::Param)
 
 		this = new()
-		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
-		# this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
-		this.avec          = scaleGrid(p.a_low,p.a_high,p.na,logorder = 2)
 
 		# fedors version:
 		# nodes,weights = quadpoints(p.ny,0,1) 
@@ -186,20 +184,29 @@ mutable struct Model
 		# my version:
 		# for y ~ N(mu,sigma), integrate y with 
 		# http://en.wikipedia.org/wiki/Gauss-Hermite_quadrature
-		# nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-		# this.yvec = sqrt(2.0) * p.sigma .* nodes
-		# ywgt = weights .* pi^(-0.5)
-		# ywgt = ywgt .+ ywgt'
-		# this.ywgt = ywgt ./ sum(ywgt,dims=2)
 
-		# version with income persistence
-		this.yvec, this.ywgt = rouwenhorst(p.ρ,0,0.5,p.ny)
+		if p.ρ == 0
+			nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+			this.yvec = sqrt(2.0) * p.ϵ .* nodes
+			this.ywgt = reshape(repeat(weights .* pi^(-0.5),inner = p.ny),p.ny,p.ny)  # make a matrix
+		else
+			# version with income persistence
+			this.yvec, this.ywgt = rouwenhorst(p.ρ,0,p.ϵ,p.ny)
+		end
+
+		# get borrowing limits
+		η = NBL(this.yvec[1],p)
+
+		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
+		# this.avec          = [collect(range(p.a_low,stop = p.a_high,length = p.na))]
+		this.avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 2) for it in 1:p.nT-1]
+		push!(this.avec, scaleGrid(0.0,p.a_high,p.na,logorder = 2))  # last period
 
 		# precompute next period's cash on hand.
 		# (na,ny,nD)
 		# iD = 1: tomorrow no work
 		# iD = 2: tomorrow work
-		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R + income(it,p,this.yvec[iy]) * (id-1) for ia in 1:p.na, iy in 1:p.ny  ] for id=1:p.nD) for it=2:p.nT)
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[it][ia]*p.R .+ income(it,p,this.yvec[iy]) * (id-1) for ia in 1:p.na, iy in 1:p.ny  ] for id=1:p.nD) for it=2:p.nT)
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 
@@ -209,4 +216,10 @@ mutable struct Model
 
 		return this
 	end
+end
+
+
+function model()
+	p = Param()
+	(Model(p),p)
 end

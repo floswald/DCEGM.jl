@@ -46,6 +46,9 @@ mutable struct Envelope{T<:Number}
     end
     # Envelope(Vector{MLine{T}}) are constituting lines, but no env_set yet
     function Envelope(l::Vector{MLine{T}}) where {T<:Number}
+        # println("calling Vector{MLine{T}} constr now")
+        # println(l[1].v)
+        # println(l[2].v)
         this = new{T}()
         this.L = deepcopy(l)
         this.env = MLine([typemin(T)],[typemin(T)])
@@ -170,7 +173,7 @@ function splitLine(o::MLine{T}) where T<:Number
         # all the ones with 2 un-sorted x corrdinates are illegal lines from connection of two proper ones
         # discard those
         # l2 = [length(s.x)==2 for s in sections]
-        ns = [!issorted(s.v) && length(s.v)==2 for s in sections]
+        # ns = [!issorted(s.v) && length(s.v)==2 for s in sections]
 
         # 4) get rid of illegal sections on x
         # e = Envelope(0.0)
@@ -184,12 +187,26 @@ function splitLine(o::MLine{T}) where T<:Number
         # end
 
         for s in eachindex(sections)
-            if !ns[s]
+            # if !ns[s]
                 if !issorted(sections[s])
                     sortx!(sections[s])
                 end
                 push!(new_sections,sections[s])
-            end
+            # end
+        end
+        if length(new_sections) == 1
+            println("gotcha")
+            println(new_sections[1].v)
+            println("sections[1].v = $(sections[1].v)")
+            println("sections[2].v = $(sections[2].v)")
+            # plot(Envelope(sections))
+
+            # savefig("check.png")
+            println("xvec = $xvec")
+            println("ii = $ii")
+            error()
+            gui()
+            # error()
         end
         return Envelope(new_sections)
     end
@@ -221,6 +238,9 @@ function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
         # - how to deal with points at which some MLine is infeasible?
 
     if length(e.L)<2
+        println(e.env.v)
+        println(e.L[1].v)
+        println(e.removed)
         error("an upper envelope requires by definition at least 2 lines.")
     end
 

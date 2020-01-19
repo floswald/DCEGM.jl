@@ -126,8 +126,8 @@ function show(io::IO, ::MIME"text/plain", L::MLine{T}) where {T<:Number}
     xvec = [i.x for i in L.v]
     print(io,"$T MLine\n")
     print(io,"number of points: $(length(L.v))\n")
-    print(io,"xrange: $(round.(extrema(getx(L))))\n")
-    print(io,"yrange: $(round.(extrema(gety(L))))\n")
+    print(io,"xrange: $(round.(extrema(getx(L)),digits = 2))\n")
+    print(io,"yrange: $(round.(extrema(gety(L)),digits = 2))\n")
 end
 show(io::IO,L::MLine{T}) where {T<:Number} = print(io,"$(length(L.v)) point $T MLine")
 
@@ -229,6 +229,9 @@ function interp(l::MLine{T},ix::Vector{T}) where {T<:Number}
     xex = extrema(ix)
     # @debug(logger,"interpolating $ix ")
     xvec = getx(l)
+    if !issorted(xvec)
+        println(xvec)
+    end
     xrange = extrema(xvec)
     if l.extrap
         itp = extrapolate(interpolate((xvec,),l.v,Gridded(Linear())),Line())

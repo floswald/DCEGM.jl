@@ -6,9 +6,9 @@
 	p = DCEGM.Param()
 	@testset "run minimal egm" begin
 		m = DCEGM.minimal_EGM()
-		@test m[1][end][1] == p.a_low
+		@test m[1][end][1] == 0.0
 		@test m[1][end][end] == p.a_high
-		@test m[2][end][1] == p.a_low
+		@test m[2][end][1] == 0.0
 		@test m[2][end][end] == p.a_high
 	end
 
@@ -29,4 +29,3 @@
 		@test maximum(abs,DCEGM.logsum(zeros(2,2),p) .- p.lambda * [log(2) log(2)]) .< 1e-6
 	end
 end
-

@@ -172,9 +172,10 @@ function dc_EGM!(m::Model,p::Param)
                     c0 = iup(RHS,p)
 
                     # set optimal consumption function today. endo grid m and cons c0
-                    cline = MLine(m.avec .+ c0, c0)
+                    cline = MLine((m.avec[it]) .+ c0, c0)
                     # store
                     m.c[id,iy,it] = Envelope(cline)
+
                     # consumption function done.
 
 
@@ -185,7 +186,7 @@ function dc_EGM!(m::Model,p::Param)
                     else
                         ev = reshape(vmat[1,:],p.na,p.ny) * m.ywgt[:,iy]
                     end
-                    vline = MLine(m.avec .+ c0, u(c0,id==2,p) .+ p.beta * ev)
+                    vline = MLine((m.avec[it]) .+ c0, u(c0,id==2,p) .+ p.beta * ev)
 
                     # println(vline)
 
@@ -269,7 +270,9 @@ function dc_EGM!(m::Model,p::Param)
                     m.v[id,iy,it].vbound = ev[1]
 
                     # this creates the credit constrained region
-                    prepend!(m.c[id,iy,it].env,[Point(p.a_low,0.0)])
+                    prepend!(m.c[id,iy,it].env,[Point(m.avec[it][1],0.0)])
+                    sortx!(m.c[id,iy,it].env)
+                    sortx!(m.v[id,iy,it].env)
                     # prepend!(m.v[id,it].env,p.a_low,ev[1])
                     # do NOT prepend the value function with the special value from above.
                 end # current discrete choice

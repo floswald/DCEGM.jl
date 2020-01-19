@@ -15,7 +15,7 @@
 		"symbol" : "R"
 	},
 	"na" : {
-		"value" : 500,
+		"value" : 15,
 		"description" : "number of asset grid points",
 		"symbol" : "na"
 	},
@@ -45,7 +45,7 @@
 		"symbol" : "ny"
 	},
 	"nT" : {
-		"value" : 30,
+		"value" : 40,
 		"description" : "number of years",
 		"symbol" : "nT"
 	},
@@ -75,7 +75,7 @@
 		"symbol" : "\\beta_1"
 	},
 	"inc2" : {
-		"value" : 0.0002,
+		"value" : 0.0004,
 		"description" : "income age2",
 		"symbol" : "\\beta_2"
 	},
@@ -85,8 +85,14 @@
 		"symbol" : "\\underline{c}"
 	},
 	"ρ" : {
-		"value" : 0.95,
-		"description" : "Income shock persistence",
+		"value" : 0.0,
+		"description" : "AR1 persistence of log income",
+		"symbol" : "\\rho"
+
+	},
+	"ϵ" : {
+		"value" : 0.12,
+		"description" : "std dev of log income",
 		"symbol" : "\\rho"
 
 	}

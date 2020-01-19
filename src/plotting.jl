@@ -8,7 +8,7 @@
     c2 = colorant"blue"
     alow,ahi = extrema(m.avec)
     aspect = (ahi-alow)/(ahi - 0.0)
-    
+
     nT = size(m.v)[3]
     cols = range(c1,stop=c2,length=nT)
 
@@ -16,7 +16,7 @@
     for i in 1:nT
         lab = ((i==1)|(i==nT)) ? "$i" : ""
         @series begin
-            linetype --> :path 
+            linetype --> :path
             linewidth --> 1
             legend --> :bottomright
             seriescolor --> cols[i]
@@ -27,7 +27,7 @@
             getx(m.v[id,iy,i].env),gety(m.v[id,iy,i].env)
         end
         @series begin
-            linetype --> :path 
+            linetype --> :path
             linewidth --> 1
             legend --> :bottomright
             seriescolor --> cols[i]
@@ -66,7 +66,7 @@ end
     xticks := true
     legend := false
     @series begin
-        linetype --> :path 
+        linetype --> :path
         linecolor --> :black
         linewidth --> 1
         if marker
@@ -108,7 +108,7 @@ end
                 seriestype := :path
                 linewidth := 1
                 if mrk
-                    println("illegal")
+                    # println("illegal")
                     markershape --> :circle
                     markerstrokecolor --> :black
                     markercolor --> :white
@@ -378,6 +378,3 @@ function allplots()
     splitf3()
     savefig(joinpath(p,"split3.png"))
 end
-
-
-
