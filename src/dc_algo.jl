@@ -29,6 +29,43 @@ function minimal_EGM()
     return (m,c,pl)
 end
 
+function minimal_EGM_neg(;alow = -1.0)
+    p             = Param()
+    nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+    yvec          = sqrt(2.0) * p.sigma .* nodes
+    ywgt          = weights .* pi^(-0.5)
+    # avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+        
+    η = NBL(yvec[1],p)  # compute natural borrowing limit: maximal borrowing if c=0 in all future periods and worst income
+    avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 2) for it in 1:p.nT-1]
+    push!(avec, scaleGrid(0.0,p.a_high,p.na,logorder = 2))  # last period
+    m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
+    c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
+    m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
+    c[p.nT]       = [0.0,p.a_high]
+    pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false,title = "EGM with natural borrowing limit")
+    # cycle back in time
+    for it in p.nT-1:-1:1
+        w1 = 0.0 .+ exp.(yvec).*p.R.*avec[it+1]'   # w1 = y + yshock*R*savings:  next period wealth at all states. (p.ny,p.na)
+        # get next period consumption on that wealth w1
+        # interpolate on next period's endogenous grid m[it+1].
+        # notice that the `interpolate` object needs to be able to extrapolate
+        println()
+        c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Line())(w1[:]) ,p.ny,p.na)
+        # if it == p.nT-3
+            println("mt+1 = $(m[it+1])")
+            println("wt+1 = $w1")
+            println("ct+1 = $c1")
+        # end
+        c1[c1.<0] .= p.cfloor     # don't allow negative consumption
+        rhs = ywgt' * (1 ./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
+        c[it] = vcat(0.0, 1 ./ (p.beta * p.R * rhs[:])...)   # current period consumption vector ∈ [0,∞]
+        m[it] = vcat(avec[it][1], avec[it+1] .+ c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
+        # plot!(pl,m[it],c[it],label="$it")
+        plot!(pl,m[it],c[it])
+    end
+    return (m,c,pl)
+end
 
 
 """
