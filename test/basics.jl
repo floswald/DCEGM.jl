@@ -28,4 +28,10 @@
 		p.lambda = 1
 		@test maximum(abs,DCEGM.logsum(zeros(2,2),p) .- p.lambda * [log(2) log(2)]) .< 1e-6
 	end
+	@testset "borrowing constraints" begin
+	m,p = DCEGM.model()
+	    @test DCEGM.nextbound(m.yvec[1],p.nT-2,p) == -DCEGM.income(p.nT-1,p,m.yvec[1])*p.R^(-1)
+	    @test DCEGM.nextbound(m.yvec[1],p.nT-3,p) == -DCEGM.income(p.nT-2,p,m.yvec[1])*p.R^(-1) - DCEGM.income(p.nT-1,p,m.yvec[1])*p.R^(-2)
+	end
+	end
 end

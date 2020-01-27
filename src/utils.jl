@@ -80,19 +80,32 @@ function iup(u::Vector{Float64},p::Param)
 	return x
 end
 
-NBLt(ylow,t::Int,p::Param) = sum(-p.R^(-j) * income(j,p,ylow) for j in t:p.nT-1)
-NBLs(ylow,p::Param) = [-p.R^(-j) * income(j,p,ylow) for j in 1:p.nT-1]
+NBLt(ylow,t::Int,p::Param) = sum(-p.R^(-(j-1) ) * income(j,p,ylow) for j in t:p.nT-1)
+
+nbl(ylow,it,p::Param) = sum(-p.R^(j) * income(it+j,p,ylow) for j in 1:((p.nT)-1)-it )
+nblv(ylow,it,p::Param) = [-p.R^(j) * income(it+j,p,ylow) for j in 1:((p.nT)-1)-it ]
+
+# NBLt(ylow,t::Int,p::Param) = sum(-p.R^(-j ) * income(j,p,ylow) for j in (p.nT-1)-t:-1:0)
+NBLs(ylow,p::Param) = [-p.R^(-j) * income(j,p,ylow) for j in (p.nT-1)-1:-1:0]
+
+
+# nextbound(ylow,it,p::Param) = sum(-income(j,p,ylow)*p.R^(-(j-it)) for j in (it+1):(p.nT-1))
+nextbound(ylow,it,p::Param) = -income(it+1,p,ylow)*p.R^(-1) 
+pnextbound(ylow,it,p::Param) = ["income($j,p,ylow)*p.R^($(-(j-it)))" for j in (it+1):(p.nT-1)]
+
+
 
 
 """
-	NBL(m::Model,p::Param)
+	abounds(ylow,p::Param)
 
-returns a vector with value corresponding to the natural borrowing limit
-in each period, assuming that ``a_T = 0`` has to hold. This assumes the
-worst case of income draw in each period.
+returns a vector with the lowest possible asset level in each period.
+This assumes the worst case of income draw in each period and zero consumption, while ``a_T=0``.
 """
-function NBL(ylow,p::Param)
-	[NBLt(ylow,it,p) for it in 1:p.nT-1]
+function abounds(ylow,p::Param)
+	x = [nextbound(ylow,it,p) for it in 1:p.nT-2]
+	prepend!(x, -ylow + x[1]) # adds period 1 bound
+	x
 	# n = NBLs(ylow,p)  # vector of borrowing limit in period t
 	# reverse(cumsum(reverse(n)))
 end
@@ -151,7 +164,9 @@ end
 # asset grid scaling
 function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1) 
 	out = zeros(n)
-	if logorder==1
+	if logorder==0
+		out    = collect(range(lb,stop = ub,length = n))
+	elseif logorder==1
 		off = 1
 		if lb<0 
 			off = 1 - lb #  adjust in case of neg bound

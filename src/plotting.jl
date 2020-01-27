@@ -6,8 +6,8 @@
     cg = cgrad(:inferno)
     c1 = colorant"red"
     c2 = colorant"blue"
-    alow,ahi = extrema(m.avec)
-    aspect = (ahi-alow)/(ahi - 0.0)
+    # alow,ahi = extrema(m.avec)
+    # aspect = (ahi-alow)/(ahi - 0.0)
 
     nT = size(m.v)[3]
     cols = range(c1,stop=c2,length=nT)

@@ -195,12 +195,13 @@ mutable struct Model
 		end
 
 		# get borrowing limits
-		η = NBL(this.yvec[1],p)
+		η = abounds(this.yvec[1],p)
 
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
 		# this.avec          = [collect(range(p.a_low,stop = p.a_high,length = p.na))]
-		this.avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 2) for it in 1:p.nT-1]
-		push!(this.avec, scaleGrid(0.0,p.a_high,p.na,logorder = 2))  # last period
+		# this.avec          = [scaleGrid(p.a_low,p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
+		this.avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
+		push!(this.avec, scaleGrid(0.0,p.a_high,p.na,logorder = 1))  # last period
 
 		# precompute next period's cash on hand.
 		# (na,ny,nD)

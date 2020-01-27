@@ -15,7 +15,7 @@
 		"symbol" : "R"
 	},
 	"na" : {
-		"value" : 15,
+		"value" : 150,
 		"description" : "number of asset grid points",
 		"symbol" : "na"
 	},
@@ -85,7 +85,7 @@
 		"symbol" : "\\underline{c}"
 	},
 	"ρ" : {
-		"value" : 0.0,
+		"value" : 0.95,
 		"description" : "AR1 persistence of log income",
 		"symbol" : "\\rho"
 
