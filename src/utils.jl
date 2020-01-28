@@ -25,7 +25,7 @@ function u(x::Float64,working::Bool,p::Param)
 	if p.gamma == 1.0
 		log(x) - p.alpha*working
 	else
-		p.oneover_oneminusgamma * (x^p.oneminusgamma) - p.alpha*working
+		p.oneover_oneminusgamma * (x^p.oneminusgamma - 1.0) - p.alpha*working
 	end
 end
 function u(x::Array{T}, working::Bool, p::Param) where T
@@ -41,7 +41,7 @@ end
 # partial derivative of utility wrt c
 function up(c::Float64,p::Param)
 	if p.gamma == 1.0
-		1.0 / c 
+		1.0 / c
 	else
 		c ^ (p.neg_gamma)
 	end
@@ -90,7 +90,7 @@ NBLs(ylow,p::Param) = [-p.R^(-j) * income(j,p,ylow) for j in (p.nT-1)-1:-1:0]
 
 
 # nextbound(ylow,it,p::Param) = sum(-income(j,p,ylow)*p.R^(-(j-it)) for j in (it+1):(p.nT-1))
-nextbound(ylow,it,p::Param) = -income(it+1,p,ylow)*p.R^(-1) 
+nextbound(ylow,it,p::Param) = -income(it+1,p,ylow)*p.R^(-1)
 pnextbound(ylow,it,p::Param) = ["income($j,p,ylow)*p.R^($(-(j-it)))" for j in (it+1):(p.nT-1)]
 
 
@@ -134,7 +134,7 @@ end
 
 
 """
-rouwenhorst AR1 approximation 
+rouwenhorst AR1 approximation
 
 
 This is taken from [http://karenkopecky.net/RouwenhorstPaperFinal.pdf](Karen Kopecky's paper)
@@ -147,7 +147,7 @@ function rouwenhorst(rho::Float64,mu_eps,sigma_eps,n)
 
 	for i=2:n-1
 
-		# P = q * vcat(hcat(P , zeros(i,1)),zeros(1,i+1)) .+ (1-q).* vcat( hcat(zeros(i,1),P), zeros(1,i+1)) .+ 
+		# P = q * vcat(hcat(P , zeros(i,1)),zeros(1,i+1)) .+ (1-q).* vcat( hcat(zeros(i,1),P), zeros(1,i+1)) .+
 		# (1-q) .* vcat(zeros(1,i+1),hcat(P,zeros(i,1))) .+ q .*vcat(zeros(1,i+1),hcat(zeros(i,1),P))
 		# P[2:i,:] = P[2:i,:] ./ 2
 
@@ -162,22 +162,22 @@ function rouwenhorst(rho::Float64,mu_eps,sigma_eps,n)
 end
 
 # asset grid scaling
-function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1) 
+function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1)
 	out = zeros(n)
 	if logorder==0
 		out    = collect(range(lb,stop = ub,length = n))
 	elseif logorder==1
 		off = 1
-		if lb<0 
+		if lb<0
 			off = 1 - lb #  adjust in case of neg bound
 		end
-		out[1] = log(lb + off) 
-		out[n] = log(ub + off) 
+		out[1] = log(lb + off)
+		out[n] = log(ub + off)
 		out    = collect(range(out[1],stop = out[n],length = n))
-		out    = exp.(out) .- off  
+		out    = exp.(out) .- off
 	elseif logorder==2
 		off = 1
-		if lb<0 
+		if lb<0
 			off = 1 - lb #  adjust in case of neg bound
 		end
 		out[1] = log( log(lb + off) + off )
@@ -186,7 +186,7 @@ function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1)
 		out    = exp.( exp.(out) .- off ) .- off
 	elseif logorder==3
 		off = 1
-		if lb<0 
+		if lb<0
 			off = 1 - lb #  adjust in case of neg bound
 		end
 		out[1] = log( log( log(lb + off) + off ) + off )
@@ -223,21 +223,21 @@ function quadpoints(n,lbnd,ubnd)
    m   = floor((n+1)/2)
    xm  = (x2+x1)/2
    xl  = (x2-x1)/2
-   i = 1 
+   i = 1
    z1 = 1.e99
    pp = p1 = p2 = p3 = z = 0.0
    while (i <= m)
 	   z  = cos(pi*(i-0.25)/(n+0.5))
-	   while (abs(z-z1)>EPS) 
+	   while (abs(z-z1)>EPS)
 	       p1 = 1
 	       p2 = 0
-	       j=1 
+	       j=1
 	       while (j <= n)
 				 p3 = copy(p2)
 				 p2 = copy(p1)
 				 p1 = ((2*j-1)*z*p2-(j-1)*p3)/j
-		         j=j+1 
-	       end 
+		         j=j+1
+	       end
 	       pp = n*(z*p1-p2)/(z*z-1)
 	       z1 = z
 	       z  = z1 - p1/pp
@@ -257,9 +257,9 @@ function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Float64,lo::Int,
 	n = length(x)
 	@assert n==length(y)
 
-	# determining bounds 
+	# determining bounds
 	if xi == x[1]
-		r = y[1] 
+		r = y[1]
 		return r
 	elseif xi < x[1]
 		# get linear approx below
@@ -267,7 +267,7 @@ function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Float64,lo::Int,
 		return r
 	end
 	if xi == x[n]
-		r = y[n] 
+		r = y[n]
 		return (r,n)
 	elseif xi > x[n]
 		# get linear approx above
@@ -287,7 +287,7 @@ function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Float64,lo::Int,
 end
 linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Float64) = linearapprox(x,y,xi,1,length(x))
 
-function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Vector{Float64}) 
+function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Vector{Float64})
 	n = length(xi)
 	z = zeros(n)
 	for i in 1:n

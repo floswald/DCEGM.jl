@@ -1,6 +1,6 @@
 {
 	"gamma" : {
-		"value" : 1.2,
+		"value" : 1.95,
 		"description" : "CRRA",
 		"symbol" : "\\gamma"
 	},
@@ -15,7 +15,7 @@
 		"symbol" : "R"
 	},
 	"na" : {
-		"value" : 150,
+		"value" : 100,
 		"description" : "number of asset grid points",
 		"symbol" : "na"
 	},
@@ -25,12 +25,12 @@
 		"symbol" : "nD"
 	},
 	"a_high" : {
-		"value" : 10.0,
+		"value" : 50.0,
 		"description" : "upper bound of asset grid",
 		"symbol" : "\\overline{a}"
 	},
 	"a_low" : {
-		"value" : -5.0,
+		"value" : 0.0,
 		"description" : "lower bound of asset grid",
 		"symbol" : "\\underline{a}"
 	},
@@ -45,7 +45,7 @@
 		"symbol" : "ny"
 	},
 	"nT" : {
-		"value" : 10,
+		"value" : 25,
 		"description" : "number of years",
 		"symbol" : "nT"
 	},
@@ -55,12 +55,12 @@
 		"symbol" : "\\alpha"
 	},
 	"sigma" : {
-		"value" : 0.25,
+		"value" : 0.35,
 		"description" : "Income shock variance",
 		"symbol" : "\\sigma"
 	},
 	"lambda" : {
-		"value" : 0.02,
+		"value" : 0.2,
 		"description" : "scale of EV shocks",
 		"symbol" : "\\lambda"
 	},
@@ -75,7 +75,7 @@
 		"symbol" : "\\beta_1"
 	},
 	"inc2" : {
-		"value" : 0.0004,
+		"value" : 0.0002,
 		"description" : "income age2",
 		"symbol" : "\\beta_2"
 	},

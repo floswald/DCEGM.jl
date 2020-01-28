@@ -35,7 +35,7 @@ function minimal_EGM_neg(;alow = -1.0,blim=true,brate = false)
     yvec          = sqrt(2.0) * p.sigma .* nodes
     ywgt          = weights .* pi^(-0.5)
     # avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
-        
+
     η = NBL(yvec[1],p)  # compute natural borrowing limit: maximal borrowing if c=0 in all future periods and worst income
     if blim
         avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
@@ -112,9 +112,9 @@ function vfun(id::Int,iy::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},en
 
     if all(mask)
         # in the credit constrained region:
-        r[:] = u(c1,id==2,p) .+ p.beta * bound(v)
+        r[:] = u(c1,id==1,p) .+ p.beta * bound(v)
     elseif any(mask)
-        r[mask] = u(c1[mask],id==2,p) .+ p.beta * bound(v)
+        r[mask] = u(c1[mask],id==1,p) .+ p.beta * bound(v)
         # elsewhere
         r[.!mask] = gety(interp(v.env,m1[.!mask]))
     else
@@ -130,10 +130,10 @@ end
 Conditional Choice probability of working
 """
 function ccp(x::Matrix,p::Param)
-    #choice probability of the second row in 2-row matrix
+    #choice probability of the first row in 2-row matrix
     mx = maximum(x,dims = 1)
     mxx = x.-repeat(mx,size(x)[1],1)   # center values at max for numerical stability
-    vec(exp.(mxx[2,:]./p.lambda)' ./ sum(exp.(mxx./p.lambda),dims = 1))
+    vec(exp.(mxx[1,:]./p.lambda)' ./ sum(exp.(mxx./p.lambda),dims = 1))
 end
 
 """
@@ -155,7 +155,7 @@ Main body of the DC-EGM algorithm version
 """
 function dc_EGM!(m::Model,p::Param)
     for it in p.nT:-1:1
-        # println()
+        println(it)
         # @info("period = $it")
 
         if it==p.nT
@@ -178,7 +178,7 @@ function dc_EGM!(m::Model,p::Param)
             for iy in 1:p.ny
                 # @info("iy: $iy")
                 for id in 1:p.nD   # current period dchoice
-                    working = id==2  # working today is id=2
+                    working = id==1  # working today is id=1
                     # @info("current period status id: $id")
 
                     # next period consumption and value y-coords
@@ -194,7 +194,7 @@ function dc_EGM!(m::Model,p::Param)
                             mm1 = m.m1[it+1][iid]
 
                             # interpolate the iid-choice next period's consumtion function on next cash on hand, given that discrete choice
-                            println(m.c[iid,iy,it+1].env.v)
+                            # println(m.c[iid,iy,it+1].env.v)
                             c1 = interp(m.c[iid,iy,it+1].env, mm1[:])
                             floory!(c1,p.cfloor)   # floor negative consumption
                             cmat[iid,:] = gety(c1)  # get y-values
@@ -204,7 +204,7 @@ function dc_EGM!(m::Model,p::Param)
 
                     else  # retirees have no discrete choice - absorbing state
 
-                        iid = 1   # no work next period
+                        iid = 2   # no work next period
                         mm1 = m.m1[it+1][iid]  # non-work wealth
                         c1 = interp(m.c[iid,iy,it+1].env, mm1[:])
                         floory!(c1,p.cfloor)   # floor negative consumption
@@ -218,18 +218,19 @@ function dc_EGM!(m::Model,p::Param)
                     pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
 
                     # get marginal utility of that consumption
-                    mu1 = reshape(pwork .* up(cmat[2,:],p) .+ (1.0 .- pwork) .* up(cmat[1,:],p),p.na,p.ny)
+                    mu1 = reshape(pwork .* up(cmat[1,:],p) .+ (1.0 .- pwork) .* up(cmat[2,:],p),p.ny,p.na)
                     # println("mu1 = ")
                     # display(mu1[1:10,:])
 
                     # get expected marginal value of saving: RHS of euler equation
                     # beta * R * E[ u'(c_{t+1}) | iy ]
                     # need to integrate out Py here
-                    RHS = p.beta * p.R * mu1 * m.ywgt[:,iy]
+                    RHS = p.beta * p.R *  m.ywgt[iy,:]' * mu1
+                    # RHS = p.beta * p.R * mu1 * vec(m.ywgt)
                     # println("RHS = $(RHS[1:10])")
 
                     # optimal consumption today: invert the RHS of euler equation
-                    c0 = iup(RHS,p)
+                    c0 = iup(Array(RHS)[:],p)
 
                     # set optimal consumption function today. endo grid m and cons c0
                     cline = MLine((m.avec[it]) .+ c0, c0)
@@ -242,11 +243,12 @@ function dc_EGM!(m::Model,p::Param)
                     # compute value function
                     # ----------------------
                     if working
-                        ev = reshape(logsum(vmat,p),p.na,p.ny) * m.ywgt[:,iy]
+                        # ev = reshape(logsum(vmat,p),p.na,p.ny) * m.ywgt[:,iy]
+                        ev =  m.ywgt[iy,:]' * reshape(logsum(vmat,p),p.ny,p.na)
                     else
-                        ev = reshape(vmat[1,:],p.na,p.ny) * m.ywgt[:,iy]
+                        ev =  m.ywgt[iy,:]' * reshape(vmat[2,:],p.ny,p.na)
                     end
-                    vline = MLine((m.avec[it]) .+ c0, u(c0,id==2,p) .+ p.beta * ev)
+                    vline = MLine((m.avec[it]) .+ c0, u(c0,id==1,p) .+ p.beta * ev[:])
 
                     # println(vline)
 
@@ -260,16 +262,16 @@ function dc_EGM!(m::Model,p::Param)
                     # vline and cline may have backward-bending regions: let's prune those
                     # SECONDARY ENVELOPE COMPUTATION
 
-                    if id==2   # only for workers
+                    if id==1   # only for workers
                         minx = min_x(vline)
                         if minx < vline.v[1].x
                             # non-convex region lies inside credit constraint.
                             # endogenous x grid bends back before the first x grid point.
-                            x0 = range(minx,stop = vline.v[1].x,length = floor(p.na/10)) # some points to the left of first x point
+                            x0 = collect(range(minx,stop = vline.v[1].x,length = max(10,floor(Integer,p.na/10)))) # some points to the left of first x point
                             x0 = x0[1:end-1]
-                            y0 = u(x0,working,p) + p.beta * ev[1]
-                            prepend!(vline,[Point(x0,y0)])
-                            prepend!(cline,[Point(x0,y0)])  # cons policy in credit constrained is 45 degree line
+                            y0 = u(x0,working,p) .+ p.beta .* ev[1]
+                            prepend!(vline,convert(Point,x0,y0))
+                            prepend!(cline,convert(Point,x0,y0))  # cons policy in credit constrained is 45 degree line
                         end
 
                         # split the vline at potential backward-bending points

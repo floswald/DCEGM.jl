@@ -1,6 +1,6 @@
 
 """
-Holds the user-set parameter values. 
+Holds the user-set parameter values.
 
 **values set in param.json file:**
 
@@ -52,9 +52,9 @@ mutable struct Param
 	ρ                    :: Float64
 	ϵ                    :: Float64
 
-	# constructor 
+	# constructor
     function Param(;par::Dict=Dict())
-		f=open(joinpath(dirname(@__FILE__),"param.json")) 
+		f=open(joinpath(dirname(@__FILE__),"param.json"))
 		j = JSON.parse(f)
 		close(f)
     	this = new()
@@ -74,6 +74,8 @@ mutable struct Param
 		this.oneminusgamma         = 1.0 - this.gamma
 		this.oneover_oneminusgamma = 1.0 / this.oneminusgamma
 		this.neg_oneover_gamma     = (-1.0) / this.gamma
+
+		this.beta = 1/this.R
 
 		return this
 	end
@@ -113,14 +115,14 @@ end
 # 		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
 # 		# fedors vesion:
-# 		# nodes,weights = quadpoints(p.ny,0,1) 
+# 		# nodes,weights = quadpoints(p.ny,0,1)
 # 		# N = Normal(0,1)
 # 		# nodes = quantile.(N,nodes)
 # 		# this.yvec = nodes * p.sigma
 # 		# this.ywgt = weights
 
 # 		# my version:
-# 		# for y ~ N(mu,sigma), integrate y with 
+# 		# for y ~ N(mu,sigma), integrate y with
 # 		# http://en.wikipedia.org/wiki/Gauss-Hermite_quadrature
 # 		nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
 # 		this.yvec = sqrt(2.0) * p.sigma .* nodes
@@ -142,12 +144,12 @@ end
 # 	end
 # end
 
-	
+
 
 
 
 """
-Model 
+Model
 """
 mutable struct Model
 
@@ -175,14 +177,16 @@ mutable struct Model
 		this = new()
 
 		# fedors version:
-		# nodes,weights = quadpoints(p.ny,0,1) 
+		# nodes,weights = quadpoints(p.ny,0,1)
 		# N = Normal(0,1)
 		# nodes = quantile.(N,nodes)
 		# this.yvec = nodes * p.sigma
-		# this.ywgt = weights
+		# # this.ywgt = weights'
+		# this.ywgt = reshape(repeat(weights,inner = p.ny),p.ny,p.ny)  # make a matrix
+
 
 		# my version:
-		# for y ~ N(mu,sigma), integrate y with 
+		# for y ~ N(mu,sigma), integrate y with
 		# http://en.wikipedia.org/wiki/Gauss-Hermite_quadrature
 
 		if p.ρ == 0
@@ -195,19 +199,20 @@ mutable struct Model
 		end
 
 		# get borrowing limits
-		η = abounds(this.yvec[1],p)
+		# η = abounds(this.yvec[1],p)
 
 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
 		# this.avec          = [collect(range(p.a_low,stop = p.a_high,length = p.na))]
 		# this.avec          = [scaleGrid(p.a_low,p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
-		this.avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
-		push!(this.avec, scaleGrid(0.0,p.a_high,p.na,logorder = 1))  # last period
+		# this.avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
+		this.avec          = [scaleGrid(p.a_low,p.a_high,p.na,logorder = 0) for it in 1:p.nT-1]
+		push!(this.avec, scaleGrid(0.0,p.a_high,p.na,logorder = 0))  # last period
 
 		# precompute next period's cash on hand.
 		# (na,ny,nD)
-		# iD = 1: tomorrow no work
-		# iD = 2: tomorrow work
-		this.m1 = Dict(it => Dict(id => Float64[this.avec[it][ia]*p.R .+ income(it,p,this.yvec[iy]) * (id-1) for ia in 1:p.na, iy in 1:p.ny  ] for id=1:p.nD) for it=2:p.nT)
+		# iD = 1: tomorrow work
+		# iD = 2: tomorrow no work
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[it][ia]*p.R .+ income(it,p,this.yvec[iy]) * (id==1) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 

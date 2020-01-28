@@ -8,6 +8,7 @@ using FastGaussQuadrature
 using Roots
 using Plots
 using Colors
+using Statistics
 gr()
 
 
