@@ -1,5 +1,5 @@
 
-@recipe function f(m::Model;id=1,iy=2)
+@recipe function f(m::GModel;id=1,iy=2)
     grid --> true
     xticks := true
     legend --> true
@@ -43,6 +43,53 @@
     end
 end
 
+@recipe function f(m::FModel;id=1)
+    grid --> true
+    xticks := true
+    legend --> true
+    cg = cgrad(:inferno)
+    c1 = colorant"red"
+    c2 = colorant"blue"
+    # alow,ahi = extrema(m.avec)
+    # aspect = (ahi-alow)/(ahi - 0.0)
+
+    nT = size(m.v)[2]
+    cols = range(c1,stop=c2,length=nT)
+
+    layout := grid(1,2)
+    for i in 1:nT
+        lab = ((i==1)|(i==nT)) ? "$i" : ""
+        @series begin
+            linetype --> :path
+            linewidth --> 1
+            legend --> :bottomright
+            seriescolor --> cols[i]
+            label := lab
+            subplot := 1  # value function
+            yguide := "value"
+            xguide := "Cash on Hand M"
+            xlim := extrema(m.avec)
+            ylim := (-15,15)
+            getx(m.v[id,i].env),gety(m.v[id,i].env)
+        end
+        @series begin
+            linetype --> :path
+            linewidth --> 1
+            legend --> :bottomright
+            seriescolor --> cols[i]
+            subplot := 2  # 
+            label := lab
+            # xlim := (alow,ahi)
+            # ylim := (0,ahi)
+            xlim := extrema(m.avec)
+            ylim := extrema(m.avec)
+            yguide := "consumption"
+            xguide := "Cash on Hand M"
+            # aspect_ratio := aspect
+            getx(m.c[id,i].env),gety(m.c[id,i].env)
+        end
+    end
+end
 
 struct tester
     m :: Matrix

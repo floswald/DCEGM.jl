@@ -151,6 +151,51 @@ end
 
 
 
+"""
+Fedor's Model
+"""
+mutable struct FModel <: Model
+	avec::Vector{Float64}
+	yvec::Vector{Float64}   # income support
+	ywgt::Vector{Float64}   # income support
+
+	# intermediate objects (na,nD)
+	m1::Dict{Int,Dict}	# a dict[it] for each period
+	c1::Matrix{Float64}
+	ev::Matrix{Float64}
+
+	# result objects
+	v :: Array{Envelope}  # arrays of Envelope objects
+	c :: Array{Envelope}
+
+	function FModel(p::Param)
+
+		this = new()
+
+		# fedors version:
+		nodes,weights = quadpoints(p.ny,0,1)
+		N = Normal(0,1)
+		nodes = quantile.(N,nodes)
+		this.yvec = nodes * p.sigma
+		this.ywgt = weights
+
+		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+
+		# precompute next period's cash on hand.
+		# (na,ny,nD)
+		# iD = 1: tomorrow work
+		# iD = 2: tomorrow no work - absorbing state and retire
+		# notice: you decide to work today (t), but your shock realises tomorrow (t+1) in their formulation
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it+1,p,this.yvec[iy]) * (id==1) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=1:(p.nT-1))
+
+		# result arrays: matrices of type Envelope.
+		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
+		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD ,it in 1:p.nT]
+
+		return this
+	end
+end
+
 
 
 """
