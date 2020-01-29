@@ -1,4 +1,9 @@
 
+abstract type Model end
+
+
+
+
 """
 Holds the user-set parameter values.
 
@@ -83,11 +88,11 @@ end
 
 
 # """
-# Binary Choice Model with iid income uncertainty
+# Binary Choice GModel with iid income uncertainty
 
 # uses cash-on-hand m=y+a as state variable
 # """
-# mutable struct Model
+# mutable struct GModel
 
 # 	# nD is number of discrete choices: nD = 2
 
@@ -106,9 +111,9 @@ end
 # 	c :: Matrix{Envelope}
 
 # 	"""
-# 	Constructor for discrete choice Model
+# 	Constructor for discrete choice GModel
 # 	"""
-# 	function Model(p::Param)
+# 	function GModel(p::Param)
 
 # 		this = new()
 # 		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
@@ -149,9 +154,9 @@ end
 
 
 """
-Model
+General GModel
 """
-mutable struct Model
+mutable struct GModel <: Model
 
 	# nD is number of discrete choices: nD = 2
 
@@ -170,9 +175,9 @@ mutable struct Model
 	c :: Array{Envelope}
 
 	"""
-	Constructor for discrete choice Model
+	Constructor for discrete choice GModel
 	"""
-	function Model(p::Param)
+	function GModel(p::Param)
 
 		this = new()
 
@@ -225,7 +230,7 @@ mutable struct Model
 end
 
 
-function model()
+function GModel()
 	p = Param()
-	(Model(p),p)
+	(GModel(p),p)
 end

@@ -90,15 +90,18 @@ end
 
 
 
-"""
-    vfun(id::Int,iy::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},en::Array{Envelope},p::Param)
 
-Calculate the period `it`, `iy`-state, discrete choice `id`-specific value function. Avoids interpolation in credit constrained region by using the analytic form of the value function (no need to interpolate expected value function when on the lower bound of assets.)
+
+
 """
-function vfun(id::Int,iy::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},en::Array{Envelope,N} where N,p::Param)
+    vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},en::Array{Envelope},p::Param)
+
+Calculate the period `it`, discrete choice `id`-specific value function. Avoids interpolation in credit constrained region by using the analytic form of the value function (no need to interpolate expected value function when on the lower bound of assets.)
+"""
+function vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},v::Envelope,p::Param)
 
     # L = en.L[id]
-    v = en[id,iy,it]
+    # v = en[id,iy,it]
 
     # computes v_{it}(m) = u(c) + beta v_{it+1}(m1)
 
@@ -125,7 +128,7 @@ function vfun(id::Int,iy::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},en
 end
 
 """
-    ccp(m::Model,p::Param)
+    ccp(x::Matrix,p::Param)
 
 Conditional Choice probability of working
 """
@@ -137,7 +140,7 @@ function ccp(x::Matrix,p::Param)
 end
 
 """
-    logsum(m::Model,p::Param)
+    logsum(x::Matrix,p::Param)
 
 Logsum of conditional values used in Expected value function.
 """
@@ -149,11 +152,11 @@ end
 
 
 """
-    dcegm!(m::Model,p::Param)
+    dcegm!(m::GModel,p::Param)
 
 Main body of the DC-EGM algorithm version
 """
-function dc_EGM!(m::Model,p::Param)
+function dc_EGM!(m::GModel,p::Param)
     for it in p.nT:-1:1
         println(it)
         # @info("period = $it")
@@ -199,7 +202,7 @@ function dc_EGM!(m::Model,p::Param)
                             floory!(c1,p.cfloor)   # floor negative consumption
                             cmat[iid,:] = gety(c1)  # get y-values
 
-                            vmat[iid,:] = vfun(iid,iy,it+1,cmat[iid,:],mm1[:],m.v,p)
+                            vmat[iid,:] = vfun(iid,it+1,cmat[iid,:],mm1[:],m.v[iid,iy,it+1],p)
                         end
 
                     else  # retirees have no discrete choice - absorbing state
@@ -210,7 +213,7 @@ function dc_EGM!(m::Model,p::Param)
                         floory!(c1,p.cfloor)   # floor negative consumption
                         cmat[iid,:] = gety(c1)
 
-                        vmat[iid,:] = vfun(iid,iy,it+1,cmat[iid,:],mm1[:],m.v,p)
+                        vmat[iid,:] = vfun(iid,it+1,cmat[iid,:],mm1[:],m.v[iid,iy,it+1],p)
 
                     end
 
@@ -346,7 +349,7 @@ end
 
 function run2()
     p = Param()
-    m = Model(p)
+    m = GModel(p)
     dc_EGM!(m,p)
     (m,p)
     # plot(m,id=2,xlim=(0,4),ylim=(-100,-20))
@@ -354,7 +357,7 @@ function run2()
 end
 function runit()
     p = Param()
-    m = Model(p)
+    m = GModel(p)
     dc_EGM!(m,p)
     return (m,p)
 end
