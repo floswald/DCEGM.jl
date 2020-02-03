@@ -131,9 +131,13 @@ function show(io::IO, ::MIME"text/plain", L::MLine{T}) where {T<:Number}
 end
 show(io::IO,L::MLine{T}) where {T<:Number} = print(io,"$(length(L.v)) point $T MLine")
 
+getv(l::MLine{T}) where T = l.v
 getx(l::MLine{T}) where T = getx(l.v)
 gety(l::MLine{T}) where T = gety(l.v)
 coords(l::MLine{T}) where T = coords(l.v)
+function unique!(l::MLine{T}) where T
+    l.v = unique(l.v)
+end
 
 function floory!(l::MLine{T},yy::T) where {T<:Number}
     ix = findall(gety(l) .< yy)

@@ -189,16 +189,107 @@ function dc_EGM!(m::FModel,p::Param)
                         # println(m.c[id,iy,it].env)
 
                         removed!(m.v[id,it])
-                        remove_c!(m.v[id,it],m.c[id,it])
-                        sortx!(m.c[id,it].env)
+                        # sortx!(m.c[id,it].env)
 
                         @assert(issorted(getx(m.v[id,it].env)))
-                        @assert(issorted(getx(m.c[id,it].env)))
-                        # insert new intersections into consumption function
-                        isecs = gets(m.v[id,it])
-                        if length(isecs) > 0
+                        # @assert(issorted(getx(m.c[id,it].env)))
+
+
+                        # if any points were removed from v, need to check c
+                        if length(length(getr(m.v[id,it]))) > 0
+
+                            rmidx = to_remove_c(m.v[id,it],m.c[id,it])  # indices to be removed from current c
+                        # if length(isecs) > 0
+                            insert_left = Point[]
+                            insert_right = Point[]
+
+                            # insert new intersections into consumption function
+                            isecs = gets(m.v[id,it])
+                            consx = getx(m.c[id,it].env)
+
+
                             for isec in 1:length(isecs)
                                 I = isecs[isec]
+
+                                # interpolate from left
+                                jl = findall(consx .< I.x)
+                                jl = jl[.!(jl .∈ Ref(rmidx))]  # keep those who are not to be deleted
+                                if length(jl) > 0
+                                    jl = maximum(jl)  # biggest of those
+                                    newleft = MLine(m.c[id,it].env.v[jl:jl+1],extrap = true)
+                                    push!(insert_left, getv(interp(newleft, [ I.x ] ))[1] )
+                                else
+                                    push!(insert_left,I)
+                                end
+
+                                # interpolate from right
+                                jr = findall(consx .> I.x)
+                                jr = jr[.!(jr .∈ Ref(rmidx))]  # keep those who are not to be deleted
+                                if length(jr) > 0
+                                    jr = minimum(jr)   # smallest of those
+                                    # push!(insert_right, interp(m.c[id,it].env[jr-1:jr], [ I.x ] ) )
+                                    newright = MLine(m.c[id,it].env.v[jr-1:jr],extrap = true)
+                                    push!(insert_right, getv(interp(newright, [ I.x ] ))[1] )
+                                else
+                                    push!(insert_right,I)
+                                end
+
+                                    # insert two points at I.x into consumption function
+                                    # from left, slightly offset by eps() to preserve ordering of x
+                                    # from right, exactly on I.x
+                                # end
+                            end
+
+                            # remove illegal points from c
+                            rmidx = to_remove_c(m.v[id,it],m.c[id,it])  # indices to be removed from current c
+                            deleteat!(m.c[id,it].env.v, rmidx)
+                            # consx = getx(m.c[id,it].env)
+                            # unique!(m.c[id,it].env)
+
+
+                            consx = getx(m.c[id,it].env)
+                            # insert new points at intersections
+                            for isec in 1:length(insert_left)
+                                I = isecs[isec]
+                                jr = findfirst(consx .> I.x)
+                                if  !isnothing(jr) && jr > 1
+                                    insert!(m.c[id,it].env, Point(I.x-5*eps(),insert_left[isec].y) , jr-1)
+                                    insert!(m.c[id,it].env, Point(I.x      ,insert_right[isec].y), jr)
+                                end
+                            end
+
+
+
+                            # @assert(issorted(consx))
+                            sortx!(m.c[id,it].env)
+
+
+                            @assert(issorted(getx(m.c[id,it].env)))
+
+                            # now insert all. need second loop because
+                            # for isec in 1:length(isecs)
+                            #     I = isecs[isec]
+                            #     consx = getx(m.c[id,it].env)
+
+                            #     # interpolate from left
+                            #     jl = findlast(consx .< I.x)
+                            #     push!(insert_left, interp(m.c[id,it].env[jl:jl+1], [ I.x ] ) )
+
+                            #     # interpolate from right
+                            #     jr = findfirst(consx .> I.x)
+                            #     push!(insert_right, interp(m.c[id,it].env[jr-1:jr], [ I.x ] ) )
+                            # end
+
+
+
+                            # interpolate from right
+
+
+                            # add new points twice to accurately describe discontinuity
+
+
+
+                                # I = isecs[isec]
 
                                 # if that intersection is a new point
                                 # # i.e. intersection was not a member of any `MLine`
@@ -221,7 +312,7 @@ function dc_EGM!(m::FModel,p::Param)
                                 #     # 1) prepend to beginning of segment following intersection:
                                 #     prepend!(m.c[id,it].L[I.i+1],I.x,newy)
                                 # end
-                            end
+                            # end
                         end
                     end
                 else   # if id==1

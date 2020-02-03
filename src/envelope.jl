@@ -106,12 +106,12 @@ end
 
 
 """
-    remove_c!(ve::Envelope,ce::Envelope)
+    to_remove_c(ve::Envelope,ce::Envelope)
 
 Given a value function [`Envelope`](@ref) which has a list of indices of `removed` points,
-this function removes the (x,y) points with same x coordinate from the policy function
+this function returns indices to remove from the policy function
 """
-function remove_c!(ve::Envelope,ce::Envelope)
+function to_remove_c(ve::Envelope,ce::Envelope)
     cx = getx(ce.env.v)  # x values in consumption function
     rmidx = Vector{Int}[]
 
@@ -121,9 +121,10 @@ function remove_c!(ve::Envelope,ce::Envelope)
             push!(rmidx, findall(cx .∈ Ref(getx(rmv))))  # consumption indices to remove
         end
     end
-    if length(rmidx) > 0
-        deleteat!(ce.env.v, unique(vcat(rmidx...)))
-    end
+    # if length(rmidx) > 0
+    #     deleteat!(ce.env.v, unique(sort(vcat(rmidx...))))
+    # end
+    unique(sort(vcat(rmidx...)))
 end
 
 

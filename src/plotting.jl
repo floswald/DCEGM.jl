@@ -123,7 +123,7 @@ end
             markersize --> 2
         end
         if numerate
-            series_annotations := ["$i" for i in 1:l.n]
+            series_annotations := ["$i" for i in 1:length(l.v)]
         end
         (getx(l),gety(l))
     end
