@@ -144,7 +144,7 @@ end
         legend --> false
     end
 
-    println("marker = $mrk, title = $(get!(plotattributes,:title,""))")
+    # println("marker = $mrk, title = $(get!(plotattributes,:title,""))")
     # println("marker = $mrk, numerate = $numerate, title = $(get!(plotattributes,:title,""))")
 
     # if line array exists, plot
@@ -400,6 +400,19 @@ function splitf3()
     plot(p1,p2)
 end
 
+function demo(;n = 10,k = 10)
+    a = Array{MLine{Float64}}(undef,10)
+    for i in 1:2:n
+        a[i] = MLine(sort([0.0; 5 .+ 5*rand(k); 10]), [0.0; rand(k+1).*collect(range(0.5,stop=10,length=k+1))])
+        a[i+1] = MLine([0.0; 10],[10.0-i ; -(10-i)*10/i+10-i] )
+    end
+    e = Envelope(a)
+    p1 = plot(e)
+    upper_env!(e)
+    removed!(e)
+    p2 = plot(e,removed=true, title = "correct envelope")
+    plot(p1,p2)
+end
 
 
 function allplots()
