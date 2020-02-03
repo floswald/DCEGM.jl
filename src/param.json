@@ -60,7 +60,7 @@
 		"symbol" : "\\sigma"
 	},
 	"lambda" : {
-		"value" : 0.0001,
+		"value" : 0.000000001,
 		"description" : "scale of EV shocks",
 		"symbol" : "\\lambda"
 	},

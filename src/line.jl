@@ -67,7 +67,7 @@ mutable struct MLine{T} <: AbstractArray{T,1}
     # xrange::Tuple
     # yrange::Tuple
     extrap::Bool
-    function MLine(v::Vector{Point{T}}; extrap::Bool=true) where {T<:Number}
+    function MLine(v::Vector{Point{T}}; extrap::Bool=false) where {T<:Number}
         this = new{T}()
         this.v = v
         # this.n = length(v)
@@ -78,7 +78,7 @@ mutable struct MLine{T} <: AbstractArray{T,1}
         this.extrap = extrap
         return this
     end
-    function MLine(x::Vector{T},y::Vector{T}; extrap::Bool=true) where {T<:Number}
+    function MLine(x::Vector{T},y::Vector{T}; extrap::Bool=false) where {T<:Number}
         this = new{T}()
         n = length(x)
         @assert n == length(y)

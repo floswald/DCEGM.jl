@@ -236,7 +236,7 @@ function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
     # 5) compute upper envelope of all lines
         # - get all x's from all s and sort into a vector xx
         # - interpolate(extrapolate) all s on xx
-        # - how to deal with points at which some MLine is infeasible?
+        # - how to deal with points at which some MLine is infeasible? => set to -Inf
 
     if length(e.L)<2
         println(e.env.v)
