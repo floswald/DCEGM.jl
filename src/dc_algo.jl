@@ -185,7 +185,7 @@ function dc_EGM!(m::FModel,p::Param)
                     # then this IS a valid envelope
                     # else, need to compute the upper envelope.
                     if !m.v[id,it].env_set
-                        upper_env!(m.v[id,it])   # compute upper envelope of this
+                        upper_env!(m.v[id,it],do_intersect = true)   # compute upper envelope of this
                         # println(m.c[id,iy,it].env)
 
                         removed!(m.v[id,it])

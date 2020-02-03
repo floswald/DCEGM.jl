@@ -135,9 +135,7 @@ end
         # @test all( gety(filter(x -> (x.x >= 1.0)  , e.env.v)) .== gety(filter(x -> (x.x >= 1.0)  , L3.v)) )
         @test gets(e)[1] == Point(0.0,0.0)
         @test gets(e)[2] == Point(1.0,2.0)
-        @test_broken gets(e)[3] == Point(1.9/0.9,1.9/0.9)   # something weird going on with intersect()
-
-
+        @test gets(e)[3] ≈ Point(1.9/0.9,1.9/0.9) 
 
     end
     @testset "upper_env test: decreasing " begin

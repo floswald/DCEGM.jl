@@ -257,8 +257,7 @@ function tplot1()
     plot(e)
 end
 
-function tplot_intersect()
-    n = 15
+function tplot_intersect(;n=15)
     x1 = collect(range(0 , stop = 10,length = n))
     x2 = collect(range(-0.5, stop = 9 ,length = n))
     L1 = MLine(x1,x1)
@@ -270,6 +269,40 @@ function tplot_intersect()
     upper_env!(e,do_intersect = true)
     p3 = plot(e,title = "do_intersect = true",mrk=false)
     plot(p1,p2,p3,layout = (1,3))
+end
+
+function tplot_isect()
+
+    x1 = collect(-0.9:0.3:2.7)
+    L1 = MLine(x1, x1)
+    x2 = collect(0.0:0.1:1)
+    L2 = MLine(x2, 2 .* x2, extrap = false)
+    x3 = collect(1.0:0.45:2.9)
+    L3 = MLine(x3, (0.1 .* x3) .+ 1.9, extrap = false)
+    e = Envelope([L1,L2,L3])
+    p1 = plot(e)
+    upper_env!(e)
+    p2 = plot(e,title = "do_intersect = false",mrk = false)
+    upper_env!(e,do_intersect = true)
+    p3 = plot(e,title = "do_intersect = true",mrk=false)
+    plot(p1,p2,p3,layout = (1,3))
+
+end
+
+function tplot_isect2()
+    x = collect(range(0.09,stop=1.5,length = 6))
+    x2 = collect(range(0.0,stop=1.5,length = 9))
+    # x2 = collect(0.075:0.13:1.5)
+    L1 = MLine(x,log.(x))
+    L2 = MLine(x2, 2 .* (x2 .- 1.0) )
+    e = Envelope([L1,L2])
+    p1 = plot(e)
+    upper_env!(e)
+    p2 = plot(e,title = "do_intersect = false",mrk = true)
+    upper_env!(e,do_intersect = true)
+    p3 = plot(e,title = "do_intersect = true",mrk=true)
+    plot(p1,p2,p3,layout = (1,3))
+
 end
 
 function tplot2()
