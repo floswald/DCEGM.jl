@@ -15,7 +15,7 @@
 		"symbol" : "R"
 	},
 	"na" : {
-		"value" : 50,
+		"value" : 150,
 		"description" : "number of asset grid points",
 		"symbol" : "na"
 	},

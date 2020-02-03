@@ -216,7 +216,7 @@ function dc_EGM!(m::FModel,p::Param)
                                 jl = jl[.!(jl .∈ Ref(rmidx))]  # keep those who are not to be deleted
                                 if length(jl) > 0
                                     jl = maximum(jl)  # biggest of those
-                                    newleft = MLine(m.c[id,it].env.v[jl:jl+1],extrap = true)
+                                    newleft = MLine(m.c[id,it].env.v[jl:jl+1],extrap = false)
                                     push!(insert_left, getv(interp(newleft, [ I.x ] ))[1] )
                                 else
                                     push!(insert_left,I)
@@ -228,7 +228,7 @@ function dc_EGM!(m::FModel,p::Param)
                                 if length(jr) > 0
                                     jr = minimum(jr)   # smallest of those
                                     # push!(insert_right, interp(m.c[id,it].env[jr-1:jr], [ I.x ] ) )
-                                    newright = MLine(m.c[id,it].env.v[jr-1:jr],extrap = true)
+                                    newright = MLine(m.c[id,it].env.v[jr-1:jr],extrap = false)
                                     push!(insert_right, getv(interp(newright, [ I.x ] ))[1] )
                                 else
                                     push!(insert_right,I)
