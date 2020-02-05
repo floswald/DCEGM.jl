@@ -119,9 +119,9 @@ end
         x1 = collect(-0.9:0.3:2.7)
         L1 = MLine(x1, x1)
         x2 = collect(0.0:0.1:1)
-        L2 = MLine(x2, 2 .* x2, extrap = false)
+        L2 = MLine(x2, 2 .* x2)
         x3 = collect(1.0:0.45:2.9)
-        L3 = MLine(x3, (0.1 .* x3) .+ 1.9, extrap = false)
+        L3 = MLine(x3, (0.1 .* x3) .+ 1.9)
         e = Envelope([L1,L2,L3])
         upper_env!(e)
         @test issorted(getx(e.env))
@@ -135,22 +135,25 @@ end
         # @test all( gety(filter(x -> (x.x >= 1.0)  , e.env.v)) .== gety(filter(x -> (x.x >= 1.0)  , L3.v)) )
         @test gets(e)[1] == Point(0.0,0.0)
         @test gets(e)[2] == Point(1.0,2.0)
-        @test gets(e)[3] ≈ Point(1.9/0.9,1.9/0.9) 
+        @test gets(e)[3] ≈ Point(1.9/0.9,1.9/0.9)
 
     end
     @testset "upper_env test: decreasing " begin
-        n = 15
-        x1 = collect(range(0,stop = 10,length = n))
-        x2 = collect(range(-1,stop = 9,length = n))
-        x = vcat(x1,x2)
-        y = vcat(x1[end:-1:1],ones(n)*5)
-        L = MLine(x,y)
-        e = splitLine(L)
-        upper_env!(e,do_intersect = true)
+        L,e,x1,x2 = DCEGM.test_upper_env_dec()
+        # n = 15
+        # x1 = collect(range(0,stop = 10,length = n))
+        # x2 = collect(range(-1,stop = 9,length = n))
+        # x = vcat(x1,x2)
+        # y = vcat(x1[end:-1:1],ones(n)*5)
+        # L = MLine(x,y)
+        # e = splitLine(L)
+        # upper_env!(e,do_intersect = true)
         @test issorted(getx(e.env))
-        @test isapprox(getx(e.env), unique(sort(vcat(x1,x2))), atol = 1e-10)
-        @test gets(e)[1].x ≈ 5.0
-        @test gets(e)[1].y ≈ 5.0
+        @test length(getx(e.env)) ==  length(unique(vcat(x1,x2))) + 2
+        @test isapprox(gets(e)[1].x, 0.0, atol = 1e-10)
+        @test isapprox(gets(e)[1].y, 5.0, atol = 1e-10) 
+        @test gets(e)[2] ≈ Point(5.0,5.0)
+        @test gets(e)[3] ≈ Point(9.0,1.0)
     end
 end
 # @testset "Testing Envelopes over more MLines" begin
@@ -203,12 +206,11 @@ end
         @test length(gety(e.env))==1
         @test length(gets(e))==0
         @test length(getr(e))==0
-        @test length(e.L) == 3
+        @test length(e.L) == 2
         @test eltype(e.L)== MLine{Float64}
 
         @test extrema(getx(e.L[1])) == (1.0,3.0)
-        @test extrema(getx(e.L[2])) == (1.5,3.0)
-        @test extrema(getx(e.L[3])) == (1.5,2.9)
+        @test extrema(getx(e.L[2])) == (1.5,2.9)
     end
     @testset "test 2: less simple" begin
         x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
@@ -243,7 +245,7 @@ end
         @test length(getx(en.env))==1
         @test length(gety(en.env))==1
         @test length(gets(en))==0
-        @test length(en.L) == 7
+        @test length(en.L) == 4
 
         upper_env!(en, do_intersect = true)
         @test issorted(getx(en.env))
@@ -273,7 +275,7 @@ end
         @test length(getx(en.env))==1
         @test length(gety(en.env))==1
         @test length(gets(en))==0
-        @test length(en.L) == 7
+        @test length(en.L) == 4
 
         upper_env!(en, do_intersect = true)
         @test issorted(getx(en.env))

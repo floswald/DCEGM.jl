@@ -23,7 +23,6 @@
 		x = rand(5,10)
 		c = DCEGM.logsum(x,p)
 		@test length(c) == 10
-		@test maximum(abs.(c .- p.lambda * log.( sum( exp.(x./p.lambda), dims = 1)))) .< 1e-6
 		@test maximum(abs,DCEGM.logsum(zeros(2,2),p) .- p.lambda * [log(2) log(2)]) .< 1e-6
 		p.lambda = 1
 		@test maximum(abs,DCEGM.logsum(zeros(2,2),p) .- p.lambda * [log(2) log(2)]) .< 1e-6

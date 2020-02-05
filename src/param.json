@@ -15,7 +15,7 @@
 		"symbol" : "R"
 	},
 	"na" : {
-		"value" : 150,
+		"value" : 33,
 		"description" : "number of asset grid points",
 		"symbol" : "na"
 	},
@@ -60,7 +60,7 @@
 		"symbol" : "\\sigma"
 	},
 	"lambda" : {
-		"value" : 0.000000001,
+		"value" : 0.0000002,
 		"description" : "scale of EV shocks",
 		"symbol" : "\\lambda"
 	},

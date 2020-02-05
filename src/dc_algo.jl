@@ -120,7 +120,7 @@ function dc_EGM!(m::FModel,p::Param)
                     c1 = interp(m.c[iid,it+1].env, mm1[:])
                     floory!(c1,p.cfloor)   # floor negative consumption
                     cmat[iid,:] = gety(c1)  # get y-values
-                    vmat[iid,:] = vfun(1,it+1,cmat[iid,:],mm1[:],m.v[iid,it+1],p)
+                    vmat[iid,:] = vfun(iid,it+1,cmat[iid,:],mm1[:],m.v[iid,it+1],p)
                 end
 
                 # get ccp to be a worker
@@ -216,7 +216,8 @@ function dc_EGM!(m::FModel,p::Param)
                                 jl = jl[.!(jl .∈ Ref(rmidx))]  # keep those who are not to be deleted
                                 if length(jl) > 0
                                     jl = maximum(jl)  # biggest of those
-                                    newleft = MLine(m.c[id,it].env.v[jl:jl+1],extrap = false)
+                                    newleft = MLine(m.c[id,it].env.v[jl:jl+1])
+                                    sortx!(newleft)
                                     push!(insert_left, getv(interp(newleft, [ I.x ] ))[1] )
                                 else
                                     push!(insert_left,I)
@@ -228,7 +229,8 @@ function dc_EGM!(m::FModel,p::Param)
                                 if length(jr) > 0
                                     jr = minimum(jr)   # smallest of those
                                     # push!(insert_right, interp(m.c[id,it].env[jr-1:jr], [ I.x ] ) )
-                                    newright = MLine(m.c[id,it].env.v[jr-1:jr],extrap = false)
+                                    newright = MLine(m.c[id,it].env.v[jr-1:jr])
+                                    sortx!(newright)
                                     push!(insert_right, getv(interp(newright, [ I.x ] ))[1] )
                                 else
                                     push!(insert_right,I)
@@ -326,8 +328,9 @@ function dc_EGM!(m::FModel,p::Param)
 
                 # this creates the credit constrained region
                 prepend!(m.c[id,it].env,[Point(m.avec[1],0.0)])
-                sortx!(m.c[id,it].env)
-                sortx!(m.v[id,it].env)
+                prepend!(m.v[id,it].env,[Point(m.avec[1],ev[1])])
+                # sortx!(m.c[id,it].env)
+                # sortx!(m.v[id,it].env)
                 # prepend!(m.v[id,it].env,p.a_low,ev[1])
                 # do NOT prepend the value function with the special value from above.
             end # current discrete choice

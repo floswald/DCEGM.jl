@@ -58,7 +58,7 @@ A `MLine` is a vector of `Point`s. The x-coordinates of the points can be irregu
 * `xvec`: a vector of the x values for gridded interpolation
 * `xrange`: the xrange of the line, i.e. the range of `x`.
 * `yrange`: the yrange of the line, i.e. the range of `x`.
-* `extrap`: whether this `MLine` should be extrapolated beyond it's domain. `true` by default
+* `extrapolated`: indices of points that have been extrapolated
 """
 mutable struct MLine{T} <: AbstractArray{T,1}
     v::Vector{Point{T}}
@@ -66,8 +66,8 @@ mutable struct MLine{T} <: AbstractArray{T,1}
     # xvec ::Vector{T}
     # xrange::Tuple
     # yrange::Tuple
-    extrap::Bool
-    function MLine(v::Vector{Point{T}}; extrap::Bool=false) where {T<:Number}
+    iextrap::Vector{Int}
+    function MLine(v::Vector{Point{T}}; extrapolated=nothing) where {T<:Number}
         this = new{T}()
         this.v = v
         # this.n = length(v)
@@ -75,10 +75,14 @@ mutable struct MLine{T} <: AbstractArray{T,1}
         # y = [i.y for i in v]
         # this.xrange = extrema(this.xvec)
         # this.yrange = extrema(y)
-        this.extrap = extrap
+        if isnothing(extrapolated)
+            this.iextrap = Int[]
+        else
+            this.iextrap = extrapolated
+        end
         return this
     end
-    function MLine(x::Vector{T},y::Vector{T}; extrap::Bool=false) where {T<:Number}
+    function MLine(x::Vector{T},y::Vector{T}; extrapolated=nothing) where {T<:Number}
         this = new{T}()
         n = length(x)
         @assert n == length(y)
@@ -87,7 +91,11 @@ mutable struct MLine{T} <: AbstractArray{T,1}
         # # this.n = length(this.v)
         # this.xrange = extrema(this.xvec)
         # this.yrange = extrema(y)
-        this.extrap = extrap
+        if isnothing(extrapolated)
+            this.iextrap = Int[]
+        else
+            this.iextrap = extrapolated
+        end
         return this
     end
 end
@@ -134,6 +142,8 @@ show(io::IO,L::MLine{T}) where {T<:Number} = print(io,"$(length(L.v)) point $T M
 getv(l::MLine{T}) where T = l.v
 getx(l::MLine{T}) where T = getx(l.v)
 gety(l::MLine{T}) where T = gety(l.v)
+getex(l::MLine{T}) where T = l.iextrap
+
 coords(l::MLine{T}) where T = coords(l.v)
 function unique!(l::MLine{T}) where T
     l.v = unique(l.v)
@@ -223,42 +233,36 @@ end
 # interpolating a MLine
 
 """
-   interp(l::MLine{T},ix::Vector{T}) where {T<:Number}
+   interp(l::MLine{T},ix::Vector{T};Bool::extrapolate = false) where {T<:Number}
 
 Interpolate a `MLine` on a vector of values `x`.
 Importantly, this returns a new vector of `Point` (i.e. tuples of (x,y)).
 """
 function interp(l::MLine{T},ix::Vector{T}) where {T<:Number}
-    # whenever
-    xex = extrema(ix)
+    # # whenever
+    # xex = extrema(ix)
     # @debug(logger,"interpolating $ix ")
     xvec = getx(l)
     if !issorted(xvec)
         println(xvec)
     end
     xrange = extrema(xvec)
-    if l.extrap
-        itp = extrapolate(interpolate((xvec,),l.v,Gridded(Linear())),Line())
-        out = MLine(itp(ix))
-    else
-
+    # if extrap
+    #     itp = extrapolate(interpolate((xvec,),l.v,Gridded(Linear())),Line())
+    #     out = MLine(itp(ix))
+    # else
         fi = findall((ix .< xrange[1]) .| (ix .> xrange[2]))
 
-        # manually set out of bounds x to -Inf
+        # by default extrapolate all lines
+        # but record which points have been extrapolated
         if length(fi) > 0
-            out = MLine(zeros(T,length(ix)),zeros(T,length(ix)))
-            for xi in fi
-                out.v[xi] = Point(ix[xi],typemin(T))
-            end
-            for xi in setdiff(1:length(ix),fi)
-                out.v[xi] = interpolate((xvec,),l.v,Gridded(Linear()))(ix[xi])
-            end
-
+            itp = extrapolate(interpolate((xvec,),l.v,Gridded(Linear())),Line())
+            out = MLine(itp(ix),extrapolated = fi)
         else
             itp = interpolate((xvec,),l.v,Gridded(Linear()))
             out = MLine(itp(ix))
         end
-    end
+    # end
 
     return out
 end
@@ -275,20 +279,25 @@ end
 
 
 """
-    linemax(e::Array{MLine{T}}) where {T<:Number}
+    linemax(e::Array{MLine{T}}; noextrap::Bool=true) where {T<:Number}
 
-For an array of `MLine`s on identical support `xx`, computes the index in `e` of the `MLine` where the `y`-value is highest for each `xx`. One can imagine `e` as a matrix where each row represents the `y`-values from a different `MLine`; this function returns the index of the column-wise maximum.
+For an array of `MLine`s on identical support `xx`,
+computes the index in `e` of the `MLine` where the `y`-value is highest for each `xx`.
+One can imagine `e` as a matrix where each row represents the `y`-values from a
+different `MLine`; this function returns the index of the column-wise maximum.
+
+*Important*: function disregards values that have been extrapolated by default
 """
 function linemax(e::Array{MLine{T}}) where {T<:Number}
     out = zeros(Int,length(e[1]))
-    rows = length(e)
-    for j in eachindex(e[1])
-        ic = 0
-        iv = 0
+    rows = length(e)  # how many lines
+    for j in eachindex(e[1])   # across columns
+        ic = 0  # current index
+        iv = 0  # index of best value
         v = typemin(T)
         for row in 1:rows
             ic += 1
-            if e[row][j].y > v
+            if (e[row][j].y > v) && ( !(j ∈ e[row].iextrap) )   # if best value and not extrapolated
                 v = e[row][j].y
                 iv = ic
             end
@@ -337,11 +346,25 @@ end
 Splits a `MLine` object after given index and returns 2 new `MLine`s as a tuple. If `repeat_boundary` is true, then the separating index is the first point of the second new `MLine`.
 """
 function splitat(m::MLine,j::Int,repeat_boundary::Bool=true)
-    m1 = MLine(m.v[1:j],extrap = m.extrap)
-    if repeat_boundary
-        m2 = MLine(m.v[j:end],extrap = m.extrap)
+    iex = getex(m)
+    if length(iex) > 0
+        # m had any extrapolated points
+        # keep track of those in the new object
+        m1 = MLine(m.v[1:j],extrapolated = any(iex .< j+1) ? iex[iex .< j+1] : nothing)
+
+        if repeat_boundary
+            m2 = MLine(m.v[j:end],extrapolated = any(iex .>= j) ? iex[iex .>= j] .- (j-1) : nothing)
+
+        else
+            m2 = MLine(m.v[j+1:end],extrapolated = any(iex .> j) ? iex[iex .> j] .- j : nothing)
+        end
     else
-        m2 = MLine(m.v[j+1:end],extrap = m.extrap)
+        m1 = MLine(m.v[1:j])
+        if repeat_boundary
+            m2 = MLine(m.v[j:end])
+        else
+            m2 = MLine(m.v[j+1:end])
+        end
     end
     return (m1,m2)
 end
@@ -363,47 +386,79 @@ Both L1 and L2 are lines with identical support.
 return (Point,true) where true indicates that this point should be added to the envelope
 """
 function intersect(L1::MLine,L2::MLine,s::Int)
-    xlo,vlo = (L1[s].x,L1[s].y)
-    xhi,vhi = (L2[s+1].x,L2[s+1].y)
+    x1,v1 = (L1[s].x,L1[s].y)
+    x2,v2 = (L2[s+1].x,L2[s+1].y)
 
-    # println("xlo,vlo = $xlo,$vlo")
-    # println("xhi,vhi = $xhi,$vhi")
+    # println("x1,v1 = $x1,$v1")
+    # println("x2,v2 = $x2,$v2")
+    # x_x = 0.0
+    # v_x = 0.0
 
-    tf = false
+    # check if both lines are interpolable in both points
+    f1 = interp(L1,[x1,x2])
+    f2 = interp(L2,[x1,x2])
 
-    # check simple cases: boundaries?
-    if L1[s] == L2[s]
-        return (L1[s],false)
-    elseif L1[s+1] == L2[s+1]
-        return (L1[s+1],false)
-    else
-        t1 = interp(L1,[xhi])[1].y
-        t2 = interp(L2,[xlo])[1].y
-        if !isfinite(t1)
-            # println("t1 = $t1")
-            x_x = xlo
-            v_x = vlo
-        elseif !isfinite(t2)
-            # println("t2 = $t2")
-            x_x = xhi
-            v_x = vhi
-        else
-            f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
-            if f_closure(xlo) * f_closure(xhi) > 0
-                # not opposite signs, no zero to be found
-                x_x = xlo
-                v_x = vhi
-            else
-                x_x = fzero(f_closure,xlo,xhi)
-                v_x = interp(L1,[x_x])[1].y
-                if v_x == typemin(eltype(L2.v[1])) || v_x == NaN
-                    x_x = xlo
-                    v_x = vhi
-                else
-                    tf = true
-                end
-            end
+    # check that not extrapolated in both x1 and x2
+    if ( (f1.iextrap != [1,2]) && (f2.iextrap != [1,2]) )
+        # check that predicted values are different, so we can find a zero
+        f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
+        if f_closure(x1) * f_closure(x2) < 0
+            # find intersection point
+            x_0 = fzero(f_closure,x1,x2)
+            v_x = interp(L1,[x_0])[1]  # get function value
+            return (v_x,true)
         end
-        return (Point(x_x,v_x),tf)
+    else
+        return nothing
     end
+
+    # tf = false
+    #
+    # # check simple cases: boundaries?
+    # if L1[s] == L2[s]
+    #     return (L1[s],false)
+    # elseif L1[s+1] == L2[s+1]
+    #     return (L1[s+1],false)
+    # else
+        # t1 = interp(L1,[x2])[1].y
+        # t2 = interp(L2,[ + 3.0*eps()v_x1])[1].y
+        # if !isfinite(t1)
+        #     # println("t1 = $t1")
+        #     x_x = x1
+        #     v_x = v1
+        # elseif !isfinite(t2)
+        #     # println("t2 = $t2")
+        #     x_x = x2
+        #     v_x = v2
+        # else
+    #         f_closure(z) = interp(L1,[z],extrap=true)[1].y - interp(L2,[z],extrap=true)[1].y
+    #         if f_closure(x1) * f_closure(x2) > 0
+    #             # not opposite signs, no zero to be found
+    #             # connect with a straight line from high to low point
+    #             # println("adding a non-intersection point")
+    #             # xx = [x1,x2]
+    #             # yy = [v1,v2]
+    #             # vm,im = findmax(yy)
+    #             # if im == 1
+    #             #     x_x = xx[im] + 3.0*eps()    # shift slightly right to preserve increasing ordering
+    #             #     v_x = interp(L2,[x_x],extrap=true)[1]
+    #             #     tf = true
+    #             # else
+    #             #     x_x = xx[im] - 3.0*eps()
+    #             #     v_x = interp(L1,[x_x],extrap=true)[1]
+    #             #     tf = true
+    #             # end
+    #         else
+    #             x_x = fzero(f_closure,x1,x2)
+    #             v_x = interp(L1,[x_x])[1]
+    #             if v_x.y == typemin(eltype(L2.v[1])) || v_x == NaN
+    #                 x_x = x1
+    #                 v_x = Point(x1,v2)
+    #             else
+    #                 tf = true
+    #             end
+    #         end
+    #     # end
+    #     return (v_x,tf)
+    # end
 end

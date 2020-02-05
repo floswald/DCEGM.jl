@@ -173,7 +173,7 @@ function splitLine(o::MLine{T}) where T<:Number
 
         # all the ones with 2 un-sorted x corrdinates are illegal lines from connection of two proper ones
         # discard those
-        # l2 = [length(s.x)==2 for s in sections]
+        # l2 = [length(s.v)==2 for s in sections]
         # ns = [!issorted(s.v) && length(s.v)==2 for s in sections]
 
         # 4) get rid of illegal sections on x
@@ -187,13 +187,15 @@ function splitLine(o::MLine{T}) where T<:Number
         #     end
         # end
 
-        for s in eachindex(sections)
-            # if !ns[s]
-                if !issorted(sections[s])
-                    sortx!(sections[s])
+        for s in sections
+            if (!issorted(s.v)) && (length(s.v)==2)
+                # disregard those
+            else
+                if !issorted(s)
+                    sortx!(s)
                 end
-                push!(new_sections,sections[s])
-            # end
+                push!(new_sections,s)
+            end
         end
         if length(new_sections) == 1
             println("gotcha")
@@ -251,8 +253,7 @@ function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
 
     # - interpolate(extrapolate) all Ls on xx
     # this returns an array (length(L)) of interpolated MLines
-    # index i is the interpolation of the i-th line in e.L over xx
-    yy = interp(e.L,xx)
+    yy = interp(e.L,xx)  # by default no extrapolation here: if out of domain, MLine is -Inf
     # println("yy[1] = $(yy[1].v)")
     # println("yy[2] = $(yy[2].v)")
     # println("yy[3] = $(yy[3].v)")
@@ -277,17 +278,19 @@ function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
             # println("s = $s")
             # add intersection points between lines
             # an intersection occurs after index s
-            ioff = 1    # offsetting add indices
+            ioff = 0    # offsetting add indices
             joff = 1    # isec indices
             for i in s
                 tmp = intersect(yy[r_idx[i]],yy[r_idx[i+1]], i )
-                push!(isec_s, i) # record index position
-                push!(isec,tmp[1])
-                if tmp[2]
-                    insert!(env,isec[joff],isec_s[joff] + ioff)
-                    ioff += 1  # added additional index: need to shift right now!
+                if !isnothing(tmp)
+                    push!(isec_s, i) # record index position
+                    push!(isec,tmp[1])
+                    if tmp[2]
+                        insert!(env,isec[joff],isec_s[joff] + ioff)
+                        ioff += 1  # added additional index: need to shift right now!
+                    end
+                    joff += 1
                 end
-                joff += 1
             end
         end
 
