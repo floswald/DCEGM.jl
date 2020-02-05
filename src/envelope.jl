@@ -171,31 +171,16 @@ function splitLine(o::MLine{T}) where T<:Number
             i += 1
         end
 
-        # all the ones with 2 un-sorted x corrdinates are illegal lines from connection of two proper ones
-        # discard those
-        # l2 = [length(s.v)==2 for s in sections]
-        # ns = [!issorted(s.v) && length(s.v)==2 for s in sections]
-
-        # 4) get rid of illegal sections on x
-        # e = Envelope(0.0)
-        # for s in eachindex(sections)
-        #     if issorted(sections[s])
-        #         push!(e.L,sections[s])
-        #     else
-        #         push!(e.removed,[Point(l.x[jx],l.y[jx],i=jx) for jx in ix_nenv])
-        #         push!(blacklist,sections[s].x)
-        #     end
-        # end
-
         for s in sections
-            if (!issorted(s.v)) && (length(s.v)==2)
+            # fedor keeps those
+            # if (!issorted(s.v)) && (length(s.v)==2)
                 # disregard those
-            else
+            # else
                 if !issorted(s)
                     sortx!(s)
                 end
                 push!(new_sections,s)
-            end
+            # end
         end
         if length(new_sections) == 1
             println("gotcha")
@@ -226,77 +211,158 @@ In particular:
 
 1. generates a common support `xx` by concatenating the `x` coords of each `MLine` in `e.L`
 2. interpolates all `MLine` in `e.L` on that support `xx`
-3. finds the index of the `MLine` with maximal `y`-value for each `xx`
-4. assembles the *upper envelope* by just combining all values from 3. into a new `MLine`.
-
-### Optional: `do_intersect`
-
-By setting keyword arg `do_intersect = true`, the function will identify the indices in `xx` after which a change of optimal line occurs. Then it will proceed to find the precise *intersection* between the two constituting `MLine`s involved in this change.
-
+3. Remembers which indices of each line have been extrapolated, so they cannot be the optimum
+4. finds the index of the `MLine` with maximal `y`-value for each `xx` (among non extrapolated ones)
+5. assembles the *upper envelope* by just combining all values from 3. into a new `MLine`. This means to collect intersections between lines (i.e. new points) along the way as well.
 """
-function upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
-    # 5) compute upper envelope of all lines
+function upper_env!(e::Envelope{T}) where T<:Number
+    # compute upper envelope of all lines
         # - get all x's from all s and sort into a vector xx
         # - interpolate(extrapolate) all s on xx
         # - how to deal with points at which some MLine is infeasible? => set to -Inf
 
     if length(e.L)<2
-        println(e.env.v)
-        println(e.L[1].v)
-        println(e.removed)
         error("an upper envelope requires by definition at least 2 lines.")
     end
 
     # - get all x's from all Lines and sort into a vector xx
     xx = sort(unique(reduce(vcat,[getx(l) for l in e.L])))
-    n = length(xx)
 
     # - interpolate(extrapolate) all Ls on xx
     # this returns an array (length(L)) of interpolated MLines
-    yy = interp(e.L,xx)  # by default no extrapolation here: if out of domain, MLine is -Inf
-    # println("yy[1] = $(yy[1].v)")
-    # println("yy[2] = $(yy[2].v)")
-    # println("yy[3] = $(yy[3].v)")
-    # find the top line at each point in xx
+    yy = interp(e.L,xx,extrap=false)  # set a line to -Inf if xx not in its domain
+
+    n = length(xx)   # consider all points
+
     r_idx = linemax(yy)  # get row indices only: the row index tells us which MLine was optimal at that point.
-
     # envelope over all lines: just pick max points for each xx
-    env = MLine([yy[r_idx[i]][i] for i in 1:length(r_idx)])
+    top = [yy[r_idx[i]][i] for i in 1:length(r_idx)]
 
+    # build up upper envelope one by one point in xx
+    # ==============================================
 
-    if do_intersect
-        # Identify changes in optimal MLine
-        # switch in top line after index s (indexing global support xx)
-        # s tells us after which position in xx we have a change in optimal line
-        s = findall(r_idx[2:end].!=r_idx[1:end-1])
+    env = Point{T}[]
+    push!(env,top[1])  # first point in envelope point vector
+    isec = Point[]     # empty vector of point to collect intersections
 
-        isec = Point[]
-        isec_s = Int[]
+    k0 = r_idx[1]  # start index
+    for j in 2:n
+        k1 = r_idx[j]
+        if k0 != k1
+            # @debug "switching from $k0 to $k1 at index $j"
+            # is there an intersection between both lines?
+            ln1 = k0; ln2 = k1  # candidate line indices
+            L1 = e.L[ln1]; L2 = e.L[ln2]  # candidate lines
+            pt1 = xx[j-1]; pt2 = xx[j]  # intersection ∈ [pt1,pt2]
 
-        if length(s) > 0
-            # println("r_idx = $r_idx")
-            # println("s = $s")
-            # add intersection points between lines
-            # an intersection occurs after index s
-            ioff = 0    # offsetting add indices
-            joff = 1    # isec indices
-            for i in s
-                tmp = intersect(yy[r_idx[i]],yy[r_idx[i+1]], i )
-                if !isnothing(tmp)
-                    push!(isec_s, i) # record index position
-                    push!(isec,tmp[1])
-                    if tmp[2]
-                        insert!(env,isec[joff],isec_s[joff] + ioff)
-                        ioff += 1  # added additional index: need to shift right now!
+            y1 = interp(e.L[ln1],[pt1,pt2],extrap=true)
+            y2 = interp(e.L[ln2],[pt1,pt2],extrap=true)
+
+            # if intersection is *on* either pt1 or pt2, those are intersections
+            onboth = y2.v .== y1.v
+            # debug> y2.v .== y1.v
+            # 2-element BitArray{1}:
+            #  1
+            #  0
+            if any(onboth)
+                @assert sum(onboth) == 1
+                push!(env,y2.v[onboth][1])
+                push!(isec,y2.v[onboth][1])
+            else
+                # check neither y1 nor y2 are extrapolated in both points
+                notboth = (y1.iextrap != [1,2]) && (y2.iextrap != [1,2])
+                # and that we have different signs on both ends of search interval
+                f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
+                diffsign = f_closure(pt1) * f_closure(pt2) < 0
+
+                if notboth && diffsign
+
+                    # find intersection point
+                    while true
+                        # @debug "checking lines ln1=$ln1 ln2=$ln2 in [$(round(pt1,digits=3)),$(round(pt1,digits=3))]"
+                        pt3 = fzero(x -> interp(e.L[ln1],[x])[1].y - interp(e.L[ln2],[x])[1].y,pt1,pt2)
+                        y3  = interp(e.L[ln1],[pt3])[1].y  # get function value of ln1 at intersection
+                        # @debug "found intersection" pt3=pt3 y3=y3
+
+                        # are there other lines above this intersection point?
+                        # interpolate *all* lines in new point pt3
+                        yy2 = interp(e.L,[pt3],extrap=false)
+                        y3, ln3 = findmax([yy2[i].v[1].y for i in 1:length(e.L)])
+
+                        if ln3 == ln2 || ln3 == ln1
+                            # @debug "no higher line at" pt3=pt3
+                            # no new lines above at pt3!
+                            # add intersection point to the end of the env points
+                            push!(env, Point(pt3,y3))
+                            # add intersection to intersections container
+                            push!(isec, Point(pt3,y3))
+                            # additional intersections before next point?
+                            if ln2 == k1
+                                # no other intersection.
+                                # if ln2 is new optimal line and there is no ln3 above,
+                                # there cannot be an additional intersection to the right of pt3.
+                                break
+
+                            else
+                                #
+                                # @debug "additional iscecs. updating" ln1=ln2 pt1=pt3 ln2=k1 pt2=xx[j]
+                                ln1=ln2
+                                pt1=pt3
+                                ln2=k1
+                                pt2=xx[j]
+
+                            end
+
+                        else
+                            # there is indeed a third line over point pt3
+                            # what we have is not the upper envelope yet.
+                            # redo search.
+                            # there must be an intersection to the left of pt3
+                            # @debug "additional isec to left. updating" ln2=ln3 pt2=pt3
+                            ln2 = ln3 # new candidate line's index
+                            pt2 = pt3 # new right boundary of search interval
+
+                        end
                     end
-                    joff += 1
+                else
+                    # @debug "no valid intersection" notboth=notboth diffsign=diffsign
                 end
-            end
+            end  # if candidate intersection on both lines
+        end # if k0 != k1
+        # regular addition of points
+        # if current xx[j] is a member of line k1, add the point
+        # if j is the last index, add the point (no intersections to the right)
+        if (xx[j] ∈ e.L[k1].v) || j==n
+            # @debug "adding regular point" x=xx[j] Lx=getx(e.L[k1].v)
+            # look how beautiful that is: x ∈ v where v is an array of x-y points
+            push!(env, top[j])  # push that point onto the envelope
         end
-
-        e.isects = isec
-    end
-    e.env = env
+        k0 = k1 # update current index
+    end # end j in 2:n
+    e.env = MLine(env)
     e.env_set = true
+    e.isects = isec
     return nothing
+end
+
+
+"""
+    secondary_envelope(L::MLine)
+
+* computes secondary envelope of a `MLine`
+* splits line at backward bends and computes upper envelope over those
+* returns an `Envelope` object with fields `removed` giving the indices of removed points for each constituting line.
+"""
+function secondary_envelope(L::MLine)
+
+    # identify loop-backs and split line
+    e = splitLine(L)
+
+    if !e.env_set
+        # set upper envelope
+        upper_env!(e)
+    end
+
+    return e
+
 end

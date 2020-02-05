@@ -143,6 +143,7 @@ end
     else
         legend --> false
     end
+    any_isec = length(x.isects) > 0
 
     # println("marker = $mrk, title = $(get!(plotattributes,:title,""))")
     # println("marker = $mrk, numerate = $numerate, title = $(get!(plotattributes,:title,""))")
@@ -203,6 +204,16 @@ end
             end
             (getx(x.env),gety(x.env))
         end
+        if any_isec && mrk
+            @series begin
+                seriestype := :scatter
+                markershape := :star6
+                markerstrokecolor := :black
+                markercolor := :yellow
+                markersize := 5
+                (getx(x.isects),gety(x.isects))
+            end
+        end
     end
 end
 
@@ -238,7 +249,7 @@ function f3c()
     fs = Function[x->ones(length(x));x -> 0.5x;x->x .- 2;x -> 2x .- 8.5]
     xs = [
          collect(range(-1 , stop = 3.1 , length= 6))   ,
-         collect(range(1  , stop = 7   , length= 19))  ,
+         collect(range(1  , stop = 7   , length= 4))  ,
          collect(range(2  , stop = 7   , length= 15))  ,
          collect(range(4  , stop = 8   , length= 25))]
     ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
@@ -443,7 +454,7 @@ function test_upper_env_dec()
     e = splitLine(L)
     p1 = plot(L,marker=true)
     p2 = plot(e,marker=true)
-    upper_env!(e,do_intersect = true)
+    upper_env!(e)
     p3 = plot(e,marker=true)
     L,e,x1,x2,plot(p1,p2,p3,layout = (1,3))
 end
@@ -466,16 +477,41 @@ end
 function demo(;n = 10,k = 10)
     a = Array{MLine{Float64}}(undef,10)
     for i in 1:2:n
-        a[i] = MLine(sort([0.0; 5 .+ 5*rand(k); 10]), [0.0; rand(k+1).*collect(range(0.5,stop=10,length=k+1))])
-        a[i+1] = MLine([0.0; 10],[10.0-i ; -(10-i)*10/i+10-i] )
+        a[i] = MLine(sort([0.0; 10*rand(k); 10]), [0.0; rand(k+1).*collect(range(0.5,stop=10,length=k+1))])
+        a[i+1] = MLine([0.0; 10],[10.0-i ; -(10-i)*1.5/i+10-i] )
     end
     e = Envelope(a)
-    p1 = plot(e)
+    p1 = plot(e,legend=false,title = "$n lines")
     upper_env!(e)
     removed!(e)
     p2 = plot(e,removed=true, title = "correct envelope")
-    plot(p1,p2)
+    p =plot(p1,p2)
+    savefig(p,joinpath(@__DIR__,"..","images","demo.png"))
+    p
 end
+
+function demo2(;n = 10,k = 10)
+    a = Array{MLine{Float64}}(undef,10)
+    slope = 1.5
+    for i in 1:2:n
+        a[i] = MLine(sort([0.0; 10*rand(k); 10]), [0.0; rand(k+1).*collect(range(0.5,stop=10,length=k+1))])
+        a[i+1] = MLine([0.0; 10],[10.0-i ; -(10-i)*slope/i+10-i] )
+    end
+    # add a particularly tricky line
+    tricky = [a[2].v[1]]
+    push!(tricky,DCEGM.Point(a[2].v[2].x,a[2].v[2].y + slope))
+    push!(a, MLine(tricky))
+
+    e = Envelope(a)
+    p1 = plot(e,legend=false,title = "$n lines")
+    upper_env!(e)
+    removed!(e)
+    p2 = plot(e,removed=true, title = "first intersection on grid")
+    p = plot(p1,p2)
+    savefig(p,joinpath(@__DIR__,"..","images","demo2.png"))
+    p
+end
+
 
 
 function allplots()

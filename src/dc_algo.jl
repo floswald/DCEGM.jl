@@ -167,7 +167,13 @@ function dc_EGM!(m::FModel,p::Param)
 
                 if id==1   # only for workers
                     minx = min_x(vline)
-                    if minx < vline.v[1].x
+                    if vline.v[1].x <= minx 
+                        # normal case - no bending back behind first point
+                        # call secondary_envelope on vline
+                        m.v[id,it] = secondary_envelope(vline)
+
+                    else
+
                         # non-convex region lies inside credit constraint.
                         # endogenous x grid bends back before the first x grid point.
                         x0 = collect(range(minx,stop = vline.v[1].x,length = max(10,floor(Integer,p.na/10)))) # some points to the left of first x point
@@ -175,6 +181,16 @@ function dc_EGM!(m::FModel,p::Param)
                         y0 = u(x0,working,p) .+ p.beta .* ev[1]
                         prepend!(vline,convert(Point,x0,y0))
                         prepend!(cline,convert(Point,x0,y0))  # cons policy in credit constrained is 45 degree line
+                        m.v[id,it] = Envelope(vline)
+                        m.c[id,it] = Envelope(cline)
+                    end
+
+                    # cleaned value function
+
+                    if length(getr(m.v[id,it])) > 0
+
+                    # analyse policy function
+
                     end
 
                     # split the vline at potential backward-bending points
@@ -268,53 +284,7 @@ function dc_EGM!(m::FModel,p::Param)
 
                             @assert(issorted(getx(m.c[id,it].env)))
 
-                            # now insert all. need second loop because
-                            # for isec in 1:length(isecs)
-                            #     I = isecs[isec]
-                            #     consx = getx(m.c[id,it].env)
 
-                            #     # interpolate from left
-                            #     jl = findlast(consx .< I.x)
-                            #     push!(insert_left, interp(m.c[id,it].env[jl:jl+1], [ I.x ] ) )
-
-                            #     # interpolate from right
-                            #     jr = findfirst(consx .> I.x)
-                            #     push!(insert_right, interp(m.c[id,it].env[jr-1:jr], [ I.x ] ) )
-                            # end
-
-
-
-                            # interpolate from right
-
-
-                            # add new points twice to accurately describe discontinuity
-
-
-
-                                # I = isecs[isec]
-
-                                # if that intersection is a new point
-                                # # i.e. intersection was not a member of any `MLine`
-                                # if I.new_point
-                                #     # insert intersection into env over cons function
-                                #     println("I.x = $(I.x)")
-                                #     println("I.i = $(I.i)")
-
-                                #     if !issorted(m.c[id,it].env.x)
-                                #         println("m.c[id,it].env.x = $(m.c[id,it].env.x)")
-                                #         println("m.c[id,it].env.y = $(m.c[id,it].env.y)")
-                                #     end
-
-                                #     insert!(m.c[id,it].env,I.x,interp(m.c[id,it].env,[I.x]),I.i)
-
-                                #     # add to both adjacent `MLine` segments:
-                                #     # 1) append to end of segment preceding intersection:
-                                #     newy = interp(m.c[id,it].L[I.i],[I.x])
-                                #     append!(m.c[id,it].L[I.i],I.x,newy)
-                                #     # 1) prepend to beginning of segment following intersection:
-                                #     prepend!(m.c[id,it].L[I.i+1],I.x,newy)
-                                # end
-                            # end
                         end
                     end
                 else   # if id==1

@@ -12,7 +12,7 @@ using Statistics
 gr()
 
 
-import Base: +, -, *, /, ==, isless
+import Base: +, -, *, /, ==, isless, in
 import Base: iterate, typemin, isapprox, convert
 import Base.size, Base.getindex, Base.setindex!, Base.eltype
 import Base.prepend!,

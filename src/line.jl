@@ -35,8 +35,11 @@ show(io::IO,p::Point{T}) where T = print(io,"($(p.x),$(p.y))")
 
 # comparison
 (==)(p1::Point, p2::Point) = (p1.x == p2.x) && (p1.y == p2.y)
+(==)(x::T, p2::Point{T}) where T = (x == p2.x)  # is x-coord part of this point?
 isapprox(p1::Point, p2::Point) = isapprox(p1.x, p2.x) && isapprox(p1.y, p2.y)
 isless(p1::Point,p2::Point) = p1.x < p2.x   # caution we sort on x only here!
+in(x::T, p2::Vector{Point{T}}) where T = any(x .== p2)
+
 
 # Promotion
 Base.zero(::Type{Point{T}}) where {T} = Point(zero(T),zero(T))
@@ -233,12 +236,12 @@ end
 # interpolating a MLine
 
 """
-   interp(l::MLine{T},ix::Vector{T};Bool::extrapolate = false) where {T<:Number}
+   interp(l::MLine{T},ix::Vector{T};Bool::extrap = false) where {T<:Number}
 
 Interpolate a `MLine` on a vector of values `x`.
 Importantly, this returns a new vector of `Point` (i.e. tuples of (x,y)).
 """
-function interp(l::MLine{T},ix::Vector{T}) where {T<:Number}
+function interp(l::MLine{T},ix::Vector{T};extrap::Bool = true) where {T<:Number}
     # # whenever
     # xex = extrema(ix)
     # @debug(logger,"interpolating $ix ")
@@ -247,28 +250,34 @@ function interp(l::MLine{T},ix::Vector{T}) where {T<:Number}
         println(xvec)
     end
     xrange = extrema(xvec)
-    # if extrap
-    #     itp = extrapolate(interpolate((xvec,),l.v,Gridded(Linear())),Line())
-    #     out = MLine(itp(ix))
-    # else
-        fi = findall((ix .< xrange[1]) .| (ix .> xrange[2]))
 
-        # by default extrapolate all lines
-        # but record which points have been extrapolated
-        if length(fi) > 0
+    fi = findall((ix .< xrange[1]) .| (ix .> xrange[2]))
+
+    # by default extrapolate all lines
+    # but record which points have been extrapolated
+    if length(fi) > 0
+        if extrap
             itp = extrapolate(interpolate((xvec,),l.v,Gridded(Linear())),Line())
             out = MLine(itp(ix),extrapolated = fi)
         else
-            itp = interpolate((xvec,),l.v,Gridded(Linear()))
-            out = MLine(itp(ix))
+            out = MLine(zeros(T,length(ix)),zeros(T,length(ix)))
+            for xi in fi
+                out.v[xi] = Point(ix[xi],typemin(T))
+            end
+            for xi in setdiff(1:length(ix),fi)
+                out.v[xi] = interpolate((xvec,),l.v,Gridded(Linear()))(ix[xi])
+            end
         end
-    # end
+    else
+        itp = interpolate((xvec,),l.v,Gridded(Linear()))
+        out = MLine(itp(ix))
+    end
 
     return out
 end
 
-function interp(e::Array{MLine{T}},ix::Vector{T}) where {T<:Number}
-    [interp(e[i],ix) for i in eachindex(e)]
+function interp(e::Array{MLine{T}},ix::Vector{T};extrap::Bool = true) where {T<:Number}
+    [interp(e[i],ix,extrap=extrap) for i in eachindex(e)]
 end
 # function interp!(o::Matrix{Point{T}},e::Array{MLine{T}},ix::Vector{T};extrap::Bool=false) where {T<:Number}
 #     for i in eachindex(e)
@@ -286,7 +295,6 @@ computes the index in `e` of the `MLine` where the `y`-value is highest for each
 One can imagine `e` as a matrix where each row represents the `y`-values from a
 different `MLine`; this function returns the index of the column-wise maximum.
 
-*Important*: function disregards values that have been extrapolated by default
 """
 function linemax(e::Array{MLine{T}}) where {T<:Number}
     out = zeros(Int,length(e[1]))
@@ -297,7 +305,8 @@ function linemax(e::Array{MLine{T}}) where {T<:Number}
         v = typemin(T)
         for row in 1:rows
             ic += 1
-            if (e[row][j].y > v) && ( !(j ∈ e[row].iextrap) )   # if best value and not extrapolated
+            # if (e[row][j].y > v) && ( !(j ∈ e[row].iextrap) )   # if best value and not extrapolated
+            if (e[row][j].y > v)    # if best value 
                 v = e[row][j].y
                 iv = ic
             end
