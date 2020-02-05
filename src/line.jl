@@ -385,89 +385,39 @@ function sortx!(m::MLine)
 end
 
 
-"""
-    intersect(L1::MLine,L2::MLine,s::Int)
+# """
+#     intersect(L1::MLine,L2::MLine,s::Int)
 
-Intersecting two lines returns a [`Point`](@ref)
+# Intersecting two lines returns a [`Point`](@ref)
 
-Both L1 and L2 are lines with identical support.
+# Both L1 and L2 are lines with identical support.
 
-return (Point,true) where true indicates that this point should be added to the envelope
-"""
-function intersect(L1::MLine,L2::MLine,s::Int)
-    x1,v1 = (L1[s].x,L1[s].y)
-    x2,v2 = (L2[s+1].x,L2[s+1].y)
+# return (Point,true) where true indicates that this point should be added to the envelope
+# """
+# function intersect(L1::MLine,L2::MLine,s::Int)
+#     x1,v1 = (L1[s].x,L1[s].y)
+#     x2,v2 = (L2[s+1].x,L2[s+1].y)
 
-    # println("x1,v1 = $x1,$v1")
-    # println("x2,v2 = $x2,$v2")
-    # x_x = 0.0
-    # v_x = 0.0
+#     # println("x1,v1 = $x1,$v1")
+#     # println("x2,v2 = $x2,$v2")
+#     # x_x = 0.0
+#     # v_x = 0.0
 
-    # check if both lines are interpolable in both points
-    f1 = interp(L1,[x1,x2])
-    f2 = interp(L2,[x1,x2])
+#     # check if both lines are interpolable in both points
+#     f1 = interp(L1,[x1,x2])
+#     f2 = interp(L2,[x1,x2])
 
-    # check that not extrapolated in both x1 and x2
-    if ( (f1.iextrap != [1,2]) && (f2.iextrap != [1,2]) )
-        # check that predicted values are different, so we can find a zero
-        f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
-        if f_closure(x1) * f_closure(x2) < 0
-            # find intersection point
-            x_0 = fzero(f_closure,x1,x2)
-            v_x = interp(L1,[x_0])[1]  # get function value
-            return (v_x,true)
-        end
-    else
-        return nothing
-    end
-
-    # tf = false
-    #
-    # # check simple cases: boundaries?
-    # if L1[s] == L2[s]
-    #     return (L1[s],false)
-    # elseif L1[s+1] == L2[s+1]
-    #     return (L1[s+1],false)
-    # else
-        # t1 = interp(L1,[x2])[1].y
-        # t2 = interp(L2,[ + 3.0*eps()v_x1])[1].y
-        # if !isfinite(t1)
-        #     # println("t1 = $t1")
-        #     x_x = x1
-        #     v_x = v1
-        # elseif !isfinite(t2)
-        #     # println("t2 = $t2")
-        #     x_x = x2
-        #     v_x = v2
-        # else
-    #         f_closure(z) = interp(L1,[z],extrap=true)[1].y - interp(L2,[z],extrap=true)[1].y
-    #         if f_closure(x1) * f_closure(x2) > 0
-    #             # not opposite signs, no zero to be found
-    #             # connect with a straight line from high to low point
-    #             # println("adding a non-intersection point")
-    #             # xx = [x1,x2]
-    #             # yy = [v1,v2]
-    #             # vm,im = findmax(yy)
-    #             # if im == 1
-    #             #     x_x = xx[im] + 3.0*eps()    # shift slightly right to preserve increasing ordering
-    #             #     v_x = interp(L2,[x_x],extrap=true)[1]
-    #             #     tf = true
-    #             # else
-    #             #     x_x = xx[im] - 3.0*eps()
-    #             #     v_x = interp(L1,[x_x],extrap=true)[1]
-    #             #     tf = true
-    #             # end
-    #         else
-    #             x_x = fzero(f_closure,x1,x2)
-    #             v_x = interp(L1,[x_x])[1]
-    #             if v_x.y == typemin(eltype(L2.v[1])) || v_x == NaN
-    #                 x_x = x1
-    #                 v_x = Point(x1,v2)
-    #             else
-    #                 tf = true
-    #             end
-    #         end
-    #     # end
-    #     return (v_x,tf)
-    # end
-end
+#     # check that not extrapolated in both x1 and x2
+#     if ( (f1.iextrap != [1,2]) && (f2.iextrap != [1,2]) )
+#         # check that predicted values are different, so we can find a zero
+#         f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
+#         if f_closure(x1) * f_closure(x2) < 0
+#             # find intersection point
+#             x_0 = fzero(f_closure,x1,x2)
+#             v_x = interp(L1,[x_0])[1]  # get function value
+#             return (v_x,true)
+#         end
+#     else
+#         return nothing
+#     end
+# end

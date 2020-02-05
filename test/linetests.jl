@@ -134,13 +134,6 @@ end
         @test issorted(L)
         @test issorted(getx(L))
     end
-    @testset "intersect" begin
-        x = collect(0.0:0.1:1.5)
-        L1 = MLine(x,log.(x))
-        L2 = MLine(x, 2 .* (x .- 1.0) )
-        y = DCEGM.intersect(L1,L2,findfirst(x .== 1.0))
-        @test y == (Point(1.0,0.0),false)
-    end
     @testset "floor a line's y values" begin
         x = collect(0.0:0.1:1.5)
         L1 = MLine(x,log.(x))

@@ -37,28 +37,34 @@ mutable struct Envelope{T<:Number}
         return this
     end
     # Envelope(MLine) builds an object with the MLine as dirty envelope
-    function Envelope(d::MLine{T}) where {T<:Number}
+    function Envelope(d::MLine{T};clean::Bool=false) where {T<:Number}
         this = new{T}()
         this.L = MLine{T}[]
-        this.dirty = deepcopy(d)
-        this.env = MLine([typemin(T)],[typemin(T)])
-        this.env_clean = false
+        if clean
+            this.env = deepcopy(d)
+            this.env_clean = true
+            this.dirty = MLine([typemin(T)],[typemin(T)])
+        else
+            this.dirty = deepcopy(d)
+            this.env_clean = false
+            this.env = MLine([typemin(T)],[typemin(T)])
+        end
         this.isects = Point{T}[]
         this.removed = Int[ ]
         this.vbound = zero(T)
         return this
     end
-    function Envelope(d::MLine{T},c::MLine{T}) where {T<:Number}
-        this = new{T}()
-        this.L = MLine{T}[]
-        this.dirty = deepcopy(d)
-        this.env = deepcopy(c)
-        this.env_clean = true
-        this.isects = Point{T}[]
-        this.removed = Int[ ]
-        this.vbound = zero(T)
-        return this
-    end
+    # function Envelope(d::MLine{T},clean=clean::MLine{T}) where {T<:Number}
+    #     this = new{T}()
+    #     this.L = deepcopy(l)
+    #     this.dirty = d
+    #     this.env = clean
+    #     this.env_clean = false
+    #     this.isects = Point{T}[]
+    #     this.removed = Int[ ]
+    #     this.vbound = zero(T)
+    #     return this
+    # end
     # Envelope(Vector{MLine{T}}) are constituting lines, but no env_set yet
     function Envelope(l::Vector{MLine{T}}) where {T<:Number}
         # println("calling Vector{MLine{T}} constr now")
@@ -67,6 +73,17 @@ mutable struct Envelope{T<:Number}
         this = new{T}()
         this.L = deepcopy(l)
         this.dirty = MLine([typemin(T)],[typemin(T)])
+        this.env = MLine([typemin(T)],[typemin(T)])
+        this.env_clean = false
+        this.isects = Point{T}[]
+        this.removed = Int[ ]
+        this.vbound = zero(T)
+        return this
+    end
+    function Envelope(d::MLine{T},l::Vector{MLine{T}}) where {T<:Number}
+        this = new{T}()
+        this.L = deepcopy(l)
+        this.dirty = d
         this.env = MLine([typemin(T)],[typemin(T)])
         this.env_clean = false
         this.isects = Point{T}[]
@@ -126,35 +143,17 @@ Base.getindex(en::Envelope,id::Int) = en.L[id]
 Find which points from initial `MLine` did not end up in the
 `env` and write them to `removed`.
 """
-function removed!(e::Envelope,L::MLine)
-    if !e.env_set
-        error("you need to compute an `upper_env!` first.")
+function removed!(e::Envelope,d::MLine)
+    if !e.env_clean
+        throw(ArgumentError("you need to compute an `upper_env!` first."))
     end
-    push!(e.removed,findall(.!(L.v .∈ Ref(e.env.v))))   # find indices in L that are not in final envelope
+    # find all points in dirty that did not make it into clean
+    e.dirty = deepcopy(d)  # store on the object
+    rmvd = findall( d.v .∉ Ref(e.env.v))  
+    if length(rmvd) > 0
+        push!(e.removed,rmvd...)   # splice array into this call
+    end
     return nothing
-end
-
-
-"""
-    to_remove_c(ve::Envelope,ce::Envelope)
-
-Given a value function [`Envelope`](@ref) which has a list of indices of `removed` points,
-this function returns indices to remove from the policy function
-"""
-function to_remove_c(ve::Envelope,ce::Envelope)
-    cx = getx(ce.env.v)  # x values in consumption function
-    rmidx = Vector{Int}[]
-
-    for il in 1:length(ve.L)
-        if length(ve.removed[il]) > 0
-            rmv = ve.L[il].v[ve.removed[il]]  # (x,y) values removed from env
-            push!(rmidx, findall(cx .∈ Ref(getx(rmv))))  # consumption indices to remove
-        end
-    end
-    # if length(rmidx) > 0
-    #     deleteat!(ce.env.v, unique(sort(vcat(rmidx...))))
-    # end
-    unique(sort(vcat(rmidx...)))
 end
 
 
@@ -175,7 +174,7 @@ function splitLine(o::MLine{T}) where T<:Number
     # 2) if no backjumps at all, exit
     if all(ii)
         # return as an Envelope
-        return Envelope(o)
+        return Envelope(o,clean = true)
     else
     # 3) else, identify subsets
         i = 1
@@ -226,17 +225,17 @@ function splitLine(o::MLine{T}) where T<:Number
             gui()
             # error()
         end
-        return Envelope(new_sections)
+        return Envelope(o,new_sections)
     end
 end
 
 
 """
-    upper_env!(e::Envelope{T}; do_intersect::Bool=false) where T<:Number
+    upper_env!(e::Envelope{T}) where T<:Number
 
 ### Outline
 
-This function computes the *upper envelope* over it's constituting lines.
+This function computes the *upper envelope* over a set of split lines.
 In particular:
 
 1. generates a common support `xx` by concatenating the `x` coords of each `MLine` in `e.L`
@@ -370,7 +369,7 @@ function upper_env!(e::Envelope{T}) where T<:Number
         k0 = k1 # update current index
     end # end j in 2:n
     e.env = MLine(env)
-    e.env_set = true
+    e.env_clean = true
     e.isects = isec
     return nothing
 end
@@ -388,13 +387,13 @@ function secondary_envelope(L::MLine)
     # identify loop-backs and split line
     e = splitLine(L)   
 
-    if !e.env_set
+    if !e.env_clean
         # compute upper envelope
         upper_env!(e)
     end
 
     # record which points in original L did not make it into final e.env
-    removed!(L,e)
+    removed!(e,L)
 
     return e
 

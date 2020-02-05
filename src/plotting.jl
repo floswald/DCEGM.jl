@@ -138,7 +138,7 @@ end
     grid --> true
     xticks := true
 
-    if !x.env_set
+    if !x.env_clean
         legend --> :bottomright
     else
         legend --> false
@@ -170,7 +170,7 @@ end
         end
     end
     # plot envelope, if exists
-    if x.env_set
+    if x.env_clean
         if removed
             for l in 1:length(x.L)
                 ir = x.removed[l]
@@ -216,6 +216,8 @@ end
         end
     end
 end
+
+
 
 
 function f3a()
@@ -265,7 +267,7 @@ function tplot1()
     L1 = MLine(x1,x1)
     L2 = MLine(x2,ones(n)*5)
     e = Envelope([L1,L2])
-    plot(e)
+    x1,x2,e,plot(e)
 end
 
 function tplot_intersect(;n=15)
@@ -282,39 +284,6 @@ function tplot_intersect(;n=15)
     plot(p1,p2,p3,layout = (1,3))
 end
 
-function tplot_isect()
-
-    x1 = collect(-0.9:0.3:2.7)
-    L1 = MLine(x1, x1)
-    x2 = collect(0.0:0.1:1)
-    L2 = MLine(x2, 2 .* x2, extrap = false)
-    x3 = collect(1.0:0.45:2.9)
-    L3 = MLine(x3, (0.1 .* x3) .+ 1.9, extrap = false)
-    e = Envelope([L1,L2,L3])
-    p1 = plot(e)
-    upper_env!(e)
-    p2 = plot(e,title = "do_intersect = false",mrk = false)
-    upper_env!(e,do_intersect = true)
-    p3 = plot(e,title = "do_intersect = true",mrk=false)
-    plot(p1,p2,p3,layout = (1,3))
-
-end
-
-function tplot_isect2()
-    x = collect(range(0.09,stop=1.5,length = 6))
-    x2 = collect(range(0.0,stop=1.5,length = 9))
-    # x2 = collect(0.075:0.13:1.5)
-    L1 = MLine(x,log.(x))
-    L2 = MLine(x2, 2 .* (x2 .- 1.0) )
-    e = Envelope([L1,L2])
-    p1 = plot(e)
-    upper_env!(e)
-    p2 = plot(e,title = "do_intersect = false",mrk = true)
-    upper_env!(e,do_intersect = true)
-    p3 = plot(e,title = "do_intersect = true",mrk=true)
-    plot(p1,p2,p3,layout = (1,3))
-
-end
 
 function tplot2()
     n = 15
@@ -452,10 +421,10 @@ function test_upper_env_dec()
     y = vcat(x1[end:-1:1],ones(n)*5)
     L = MLine(x,y)
     e = splitLine(L)
-    p1 = plot(L,marker=true)
-    p2 = plot(e,marker=true)
+    p1 = plot(L,marker=true,title = "initial line")
+    p2 = plot(e,marker=true,title = "split line")
     upper_env!(e)
-    p3 = plot(e,marker=true)
+    p3 = plot(e,marker=true,title = "Envelope w new pts")
     L,e,x1,x2,plot(p1,p2,p3,layout = (1,3))
 end
 
@@ -528,8 +497,6 @@ function allplots()
     savefig(joinpath(p,"tplot3c.png"))
     tplot5()
     savefig(joinpath(p,"tplot5.png"))
-    tplot_intersect()
-    savefig(joinpath(p,"tplot_intersect.png"))
     splitf()
     savefig(joinpath(p,"split.png"))
     splitf2()

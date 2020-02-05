@@ -2,7 +2,7 @@
 
 
 
-@testset "components" begin
+@testset "basics" begin
 	p = DCEGM.Param()
 	@testset "run minimal egm" begin
 		m = DCEGM.minimal_EGM()
@@ -11,6 +11,13 @@
 		@test m[2][end][1] == 0.0
 		@test m[2][end][end] == p.a_high
 	end
+	# @testset "run minimal negative egm" begin
+	# 	m = DCEGM.minimal_EGM_neg()
+	# 	@test m[1][1][1] == m.avec[1][1]
+	# 	@test m[1][end][1] == 0.0
+	# 	@test m[2][1][1] == 0.0
+	# 	@test m[2][end][1] == 0.0
+	# end
 
 	@testset "ccp" begin
 		x = rand(5,10)

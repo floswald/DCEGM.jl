@@ -29,28 +29,28 @@ function minimal_EGM()
     return (m,c,pl)
 end
 
-function minimal_EGM_neg(;alow = -1.0,blim=true,brate = false)
+function minimal_EGM_neg(;alow = -1.0,brate = false)
     p             = Param()
     nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
     yvec          = sqrt(2.0) * p.sigma .* nodes
     ywgt          = weights .* pi^(-0.5)
     # avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
-    η = NBL(yvec[1],p)  # compute natural borrowing limit: maximal borrowing if c=0 in all future periods and worst income
-    if blim
-        avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
-        push!(avec, scaleGrid(0.0,p.a_high,p.na,logorder = 1))  # last period
-    else
+    # η = NBL(yvec[1],p)  # compute natural borrowing limit: maximal borrowing if c=0 in all future periods and worst income
+    # if blim
+    #     avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
+    #     push!(avec, scaleGrid(0.0,p.a_high,p.na,logorder = 1))  # last period
+    # else
         avec          = [scaleGrid(alow,p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
         push!(avec, scaleGrid(0.0,p.a_high,p.na,logorder = 1))  # last period
-    end
+    # end
     m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
     m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
     c[p.nT]       = [0.0,p.a_high]
     # m[p.nT]       = [p.a_low,0.0,p.a_high]    # no debt in last period possible
     # c[p.nT]       = [p.cfloor,p.cfloor,p.a_high]
-    ti = blim ? "Ntl. br:$brate" : "Fixed. br:$brate"
+    # ti = blim ? "Ntl. br:$brate" : "Fixed. br:$brate"
     pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false,title = ti)
     # cycle back in time
     for it in p.nT-1:-1:1
@@ -98,9 +98,9 @@ function dc_EGM!(m::FModel,p::Param)
         if it==p.nT
             for id in 1:p.nD   # work of dont work
                 # final period: consume everyting.
-                m.c[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
+                m.c[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)), clean = true )
                 # initialize value function with vf(1) = 0
-                m.v[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
+                m.v[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)), clean = true )
                 # note that 0.0 as first value of the vfun is not innocuous here!
             end
         else
@@ -139,7 +139,7 @@ function dc_EGM!(m::FModel,p::Param)
                 # set optimal consumption function today. endo grid m and cons c0
                 cline = MLine(m.avec .+ c0, c0)
                 # store
-                m.c[id,it] = Envelope(cline)
+                m.c[id,it] = Envelope(cline,clean = true)  # that's poor notation
 
                 # consumption function done.
 
@@ -147,7 +147,6 @@ function dc_EGM!(m::FModel,p::Param)
                 # compute value function
                 # ----------------------
                 if working
-                    # ev = reshape(logsum(vmat,p),p.na,p.ny) * m.ywgt[:,iy]
                     ev =  m.ywgt' * reshape(logsum(vmat,p),p.ny,p.na)
                 else
                     ev =  m.ywgt' * reshape(vmat[2,:],p.ny,p.na)
@@ -181,120 +180,87 @@ function dc_EGM!(m::FModel,p::Param)
                         y0 = u(x0,working,p) .+ p.beta .* ev[1]
                         prepend!(vline,convert(Point,x0,y0))
                         prepend!(cline,convert(Point,x0,y0))  # cons policy in credit constrained is 45 degree line
-                        m.c[id,it] = Envelope(cline)
+                        m.c[id,it] = Envelope(cline, clean = true)  # poor notation
                         m.v[id,it] = secondary_envelope(vline)
                     end
 
-                    # cleaned value function
+                    # now we have a cleaned value function
 
                     # if any points were removed from vline:
                     if length(getr(m.v[id,it])) > 0
 
                         # analyse policy function
+                        # =======================
 
-                    end
+                        rmidx = getr(m.v[id,it])  # indices removed from value function
+                        insert_left = Point[]
+                        insert_right = Point[]
 
-                    # split the vline at potential backward-bending points
-                    # and save as Envelope object
-                    m.v[id,it] = splitLine(vline)  # splits line at backward bends
+                        # remove illegal points from c
+                        # deleteat!(m.c[id,it].env.v, rmidx)
 
-                    # if there is just one line (i.e. nothing was split in preceding step)
-                    # then this IS a valid envelope
-                    # else, need to compute the upper envelope.
-                    if !m.v[id,it].env_set
-                        upper_env!(m.v[id,it],do_intersect = true)   # compute upper envelope of this
-                        # println(m.c[id,iy,it].env)
+                        # insert new intersections into consumption function
+                        isecs = gets(m.v[id,it])
+                        consx = getx(m.c[id,it].env)
 
-                        removed!(m.v[id,it])
-                        # sortx!(m.c[id,it].env)
+                        # compute any new cons-points (intersections in v)
+                        # ---------------------------------------
 
-                        @assert(issorted(getx(m.v[id,it].env)))
-                        # @assert(issorted(getx(m.c[id,it].env)))
+                        for isec in 1:length(isecs)
+                            I = isecs[isec]
 
+                            # interpolate from left
+                            jl = findall(consx .< I.x)
+                            jl = jl[ jl .∉ Ref(rmidx) ]  # keep those who are not to be deleted
+                            if length(jl) > 0
+                                jl = maximum(jl)  # biggest of those
+                                newleft = MLine(m.c[id,it].env.v[jl:jl+1])
+                                # @fediskhakov: who guarantees that jl+1 is not to be deleted?
+                                # more generally: why do we not delete points before we 
+                                # insert the new intersections?
 
-                        # if any points were removed from v, need to check c
-                        if length(length(getr(m.v[id,it]))) > 0
-
-                            rmidx = to_remove_c(m.v[id,it],m.c[id,it])  # indices to be removed from current c
-                        # if length(isecs) > 0
-                            insert_left = Point[]
-                            insert_right = Point[]
-
-                            # insert new intersections into consumption function
-                            isecs = gets(m.v[id,it])
-                            consx = getx(m.c[id,it].env)
-
-
-                            for isec in 1:length(isecs)
-                                I = isecs[isec]
-
-                                # interpolate from left
-                                jl = findall(consx .< I.x)
-                                jl = jl[.!(jl .∈ Ref(rmidx))]  # keep those who are not to be deleted
-                                if length(jl) > 0
-                                    jl = maximum(jl)  # biggest of those
-                                    newleft = MLine(m.c[id,it].env.v[jl:jl+1])
-                                    sortx!(newleft)
-                                    push!(insert_left, getv(interp(newleft, [ I.x ] ))[1] )
-                                else
-                                    push!(insert_left,I)
-                                end
-
-                                # interpolate from right
-                                jr = findall(consx .> I.x)
-                                jr = jr[.!(jr .∈ Ref(rmidx))]  # keep those who are not to be deleted
-                                if length(jr) > 0
-                                    jr = minimum(jr)   # smallest of those
-                                    # push!(insert_right, interp(m.c[id,it].env[jr-1:jr], [ I.x ] ) )
-                                    newright = MLine(m.c[id,it].env.v[jr-1:jr])
-                                    sortx!(newright)
-                                    push!(insert_right, getv(interp(newright, [ I.x ] ))[1] )
-                                else
-                                    push!(insert_right,I)
-                                end
-
-                                    # insert two points at I.x into consumption function
-                                    # from left, slightly offset by eps() to preserve ordering of x
-                                    # from right, exactly on I.x
-                                # end
+                                sortx!(newleft)
+                                tmp = getv(interp(newleft, [ I.x ] ))[1]
+                                # take this new point at a minimal left shift in x
+                                push!(insert_left, Point(tmp.x - 1e3 * eps(), tmp.y) )
+                            # else
+                            #     push!(insert_left,I)
                             end
 
-                            # remove illegal points from c
-                            rmidx = to_remove_c(m.v[id,it],m.c[id,it])  # indices to be removed from current c
-                            deleteat!(m.c[id,it].env.v, rmidx)
-                            # consx = getx(m.c[id,it].env)
-                            # unique!(m.c[id,it].env)
-
-
-                            consx = getx(m.c[id,it].env)
-                            # insert new points at intersections
-                            for isec in 1:length(insert_left)
-                                I = isecs[isec]
-                                jr = findfirst(consx .> I.x)
-                                if  !isnothing(jr) && jr > 1
-                                    insert!(m.c[id,it].env, Point(I.x-5*eps(),insert_left[isec].y) , jr-1)
-                                    insert!(m.c[id,it].env, Point(I.x      ,insert_right[isec].y), jr)
-                                end
+                            # interpolate from right
+                            jr = findall(consx .> I.x)
+                            jr = jr[ jr .∉ Ref(rmidx) ]  # keep those who are not to be deleted
+                            if length(jr) > 0
+                                jr = minimum(jr)   # smallest of those
+                                # push!(insert_right, interp(m.c[id,it].env[jr-1:jr], [ I.x ] ) )
+                                newright = MLine(m.c[id,it].env.v[jr-1:jr])
+                                sortx!(newright)
+                                push!(insert_right, getv(interp(newright, [ I.x ] ))[1] )
+                            # else
+                            #     push!(insert_right,I)
                             end
+                        end # all intersections
 
+                        # remove illegal points from c
+                        deleteat!(m.c[id,it].env.v, rmidx)
 
+                        # get a fresh copy of the consumption function                        
+                        consx = getx(m.c[id,it].env)
 
-                            # @assert(issorted(consx))
-                            sortx!(m.c[id,it].env)
-
-
-                            @assert(issorted(getx(m.c[id,it].env)))
-
-
+                        # add new points in twice with a slight offset from left
+                        # to preserve the ordering in x. 
+                        for ileft in 1:length(insert_left)
+                            j = findfirst(consx .> insert_left[ileft].x)  # first point past new intersection
+                            insert!(m.c[id,it].env.v,j,insert_left[ileft])  # item is j-th index
+                            insert!(m.c[id,it].env.v,j+1,insert_right[ileft])
                         end
                     end
                 else   # if id==1
-                    m.v[id,it] = Envelope(vline)
+                    m.v[id,it] = Envelope(vline, clean = true)
                 end
 
                 # store the expected value at the lower boundary
                 # in a separate object
-                # NOT as the first value in the vfun as Fedor.
                 m.v[id,it].vbound = ev[1]
 
                 # this creates the credit constrained region
