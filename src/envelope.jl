@@ -8,39 +8,54 @@ Holds an array of `MLine`s, the upper envelope of those MLines, and a vector of 
 ### Fields
 
 * `L      `: Vector of [`MLine`]@ref
-* `env    `: The upper envelope (i.e pointwise maximum) over `L`, itself a [`MLine`]@ref
-* `env_set`: `true` if envelope vector was set.
-* `isects `: Vector of intersections between `MLine`s in `L`
-* `removed`: Vector of indices of Points removed from each MLine `env` during assembly
+* `dirty  `: Initial, potentially backwards bending upper envelope
+* `env    `: Cleaned upper envelope
+* `env_clean`: `true` if clean envelope vector was set.
+* `isects `: Vector of intersecting `Point`s (new points in clean env)
+* `removed`: Vector of indices of Points removed from original MLine during assembly
 * `vbound` : Value on lower bound of asset domain
 
 """
 mutable struct Envelope{T<:Number}
-    L      :: Vector{MLine{T}}
-    env    :: MLine{T}
-    env_set :: Bool
-    isects :: Vector{Point{T}}
-    removed :: Vector{Vector{Int}}
-    vbound :: T
-    # Envelope(1) builds a test object with env_set = false
+    L         :: Vector{MLine{T}}
+    env       :: MLine{T}
+    dirty     :: MLine{T}
+    env_clean :: Bool
+    isects    :: Vector{Point{T}}
+    removed   :: Vector{Int}
+    vbound    :: T
+    # Envelope(1) builds a test object 
     function Envelope(x::T) where {T<:Number}
         this = new{T}()
         this.L = MLine{T}[]
+        this.dirty = MLine([typemin(T)],[typemin(T)])
         this.env = MLine([typemin(T)],[typemin(T)])
-        this.env_set = false
+        this.env_clean = false
         this.isects = Point{T}[]
-        this.removed = Vector{Vector{Int}}[ ]
+        this.removed = Int[ ]
         this.vbound = zero(T)
         return this
     end
-    # Envelope(MLine) builds an object with the MLine as THE envelope
-    function Envelope(e::MLine{T}) where {T<:Number}
+    # Envelope(MLine) builds an object with the MLine as dirty envelope
+    function Envelope(d::MLine{T}) where {T<:Number}
         this = new{T}()
         this.L = MLine{T}[]
-        this.env = deepcopy(e)
-        this.env_set = true
+        this.dirty = deepcopy(d)
+        this.env = MLine([typemin(T)],[typemin(T)])
+        this.env_clean = false
         this.isects = Point{T}[]
-        this.removed = Vector{Vector{Int}}[ ]
+        this.removed = Int[ ]
+        this.vbound = zero(T)
+        return this
+    end
+    function Envelope(d::MLine{T},c::MLine{T}) where {T<:Number}
+        this = new{T}()
+        this.L = MLine{T}[]
+        this.dirty = deepcopy(d)
+        this.env = deepcopy(c)
+        this.env_clean = true
+        this.isects = Point{T}[]
+        this.removed = Int[ ]
         this.vbound = zero(T)
         return this
     end
@@ -51,17 +66,18 @@ mutable struct Envelope{T<:Number}
         # println(l[2].v)
         this = new{T}()
         this.L = deepcopy(l)
+        this.dirty = MLine([typemin(T)],[typemin(T)])
         this.env = MLine([typemin(T)],[typemin(T)])
-        this.env_set = false
+        this.env_clean = false
         this.isects = Point{T}[]
-        this.removed = Vector{Vector{Int}}[ ]
+        this.removed = Int[ ]
         this.vbound = zero(T)
         return this
     end
 end
 function show(io::IO, ::MIME"text/plain", en::Envelope{T}) where {T<:Number}
     print(io,"$T Envelope\n")
-    print(io,"env MLine set?: $(en.env_set) \n")
+    print(io,"cleaned env set?: $(en.env_clean) \n")
     print(io,"num of `MLine`s: $(length(en.L))\n")
     print(io,"num of intersections: $(length(en.isects))\n")
     print(io,"num of pts removed: $(length(en.removed))\n")
@@ -89,19 +105,33 @@ Base.getindex(en::Envelope,id::Int) = en.L[id]
 
 
 
-"""
-    removed!(e::Envelope)
+# """
+#     removed!(e::Envelope)
 
-Find which points from each `MLine` did not end up in the
+# Find which points from each `MLine` did not end up in the
+# `env` and write them to `removed`.
+# """
+# function removed!(e::Envelope)
+#     if !e.env_set
+#         error("you need to set an `upper_env!` first.")
+#     end
+#     for l in 1:length(e.L)
+#         push!(e.removed,findall(.!(e.L[l].v .∈ Ref(e.env.v))))   # find indices in MLine L[l] that are not in envelope
+#     end
+# end
+
+"""
+    removed!(e::Envelope,L::MLine)
+
+Find which points from initial `MLine` did not end up in the
 `env` and write them to `removed`.
 """
-function removed!(e::Envelope)
+function removed!(e::Envelope,L::MLine)
     if !e.env_set
-        error("you need to set an `upper_env!` first.")
+        error("you need to compute an `upper_env!` first.")
     end
-    for l in 1:length(e.L)
-        push!(e.removed,findall(.!(e.L[l].v .∈ Ref(e.env.v))))   # find indices in MLine L[l] that are not in
-    end
+    push!(e.removed,findall(.!(L.v .∈ Ref(e.env.v))))   # find indices in L that are not in final envelope
+    return nothing
 end
 
 
@@ -356,12 +386,15 @@ end
 function secondary_envelope(L::MLine)
 
     # identify loop-backs and split line
-    e = splitLine(L)
+    e = splitLine(L)   
 
     if !e.env_set
-        # set upper envelope
+        # compute upper envelope
         upper_env!(e)
     end
+
+    # record which points in original L did not make it into final e.env
+    removed!(L,e)
 
     return e
 

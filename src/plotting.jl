@@ -509,7 +509,7 @@ function demo2(;n = 10,k = 10)
     p2 = plot(e,removed=true, title = "first intersection on grid")
     p = plot(p1,p2)
     savefig(p,joinpath(@__DIR__,"..","images","demo2.png"))
-    p
+    p,e
 end
 
 

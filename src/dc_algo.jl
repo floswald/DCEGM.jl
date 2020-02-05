@@ -181,15 +181,16 @@ function dc_EGM!(m::FModel,p::Param)
                         y0 = u(x0,working,p) .+ p.beta .* ev[1]
                         prepend!(vline,convert(Point,x0,y0))
                         prepend!(cline,convert(Point,x0,y0))  # cons policy in credit constrained is 45 degree line
-                        m.v[id,it] = Envelope(vline)
                         m.c[id,it] = Envelope(cline)
+                        m.v[id,it] = secondary_envelope(vline)
                     end
 
                     # cleaned value function
 
+                    # if any points were removed from vline:
                     if length(getr(m.v[id,it])) > 0
 
-                    # analyse policy function
+                        # analyse policy function
 
                     end
 
