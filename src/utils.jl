@@ -25,7 +25,7 @@ function u(x::Float64,working::Bool,p::Param)
 	if p.gamma == 1.0
 		log(x) - p.alpha*working
 	else
-		p.oneover_oneminusgamma * (x^p.oneminusgamma) - p.alpha*working
+		p.oneover_oneminusgamma * (x^p.oneminusgamma - 1.0) - p.alpha*working
 	end
 end
 function u(x::Array{T}, working::Bool, p::Param) where T
@@ -41,7 +41,7 @@ end
 # partial derivative of utility wrt c
 function up(c::Float64,p::Param)
 	if p.gamma == 1.0
-		1.0 / c 
+		1.0 / c
 	else
 		c ^ (p.neg_gamma)
 	end
@@ -80,12 +80,61 @@ function iup(u::Vector{Float64},p::Param)
 	return x
 end
 
+NBLt(ylow,t::Int,p::Param) = sum(-p.R^(-(j-1) ) * income(j,p,ylow) for j in t:p.nT-1)
+
+nbl(ylow,it,p::Param) = sum(-p.R^(j) * income(it+j,p,ylow) for j in 1:((p.nT)-1)-it )
+nblv(ylow,it,p::Param) = [-p.R^(j) * income(it+j,p,ylow) for j in 1:((p.nT)-1)-it ]
+
+# NBLt(ylow,t::Int,p::Param) = sum(-p.R^(-j ) * income(j,p,ylow) for j in (p.nT-1)-t:-1:0)
+NBLs(ylow,p::Param) = [-p.R^(-j) * income(j,p,ylow) for j in (p.nT-1)-1:-1:0]
+
+
+# nextbound(ylow,it,p::Param) = sum(-income(j,p,ylow)*p.R^(-(j-it)) for j in (it+1):(p.nT-1))
+nextbound(ylow,it,p::Param) = -income(it+1,p,ylow)*p.R^(-1)
+pnextbound(ylow,it,p::Param) = ["income($j,p,ylow)*p.R^($(-(j-it)))" for j in (it+1):(p.nT-1)]
 
 
 
 
 """
-rouwenhorst AR1 approximation 
+	abounds(ylow,p::Param)
+
+returns a vector with the lowest possible asset level in each period.
+This assumes the worst case of income draw in each period and zero consumption, while ``a_T=0``.
+"""
+function abounds(ylow,p::Param)
+	x = [nextbound(ylow,it,p) for it in 1:p.nT-2]
+	prepend!(x, -ylow + x[1]) # adds period 1 bound
+	x
+	# n = NBLs(ylow,p)  # vector of borrowing limit in period t
+	# reverse(cumsum(reverse(n)))
+end
+
+
+
+
+allincomes(m::Model,p::Param) = [DCEGM.income(j,p,y) for y in m.yvec, j in 1:p.nT]
+
+"expected borrowing limit"
+function EBL(m::Model,p::Param)
+	yy = [DCEGM.income(j,p,y) for y in m.yvec, j in 1:p.nT]  # income at each age and each state
+	r = similar(yy)
+	r[:,p.nT] = yy[:,p.nT]
+
+	for it in p.nT-1:-1:1
+		r[:,it] = m.ywgt * yy[:,it+1]
+	end
+	return r
+end
+
+
+
+
+
+
+
+"""
+rouwenhorst AR1 approximation
 
 
 This is taken from [http://karenkopecky.net/RouwenhorstPaperFinal.pdf](Karen Kopecky's paper)
@@ -94,43 +143,58 @@ This is taken from [http://karenkopecky.net/RouwenhorstPaperFinal.pdf](Karen Kop
 function rouwenhorst(rho::Float64,mu_eps,sigma_eps,n)
 	q = (rho+1)/2
 	nu = ((n-1)/(1-rho^2))^(1/2) * sigma_eps
-	P = reshape([q,1-q,1-q,q],2,2)
+	P = [q 1-q ; 1-q q]
 
 	for i=2:n-1
 
-		P = q * vcat(hcat(P , zeros(i,1)),zeros(1,i+1)) .+ (1-q).* vcat( hcat(zeros(i,1),P), zeros(1,i+1)) .+ 
-		(1-q) .* vcat(zeros(1,i+1),hcat(P,zeros(i,1))) .+ q .*vcat(zeros(1,i+1),hcat(zeros(i,1),P))
-		P[2:i,:] = P[2:i,:] ./ 2
+		# P = q * vcat(hcat(P , zeros(i,1)),zeros(1,i+1)) .+ (1-q).* vcat( hcat(zeros(i,1),P), zeros(1,i+1)) .+
+		# (1-q) .* vcat(zeros(1,i+1),hcat(P,zeros(i,1))) .+ q .*vcat(zeros(1,i+1),hcat(zeros(i,1),P))
+		# P[2:i,:] = P[2:i,:] ./ 2
 
+		P = q .* [P zeros(i,1); zeros(1,i+1)] .+ (1-q) .* [zeros(i,1) P; zeros(1,i+1)] .+
+		(1-q) .* [zeros(1,i+1); P zeros(i,1)] .+   q   .* [zeros(1,i+1); zeros(i,1) P]
+
+		P[2:i,:] = P[2:i,:] ./ 2
 	end
 
-	z = linspace(mu_eps/(1-rho)-nu,mu_eps/(1-rho)+nu,n);
-	return (z,P)
+	z = range(mu_eps/(1-rho)-nu,stop = mu_eps/(1-rho)+nu,length = n);
+	return (collect(z),P)
 end
 
 # asset grid scaling
-function scaleGrid(lb::Float64,ub::Float64,n::Int,logorder::Int=1) 
+function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1)
 	out = zeros(n)
-	if logorder==1
+	if logorder==0
+		out    = collect(range(lb,stop = ub,length = n))
+	elseif logorder==1
 		off = 1
-		if lb<0 
+		if lb<0
 			off = 1 - lb #  adjust in case of neg bound
 		end
-		out[1] = log(lb + off) 
-		out[n] = log(ub + off) 
-		out    = linspace(out[1],out[n],n)
-		out    = exp(out) - off  
+		out[1] = log(lb + off)
+		out[n] = log(ub + off)
+		out    = collect(range(out[1],stop = out[n],length = n))
+		out    = exp.(out) .- off
 	elseif logorder==2
 		off = 1
-		if lb<0 
+		if lb<0
 			off = 1 - lb #  adjust in case of neg bound
 		end
 		out[1] = log( log(lb + off) + off )
 		out[n] = log( log(ub + off) + off )
-		out    = linspace(out[1],out[n],n)
-		out    = exp( exp(out) - off ) - off
+		out    = collect(range(out[1],stop = out[n],length = n))
+		out    = exp.( exp.(out) .- off ) .- off
+	elseif logorder==3
+		off = 1
+		if lb<0
+			off = 1 - lb #  adjust in case of neg bound
+		end
+		out[1] = log( log( log(lb + off) + off ) + off )
+		out[n] = log( log( log(ub + off) + off ) + off )
+		out    = collect(range(out[1],stop = out[n],length = n))
+		out    = exp.( exp.( exp.(out) .- off ) .- off ) .- off
 	else
-		error("supports only double log grid")
+		error("supports only up to tripple log grid")
 	end
 end
 
@@ -139,7 +203,7 @@ lifecycle profile in income
 """
 function income(it::Int,p::Param,shock::Float64)
 	age = it + 19
-	exp( p.inc0 + p.inc1*0.04 - p.inc2*(age^2) + shock)
+	exp( p.inc0 + p.inc1*age - p.inc2*(age^2) + shock)
 end
 function income(it::Int,shock::Array{Float64})
 	x = similar(shock)
@@ -159,21 +223,21 @@ function quadpoints(n,lbnd,ubnd)
    m   = floor((n+1)/2)
    xm  = (x2+x1)/2
    xl  = (x2-x1)/2
-   i = 1 
+   i = 1
    z1 = 1.e99
    pp = p1 = p2 = p3 = z = 0.0
    while (i <= m)
 	   z  = cos(pi*(i-0.25)/(n+0.5))
-	   while (abs(z-z1)>EPS) 
+	   while (abs(z-z1)>EPS)
 	       p1 = 1
 	       p2 = 0
-	       j=1 
+	       j=1
 	       while (j <= n)
 				 p3 = copy(p2)
 				 p2 = copy(p1)
 				 p1 = ((2*j-1)*z*p2-(j-1)*p3)/j
-		         j=j+1 
-	       end 
+		         j=j+1
+	       end
 	       pp = n*(z*p1-p2)/(z*z-1)
 	       z1 = z
 	       z  = z1 - p1/pp
@@ -193,9 +257,9 @@ function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Float64,lo::Int,
 	n = length(x)
 	@assert n==length(y)
 
-	# determining bounds 
+	# determining bounds
 	if xi == x[1]
-		r = y[1] 
+		r = y[1]
 		return r
 	elseif xi < x[1]
 		# get linear approx below
@@ -203,7 +267,7 @@ function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Float64,lo::Int,
 		return r
 	end
 	if xi == x[n]
-		r = y[n] 
+		r = y[n]
 		return (r,n)
 	elseif xi > x[n]
 		# get linear approx above
@@ -223,7 +287,7 @@ function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Float64,lo::Int,
 end
 linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Float64) = linearapprox(x,y,xi,1,length(x))
 
-function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Vector{Float64}) 
+function linearapprox(x::Vector{Float64},y::Vector{Float64},xi::Vector{Float64})
 	n = length(xi)
 	z = zeros(n)
 	for i in 1:n

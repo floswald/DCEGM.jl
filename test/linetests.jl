@@ -1,10 +1,10 @@
 
 
 @testset "Point Arithmetic" begin
-    
+
     p = Point(1,1)
     @test eltype(p) == Int
-    @test_throws MethodError Point(1,1.0) 
+    @test_throws MethodError Point(1,1.0)
 
     p1 = Point(2,2)
     @test p + p1 == Point(3,3)
@@ -25,10 +25,8 @@ end
     x = collect(0:0.1:1)
     y = rand(11)
     m = MLine(x,y)
-    @test m.n == 11
+    @test length(m) == 11
     @test size(m) == (11,)
-    @test m.xvec == x
-    @test m.yrange == extrema(y)
 end
 
 @testset "MLine construction from vector of points" begin
@@ -38,9 +36,9 @@ end
     m2 = MLine([p1;p2;p3])
     @test length(m2) == 3
     @test size(m2) == (3,)
-    @test m2.xrange == (1.0,3.0)
-    @test m2.xvec == [1.0;2.0;3.0]
-    @test m2.yrange == (2.0,5.2)
+    @test extrema(getx(m2)) == (1.0,3.0)
+    @test getx(m2) == [1.0;2.0;3.0]
+    @test extrema(gety(m2)) == (2.0,5.2)
     @test eltype(m2) == Point{Float64}
     @test m2[1] == p1
     @test m2[3] == p3
@@ -73,7 +71,7 @@ end
         @test L[1] == Point(18.0,-1.1)
         @test L[2] == Point(0.0,0.0)
     end
-    
+
     @testset "append" begin
         x = collect(0:0.1:1)
         y = log.(1 .+ x)
@@ -91,7 +89,7 @@ end
         delete!(L,9)
         @test size(L)==(10,)
         @test L[9] == Point(x[10],y[10])
-        @test L.xvec == vcat(x[1:8],x[10:11])
+        @test getx(L) == vcat(x[1:8],x[10:11])
     end
     @testset "insert!" begin
         x = collect(0:0.1:1)
@@ -134,15 +132,15 @@ end
         @test !(issorted(L))
         DCEGM.sortx!(L)
         @test issorted(L)
-        @test issorted(L.xvec)
+        @test issorted(getx(L))
     end
-    @testset "intersect" begin
+    @testset "floor a line's y values" begin
         x = collect(0.0:0.1:1.5)
         L1 = MLine(x,log.(x))
-        L2 = MLine(x, 2 .* (x .- 1.0) )
-        y = DCEGM.intersect(L1,L2,findfirst(x .== 1.0))
-        @test y == (Point(1.0,0.0),false)
+        @test !all(gety(L1) .>= 0.0)
+        @test length(L1) == length(x)
+        DCEGM.floory!(L1,0.0)
+        @test all(gety(L1) .>= 0)
+        @test length(L1) == length(x)
     end
 end
-
-

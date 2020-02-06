@@ -7,11 +7,13 @@ using Distributions: Normal
 using FastGaussQuadrature
 using Roots
 using Plots
+using Colors
+using Statistics
 gr()
 
 
-import Base: +, -, *, /, ==, isless
-import Base: iterate, typemin, isapprox
+import Base: +, -, *, /, ==, isless, in
+import Base: iterate, typemin, isapprox, convert
 import Base.size, Base.getindex, Base.setindex!, Base.eltype
 import Base.prepend!,
        Base.append!,
@@ -19,11 +21,12 @@ import Base.prepend!,
        Base.delete!,
        Base.sort!,
        Base.length,
-       Base.show
+       Base.show,
+       Base.IndexStyle
 
 
 # Types
-export MLine, Point, Envelope
+export MLine, Point, Envelope, yisless
 
 # methods
 export interp, splitat,upper_env!, getx, gety, gets, splitLine, getr
