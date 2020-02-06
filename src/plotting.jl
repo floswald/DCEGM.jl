@@ -131,50 +131,53 @@ end
 end
 
 
-
-# @recipe function f(x::Envelope; removed=false,num=false,marker=false)
+@recipe function f(L::Vector{MLine{T}};numerate=false,mrk=true) where T
+    for l in L
+        @series begin
+            # subplot := 1
+            seriestype := :path
+            linewidth := 1
+            if mrk
+                # println("illegal")
+                markershape --> :circle
+                markerstrokecolor --> :black
+                markercolor --> :white
+                markersize := 3
+            end
+            if numerate
+                series_annotations := ["$i" for i in sortperm(getx(l))]
+            end
+            (getx(l),gety(l))
+        end
+    end
+end
+#
 @recipe function f(x::Envelope;numerate=false,removed=false,mrk=true)
 
     # defaults
     grid --> true
     xticks := true
 
-    if !x.env_clean
-        legend --> :bottomright
-    else
-        legend --> false
-    end
     any_isec = length(x.isects) > 0
 
     # println("marker = $mrk, title = $(get!(plotattributes,:title,""))")
     # println("marker = $mrk, numerate = $numerate, title = $(get!(plotattributes,:title,""))")
 
-    # if line array exists, plot
-    if length(x.L) > 0
-        for l in x.L
-            @series begin
-                # subplot := 1
-                seriestype := :path
-                linewidth := 1
-                if mrk
-                    # println("illegal")
-                    markershape --> :circle
-                    markerstrokecolor --> :black
-                    markercolor --> :white
-                    markersize := 3
-                end
-                if numerate
-                    series_annotations := ["$i" for i in sortperm(getx(l))]
-                end
-                (getx(l),gety(l))
+    if length(x.dirty.v) > 1
+        @series begin
+            seriestype := :path
+            linecolor --> :black
+            linewidth --> 1
+            if mrk
+                markershape := :circle
+                markercolor := :white
+                # markeralpha := 0.5
+                markerstrokecolor := :black
+                markersize := 3
             end
         end
-    end
-    # plot envelope, if exists
-    if x.env_clean
         if removed
-            for l in 1:length(x.L)
-                ir = x.removed[l]
+            ir = x.removed
                 if length(ir) > 0
                     @series begin
                         seriestype = :scatter
@@ -183,40 +186,189 @@ end
                         markerstrokecolor := :black
                         markercolor := :white
                         markeralpha := 0.5
-                        (getx(x.L[l])[ir],gety(x.L[l])[ir])
+                        coords(x.dirty.v)[ir,:]
                     end
                 end
-            end
         end
+    end
+    # actual envelope
+    @series begin
+        # subplot := 1
+        seriestype := :path
+        linecolor --> :red
+        linewidth --> 2
+        if mrk
+            markershape := :circle
+            markercolor := :white
+            # markeralpha := 0.5
+            markerstrokecolor := :black
+            markersize := 3
+        end
+        if numerate
+            series_annotations := ["$i" for i in 1:length(getx(x.env))]
+        end
+        (getx(x.env),gety(x.env))
+    end
+    if any_isec && mrk
         @series begin
-            # subplot := 1
-            seriestype := :path
-            linecolor --> :red
-            linewidth --> 2
-            if mrk
-                markershape := :circle
-                markercolor := :white
-                # markeralpha := 0.5
-                markerstrokecolor := :black
-                markersize := 3
-            end
-            if numerate
-                series_annotations := ["$i" for i in 1:length(getx(x.env))]
-            end
-            (getx(x.env),gety(x.env))
-        end
-        if any_isec && mrk
-            @series begin
-                seriestype := :scatter
-                markershape := :star6
-                markerstrokecolor := :black
-                markercolor := :yellow
-                markersize := 5
-                (getx(x.isects),gety(x.isects))
-            end
+            seriestype := :scatter
+            markershape := :star6
+            markerstrokecolor := :black
+            markercolor := :yellow
+            markersize := 5
+            (getx(x.isects),gety(x.isects))
         end
     end
 end
+#
+@recipe function f(x::Envelope{T},L::Vector{MLine{T}};numerate=false,removed=false,mrk=true) where T
+
+    # defaults
+    grid --> true
+    xticks := true
+    legend --> false
+
+    any_isec = length(x.isects) > 0
+
+    # println("marker = $mrk, title = $(get!(plotattributes,:title,""))")
+    # println("marker = $mrk, numerate = $numerate, title = $(get!(plotattributes,:title,""))")
+
+    # lien arrya
+    for l in L
+        @series begin
+            # subplot := 1
+            seriestype := :path
+            linewidth := 1
+            if mrk
+                # println("illegal")
+                markershape --> :circle
+                markerstrokecolor --> :black
+                markercolor --> :white
+                markersize := 3
+            end
+            if numerate
+                series_annotations := ["$i" for i in sortperm(getx(l))]
+            end
+            (getx(l),gety(l))
+        end
+    end
+
+    # actual envelope
+    @series begin
+        # subplot := 1
+        seriestype := :path
+        linecolor --> :red
+        linewidth --> 2
+        if mrk
+            markershape := :circle
+            markercolor := :white
+            # markeralpha := 0.5
+            markerstrokecolor := :black
+            markersize := 3
+        end
+        if numerate
+            series_annotations := ["$i" for i in 1:length(getx(x.env))]
+        end
+        (getx(x.env),gety(x.env))
+    end
+    if any_isec && mrk
+        @series begin
+            seriestype := :scatter
+            markershape := :star6
+            markerstrokecolor := :black
+            markercolor := :yellow
+            markersize := 5
+            (getx(x.isects),gety(x.isects))
+        end
+    end
+end
+
+#
+# # @recipe function f(x::Envelope; removed=false,num=false,marker=false)
+# @recipe function f(x::Envelope;numerate=false,removed=false,mrk=true)
+#
+#     # defaults
+#     grid --> true
+#     xticks := true
+#
+#     if !x.env_clean
+#         legend --> :bottomright
+#     else
+#         legend --> false
+#     end
+#     any_isec = length(x.isects) > 0
+#
+#     # println("marker = $mrk, title = $(get!(plotattributes,:title,""))")
+#     # println("marker = $mrk, numerate = $numerate, title = $(get!(plotattributes,:title,""))")
+#
+#     # if line array exists, plot
+#     if length(x.L) > 0
+#         for l in x.L
+#             @series begin
+#                 # subplot := 1
+#                 seriestype := :path
+#                 linewidth := 1
+#                 if mrk
+#                     # println("illegal")
+#                     markershape --> :circle
+#                     markerstrokecolor --> :black
+#                     markercolor --> :white
+#                     markersize := 3
+#                 end
+#                 if numerate
+#                     series_annotations := ["$i" for i in sortperm(getx(l))]
+#                 end
+#                 (getx(l),gety(l))
+#             end
+#         end
+#     end
+#     # plot envelope, if exists
+#     if x.env_clean
+#         if removed
+#             for l in 1:length(x.L)
+#                 ir = x.removed[l]
+#                 if length(ir) > 0
+#                     @series begin
+#                         seriestype = :scatter
+#                         markershape := :rect
+#                         markersize := 3
+#                         markerstrokecolor := :black
+#                         markercolor := :white
+#                         markeralpha := 0.5
+#                         (getx(x.L[l])[ir],gety(x.L[l])[ir])
+#                     end
+#                 end
+#             end
+#         end
+#         @series begin
+#             # subplot := 1
+#             seriestype := :path
+#             linecolor --> :red
+#             linewidth --> 2
+#             if mrk
+#                 markershape := :circle
+#                 markercolor := :white
+#                 # markeralpha := 0.5
+#                 markerstrokecolor := :black
+#                 markersize := 3
+#             end
+#             if numerate
+#                 series_annotations := ["$i" for i in 1:length(getx(x.env))]
+#             end
+#             (getx(x.env),gety(x.env))
+#         end
+#         if any_isec && mrk
+#             @series begin
+#                 seriestype := :scatter
+#                 markershape := :star6
+#                 markerstrokecolor := :black
+#                 markercolor := :yellow
+#                 markersize := 5
+#                 (getx(x.isects),gety(x.isects))
+#             end
+#         end
+#     end
+# end
 
 
 
@@ -230,9 +382,7 @@ function f3a()
          collect(range(2  , stop = 7   ,length= 15))  ,
          collect(range(4  , stop = 8   ,length= 25))]
     ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
-    # create an envelope
-    e = Envelope(ls)
-    return e
+    return ls
 end
 function f3b()
 
@@ -244,8 +394,7 @@ function f3b()
          collect(range(4  , stop = 8   , length = 25))]
     ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
     # create an envelope
-    e = Envelope(ls)
-    return e
+    return ls
 end
 function f3c()
 
@@ -257,8 +406,7 @@ function f3c()
          collect(range(4  , stop = 8   , length= 25))]
     ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
     # create an envelope
-    e = Envelope(ls)
-    return e
+    return ls
 end
 
 function tplot1()
@@ -267,24 +415,9 @@ function tplot1()
     x2 = collect(range(-1, stop = 9 ,length = n))
     L1 = MLine(x1,x1)
     L2 = MLine(x2,ones(n)*5)
-    e = Envelope([L1,L2])
-    x1,x2,e,plot(e)
+    e = [L1,L2]
+    x1,x2,e #,plot(e)
 end
-
-function tplot_intersect(;n=15)
-    x1 = collect(range(0 , stop = 10,length = n))
-    x2 = collect(range(-0.5, stop = 9 ,length = n))
-    L1 = MLine(x1,x1)
-    L2 = MLine(x2,ones(n)*4.6)
-    e = Envelope([L1,L2])
-    p1 = plot(e)
-    upper_env!(e)
-    p2 = plot(e,title = "do_intersect = false",mrk = false)
-    upper_env!(e,do_intersect = true)
-    p3 = plot(e,title = "do_intersect = true",mrk=false)
-    plot(p1,p2,p3,layout = (1,3))
-end
-
 
 function tplot2()
     n = 15
@@ -292,10 +425,10 @@ function tplot2()
     x2 = collect(range(-1 , stop=9  ,length= n))
     L1 = MLine(x1,x1)
     L2 = MLine(x2,ones(n)*5)
-    en = Envelope([L1,L2])
-    p1 = plot(en)
+    LL = [L1,L2]
+    p1 = plot(LL)
 
-    upper_env!(en)
+    e = upper_env(en)
     removed!(en)
     p2 = plot(en,removed=true)
     plot(p1,p2)
@@ -306,10 +439,8 @@ function tplot3a()
 
     p1 = plot(en,title = "non-overlapping grids")
 
-    upper_env!(en)
-    removed!(en)
-    p2 = plot(en)
-    p2 = plot(en,removed=true,title = "Envelope and removed points")
+    e = upper_env(en)
+    p2 = plot(e,en,title = "Envelope")
     plot(p1,p2)
 
 end
@@ -320,9 +451,8 @@ function tplot3b()
 
     p1 = plot(en,title = "overlapping grids")
 
-    upper_env!(en)
-    removed!(en)
-    p2 = plot(en,removed=true)
+    e = upper_env(en)
+    p2 = plot(en)
 
     plot(p1,p2)
 
@@ -333,7 +463,7 @@ function tplot3c()
 
     p1 = plot(en)
 
-    upper_env!(en)
+    e = upper_env(en)
     removed!(en)
     p2 = plot(en,removed=true)
 
@@ -450,11 +580,9 @@ function demo(;n = 10,k = 10)
         a[i] = MLine(sort([0.0; 10*rand(k); 10]), [0.0; rand(k+1).*collect(range(0.5,stop=10,length=k+1))])
         a[i+1] = MLine([0.0; 10],[10.0-i ; -(10-i)*1.5/i+10-i] )
     end
-    e = Envelope(a)
-    p1 = plot(e,legend=false,title = "$n lines")
-    upper_env!(e)
-    removed!(e)
-    p2 = plot(e,removed=true, title = "correct envelope")
+    p1 = plot(a,legend=false,title = "$n lines")
+    e = upper_env(a)
+    p2 = plot(e,a,title = "envelope")
     p =plot(p1,p2)
     savefig(p,joinpath(@__DIR__,"..","images","demo.png"))
     p
@@ -472,11 +600,9 @@ function demo2(;n = 10,k = 10)
     push!(tricky,DCEGM.Point(a[2].v[2].x,a[2].v[2].y + slope))
     push!(a, MLine(tricky))
 
-    e = Envelope(a)
-    p1 = plot(e,legend=false,title = "$n lines")
-    upper_env!(e)
-    removed!(e)
-    p2 = plot(e,removed=true, title = "first intersection on grid")
+    p1 = plot(a,legend=false,title = "$n lines")
+    e = upper_env(a)
+    p2 = plot(e,a,title = "first intersection on grid")
     p = plot(p1,p2)
     savefig(p,joinpath(@__DIR__,"..","images","demo2.png"))
     p,e
