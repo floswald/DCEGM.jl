@@ -7,7 +7,6 @@ Holds an array of `MLine`s, the upper envelope of those MLines, and a vector of 
 
 ### Fields
 
-* `dirty  `: Initial, potentially backwards bending upper envelope
 * `env    `: Cleaned upper envelope
 * `isects `: Vector of intersecting `Point`s (new points in clean env)
 * `removed`: Vector of indices of Points removed from `dirty` MLine during Envelope assembly
@@ -16,7 +15,6 @@ Holds an array of `MLine`s, the upper envelope of those MLines, and a vector of 
 """
 mutable struct Envelope{T<:Number}
     env       :: MLine{T}
-    dirty     :: MLine{T}
     isects    :: Vector{Point{T}}
     removed   :: Vector{Int}
     vbound    :: T
@@ -34,7 +32,6 @@ mutable struct Envelope{T<:Number}
     function Envelope(d::MLine{T}) where {T<:Number}
         this = new{T}()
         this.env = deepcopy(d)
-        this.dirty = MLine([typemin(T)],[typemin(T)])
         this.isects = Point{T}[]
         this.removed = Int[ ]
         this.vbound = zero(T)
@@ -80,8 +77,6 @@ mutable struct Envelope{T<:Number}
 end
 function show(io::IO, ::MIME"text/plain", en::Envelope{T}) where {T<:Number}
     print(io,"$T Envelope\n")
-    print(io,"cleaned env set?: $(en.env_clean) \n")
-    print(io,"num of `MLine`s: $(length(en.L))\n")
     print(io,"num of intersections: $(length(en.isects))\n")
     print(io,"num of pts removed: $(length(en.removed))\n")
 end
@@ -131,8 +126,7 @@ Find which points from initial `MLine` did not end up in the
 """
 function removed!(e::Envelope,d::MLine)
     # find all points in dirty that did not make it into clean
-    e.dirty = deepcopy(d)  # store d on the object
-    rmvd = findall( d.v .∉ Ref(e.env.v))
+    rmvd = findall( d .∉ Ref(e.env.v))
     if length(rmvd) > 0
         push!(e.removed,rmvd...)   # splice array into this call
     end
@@ -357,7 +351,7 @@ function secondary_envelope(L::MLine)
         # compute upper envelope over array of lines
         e = upper_env(A)
     else
-        e = Envelope(A)
+        e = Envelope(A[1])
     end
 
     # record which points in original L did not make it into final e.env

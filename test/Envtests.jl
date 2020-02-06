@@ -9,8 +9,6 @@
         en = Envelope(L1)
         @test isa(en,Envelope)
         @test length(en.env)==n
-        @test length(en.dirty)==1
-        @test en.dirty.v[1] == DCEGM.Point(-Inf,-Inf)
         @test length(gets(en))==0
         DCEGM.removed!(en,L1)
         @test length(getr(en))==0

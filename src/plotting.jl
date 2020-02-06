@@ -152,7 +152,7 @@ end
     end
 end
 #
-@recipe function f(x::Envelope;numerate=false,removed=false,mrk=true)
+@recipe function f(x::Envelope;numerate=false,mrk=true)
 
     # defaults
     grid --> true
@@ -163,34 +163,6 @@ end
     # println("marker = $mrk, title = $(get!(plotattributes,:title,""))")
     # println("marker = $mrk, numerate = $numerate, title = $(get!(plotattributes,:title,""))")
 
-    if length(x.dirty.v) > 1
-        @series begin
-            seriestype := :path
-            linecolor --> :black
-            linewidth --> 1
-            if mrk
-                markershape := :circle
-                markercolor := :white
-                # markeralpha := 0.5
-                markerstrokecolor := :black
-                markersize := 3
-            end
-        end
-        if removed
-            ir = x.removed
-                if length(ir) > 0
-                    @series begin
-                        seriestype = :scatter
-                        markershape := :rect
-                        markersize := 3
-                        markerstrokecolor := :black
-                        markercolor := :white
-                        markeralpha := 0.5
-                        coords(x.dirty.v)[ir,:]
-                    end
-                end
-        end
-    end
     # actual envelope
     @series begin
         # subplot := 1
@@ -281,6 +253,71 @@ end
             (getx(x.isects),gety(x.isects))
         end
     end
+end
+
+# plot env and initial mline next to each other, showing new points and removed ones
+@recipe function f(x::Envelope{T},L::MLine{T}) where T
+
+    # defaults
+    grid --> true
+    xticks := true
+    legend --> false
+    layout := (1,2)
+
+    any_isec = length(x.isects) > 0
+    any_rmv = length(x.removed) > 0
+
+    # println("marker = $mrk, title = $(get!(plotattributes,:title,""))")
+    # println("marker = $mrk, numerate = $numerate, title = $(get!(plotattributes,:title,""))")
+
+    # dirty line
+    @series begin
+        subplot := 1
+        seriestype := :path
+        linewidth := 1
+        markershape --> :circle
+        markerstrokecolor --> :black
+        markercolor --> :white
+        markersize := 3
+        (getx(L),gety(L))
+    end
+    if any_rmv
+        @series begin
+            subplot := 1
+            seriestype = :scatter
+            markershape := :rect
+            markersize := 3
+            markerstrokecolor := :black
+            markercolor := :white
+            markeralpha := 0.5
+            (getx(L)[x.removed],gety(L)[x.removed])
+        end
+    end
+
+    # actual envelope
+    @series begin
+        subplot := 2
+        seriestype := :path
+        linecolor --> :red
+        linewidth --> 1
+        markershape --> :circle
+        markerstrokecolor --> :black
+        markercolor --> :white
+        markersize := 3
+        (getx(x.env),gety(x.env))
+    end
+    if any_isec
+        @series begin
+            subplot := 2
+            seriestype := :scatter
+            markershape := :star6
+            markerstrokecolor := :black
+            markercolor := :yellow
+            markersize := 5
+            (getx(x.isects),gety(x.isects))
+        end
+    end
+
 end
 
 #
@@ -542,6 +579,15 @@ function splitf3()
     removed!(e)
     p2 = plot(e,title="with removed points",removed=true)
     plot(p1,p2)
+end
+
+function splitf3a()
+    x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
+    y = [1,1.5,1.7,1.6,1.55,1.4,1.3,1.2,1.8,2.1]
+    L = MLine(x,y)
+    e = secondary_envelope(L)
+    plot(e,L)
+
 end
 
 function test_upper_env_dec()

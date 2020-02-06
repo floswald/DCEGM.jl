@@ -98,9 +98,9 @@ function dc_EGM!(m::FModel,p::Param)
         if it==p.nT
             for id in 1:p.nD   # work of dont work
                 # final period: consume everyting.
-                m.c[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)), clean = true )
+                m.c[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
                 # initialize value function with vf(1) = 0
-                m.v[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)), clean = true )
+                m.v[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
                 # note that 0.0 as first value of the vfun is not innocuous here!
             end
         else
@@ -139,7 +139,7 @@ function dc_EGM!(m::FModel,p::Param)
                 # set optimal consumption function today. endo grid m and cons c0
                 cline = MLine(m.avec .+ c0, c0)
                 # store
-                m.c[id,it] = Envelope(cline,clean = true)  # that's poor notation
+                m.c[id,it] = Envelope(cline)  
 
                 # consumption function done.
 
@@ -152,17 +152,9 @@ function dc_EGM!(m::FModel,p::Param)
                     ev =  m.ywgt' * reshape(vmat[2,:],p.ny,p.na)
                 end
                 vline = MLine(m.avec .+ c0, u(c0,id==1,p) .+ p.beta * ev[:])
-                # vline is an *uncleaned* value function which may have backward bends
 
-                if any(isnan.(ev))
-                    println("ev = ")
-                    display(ev)
-                end
-
-
-
-                # vline and cline may have backward-bending regions: let's prune those
                 # SECONDARY ENVELOPE COMPUTATION
+                # ==============================
 
                 if id==1   # only for workers
                     minx = min_x(vline)
@@ -180,7 +172,7 @@ function dc_EGM!(m::FModel,p::Param)
                         y0 = u(x0,working,p) .+ p.beta .* ev[1]
                         prepend!(vline,convert(Point,x0,y0))
                         prepend!(cline,convert(Point,x0,x0))  # cons policy in credit constrained is 45 degree line
-                        m.c[id,it] = Envelope(cline, clean = true)  # poor notation
+                        m.c[id,it] = Envelope(cline)  
                         m.v[id,it] = secondary_envelope(vline)
                     end
 
@@ -254,7 +246,7 @@ function dc_EGM!(m::FModel,p::Param)
                         end
                     end
                 else   # if id==1
-                    m.v[id,it] = Envelope(vline, clean = true)
+                    m.v[id,it] = Envelope(vline)
                 end
 
                 # store the expected value at the lower boundary
