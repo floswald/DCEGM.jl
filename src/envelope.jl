@@ -24,7 +24,7 @@ mutable struct Envelope{T<:Number}
     isects    :: Vector{Point{T}}
     removed   :: Vector{Int}
     vbound    :: T
-    # Envelope(1) builds a test object 
+    # Envelope(1) builds a test object
     function Envelope(x::T) where {T<:Number}
         this = new{T}()
         this.L = MLine{T}[]
@@ -149,7 +149,7 @@ function removed!(e::Envelope,d::MLine)
     end
     # find all points in dirty that did not make it into clean
     e.dirty = deepcopy(d)  # store on the object
-    rmvd = findall( d.v .∉ Ref(e.env.v))  
+    rmvd = findall( d.v .∉ Ref(e.env.v))
     if length(rmvd) > 0
         push!(e.removed,rmvd...)   # splice array into this call
     end
@@ -287,7 +287,8 @@ function upper_env!(e::Envelope{T}) where T<:Number
             y1 = interp(e.L[ln1],[pt1,pt2],extrap=true)
             y2 = interp(e.L[ln2],[pt1,pt2],extrap=true)
 
-            # if intersection is *on* either pt1 or pt2, those are intersections
+            # if intersection is *on* either pt1 or pt2, this is not an intersection
+            # but needs to be part of the upper envelope of course
             onboth = y2.v .== y1.v
             # debug> y2.v .== y1.v
             # 2-element BitArray{1}:
@@ -296,15 +297,16 @@ function upper_env!(e::Envelope{T}) where T<:Number
             if any(onboth)
                 @assert sum(onboth) == 1
                 push!(env,y2.v[onboth][1])
-                push!(isec,y2.v[onboth][1])
+                # push!(isec,y2.v[onboth][1])
             else
-                # check neither y1 nor y2 are extrapolated in both points
-                notboth = (y1.iextrap != [1,2]) && (y2.iextrap != [1,2])
+                # check neither y1 nor y2 have any extrapolated points
+                neither = (length(y1.iextrap) == 0) && ( length(y2.iextrap) == 0 )
+                # neither = (y1.iextrap != [1,2]) && (y2.iextrap != [1,2])
                 # and that we have different signs on both ends of search interval
                 f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
                 diffsign = f_closure(pt1) * f_closure(pt2) < 0
 
-                if notboth && diffsign
+                if neither && diffsign
 
                     # find intersection point
                     while true
@@ -385,7 +387,7 @@ end
 function secondary_envelope(L::MLine)
 
     # identify loop-backs and split line
-    e = splitLine(L)   
+    e = splitLine(L)
 
     if !e.env_clean
         # compute upper envelope

@@ -48,36 +48,37 @@ end
     xticks := true
     legend --> true
     cg = cgrad(:inferno)
-    c1 = colorant"red"
-    c2 = colorant"blue"
+    # c1 = colorant"red"
+    # c2 = colorant"blue"
     # alow,ahi = extrema(m.avec)
     # aspect = (ahi-alow)/(ahi - 0.0)
 
     nT = size(m.v)[2]
-    cols = range(c1,stop=c2,length=nT)
+    # cols = range(c1,stop=c2,length=nT)
+    cols = cg[range(0.0,stop=1.0,length=nT)]
 
-    layout := grid(1,2)
+    # layout := grid(1,2)
     for i in 1:nT
         lab = ((i==1)|(i==nT)) ? "$i" : ""
+        # @series begin
+        #     linetype --> :path
+        #     linewidth --> 1
+        #     legend --> :bottomright
+        #     seriescolor --> cols[i]
+        #     label := lab
+        #     subplot := 1  # value function
+        #     yguide := "value"
+        #     xguide := "Cash on Hand M"
+        #     xlim := extrema(m.avec)
+        #     ylim := (-15,15)
+        #     getx(m.v[id,i].env),gety(m.v[id,i].env)
+        # end
         @series begin
             linetype --> :path
             linewidth --> 1
             legend --> :bottomright
             seriescolor --> cols[i]
-            label := lab
-            subplot := 1  # value function
-            yguide := "value"
-            xguide := "Cash on Hand M"
-            xlim := extrema(m.avec)
-            ylim := (-15,15)
-            getx(m.v[id,i].env),gety(m.v[id,i].env)
-        end
-        @series begin
-            linetype --> :path
-            linewidth --> 1
-            legend --> :bottomright
-            seriescolor --> cols[i]
-            subplot := 2  # 
+            # subplot := 2  # 
             label := lab
             # xlim := (alow,ahi)
             # ylim := (0,ahi)

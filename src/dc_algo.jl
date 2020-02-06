@@ -92,7 +92,7 @@ end
 function dc_EGM!(m::FModel,p::Param)
 
     for it in p.nT:-1:1
-        println(it)
+        # println(it)
         # @info("period = $it")
 
         if it==p.nT
@@ -166,7 +166,7 @@ function dc_EGM!(m::FModel,p::Param)
 
                 if id==1   # only for workers
                     minx = min_x(vline)
-                    if vline.v[1].x <= minx 
+                    if vline.v[1].x <= minx
                         # normal case - no bending back behind first point
                         # call secondary_envelope on vline
                         m.v[id,it] = secondary_envelope(vline)
@@ -175,11 +175,11 @@ function dc_EGM!(m::FModel,p::Param)
 
                         # non-convex region lies inside credit constraint.
                         # endogenous x grid bends back before the first x grid point.
-                        x0 = collect(range(minx,stop = vline.v[1].x,length = max(10,floor(Integer,p.na/10)))) # some points to the left of first x point
+                        x0 = collect(range(minx,stop = vline.v[1].x,length = floor(Integer,p.na/10))) # some points to the left of first x point
                         x0 = x0[1:end-1]
                         y0 = u(x0,working,p) .+ p.beta .* ev[1]
                         prepend!(vline,convert(Point,x0,y0))
-                        prepend!(cline,convert(Point,x0,y0))  # cons policy in credit constrained is 45 degree line
+                        prepend!(cline,convert(Point,x0,x0))  # cons policy in credit constrained is 45 degree line
                         m.c[id,it] = Envelope(cline, clean = true)  # poor notation
                         m.v[id,it] = secondary_envelope(vline)
                     end
@@ -216,7 +216,7 @@ function dc_EGM!(m::FModel,p::Param)
                                 jl = maximum(jl)  # biggest of those
                                 newleft = MLine(m.c[id,it].env.v[jl:jl+1])
                                 # @fediskhakov: who guarantees that jl+1 is not to be deleted?
-                                # more generally: why do we not delete points before we 
+                                # more generally: why do we not delete points before we
                                 # insert the new intersections?
 
                                 sortx!(newleft)
@@ -244,12 +244,10 @@ function dc_EGM!(m::FModel,p::Param)
                         # remove illegal points from c
                         deleteat!(m.c[id,it].env.v, rmidx)
 
-                        # get a fresh copy of the consumption function                        
-                        consx = getx(m.c[id,it].env)
-
                         # add new points in twice with a slight offset from left
-                        # to preserve the ordering in x. 
+                        # to preserve the ordering in x.
                         for ileft in 1:length(insert_left)
+                            consx = getx(m.c[id,it].env)
                             j = findfirst(consx .> insert_left[ileft].x)  # first point past new intersection
                             insert!(m.c[id,it].env.v,j,insert_left[ileft])  # item is j-th index
                             insert!(m.c[id,it].env.v,j+1,insert_right[ileft])
