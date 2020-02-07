@@ -1,5 +1,7 @@
 # DCEGM
 
+**This readme is out of date. major update forthcoming. preview: this is 7 times faster than the matlab version**
+
 
 [![Build Status](https://travis-ci.org/floswald/DCEGM.jl.svg?branch=master)](https://travis-ci.org/floswald/DCEGM.jl)
 
