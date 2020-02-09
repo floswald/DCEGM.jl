@@ -1,0 +1,3 @@
+[submodule "matlab"]
+	path = matlab
+	url = git@github.com:floswald/dcegm.git

@@ -92,7 +92,7 @@ end
 function dc_EGM!(m::FModel,p::Param)
 
     for it in p.nT:-1:1
-        # println(it)
+        println(it)
         # @info("period = $it")
 
         if it==p.nT
@@ -524,8 +524,9 @@ function dc_EGM!(m::GModel,p::Param)
     end     # loop over time
 end
 
-function runf()
-    p = Param()
+function runf(;par=Dict())
+    p = Param(par=par)
+    p.beta = 1/p.R
     m = FModel(p)
     dc_EGM!(m,p)
     (m,p)
