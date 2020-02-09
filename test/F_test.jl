@@ -8,7 +8,7 @@
 	mldir = joinpath(tdir,"..","matlab")
 	cd(mldir)
 	br = chomp(read(`git rev-parse --abbrev-ref HEAD`,String))
-	if br !="bm" 
+	if br !="bm"
 		run(`git checkout bm`)
 	end
 
@@ -16,7 +16,7 @@
 	if haskey(ENV,"TRAVIS")
 		println("no matlab license on travis.")
 		println("will use saved results instead")
-	else 
+	else
 		run(`/Applications/MATLAB_R2019b.app/bin/matlab -batch "bench"`)
 	end
 
@@ -31,8 +31,8 @@
 
 	# run benchmark
 	# 1. warm up julia JIT on a small version
-	pd = Dict(:na => 15, 
-			   :beta => 0.95, 
+	pd = Dict(:na => 15,
+			   :beta => 0.95,
 			   :sigma => 0.35,
 			   :R => 1.05,
 			   :lambda => 0.000002)
@@ -49,11 +49,10 @@
 			mpo = readdlm(joinpath(mldir,"output","policy_$(i)_$(it).csv"), ',')
 			mvf = readdlm(joinpath(mldir,"output","value_$(i)_$(it).csv"), ',')
 
-			@test getx(m.c[i,it]) .≈ mpo[1,:]
-			@test gety(m.c[i,it]) .≈ mpo[2,:]
-
-			@test getx(m.v[i,it]) .≈ mvf[1,:]
-			@test gety(m.v[i,it]) .≈ mvf[2,:]
+			@test all(isapprox.( getx(m.c[i,it].env) , mpo[1,:] , atol=1e-4) )
+			@test all(isapprox.( gety(m.c[i,it].env) , mpo[2,:] , atol=1e-4) )
+			@test all(isapprox.( getx(m.v[i,it].env) , mvf[1,:] , atol=1e-4) )
+			@test all(isapprox.( gety(m.v[i,it].env) , mvf[2,:] , atol=1e-4) )
 
 		end
 	end

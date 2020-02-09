@@ -139,7 +139,7 @@ function dc_EGM!(m::FModel,p::Param)
                 # set optimal consumption function today. endo grid m and cons c0
                 cline = MLine(m.avec .+ c0, c0)
                 # store
-                m.c[id,it] = Envelope(cline)  
+                m.c[id,it] = Envelope(cline)
 
                 # consumption function done.
 
@@ -172,7 +172,7 @@ function dc_EGM!(m::FModel,p::Param)
                         y0 = u(x0,working,p) .+ p.beta .* ev[1]
                         prepend!(vline,convert(Point,x0,y0))
                         prepend!(cline,convert(Point,x0,x0))  # cons policy in credit constrained is 45 degree line
-                        m.c[id,it] = Envelope(cline)  
+                        m.c[id,it] = Envelope(cline)
                         m.v[id,it] = secondary_envelope(vline)
                     end
 
@@ -239,11 +239,14 @@ function dc_EGM!(m::FModel,p::Param)
                         # add new points in twice with a slight offset from left
                         # to preserve the ordering in x.
                         for ileft in 1:length(insert_left)
+
                             consx = getx(m.c[id,it].env)
                             j = findfirst(consx .> insert_left[ileft].x)  # first point past new intersection
                             insert!(m.c[id,it].env.v,j,insert_left[ileft])  # item is j-th index
                             insert!(m.c[id,it].env.v,j+1,insert_right[ileft])
                         end
+
+
                     end
                 else   # if id==1
                     m.v[id,it] = Envelope(vline)
@@ -256,6 +259,14 @@ function dc_EGM!(m::FModel,p::Param)
                 # this creates the credit constrained region
                 prepend!(m.c[id,it].env,[Point(m.avec[1],0.0)])
                 prepend!(m.v[id,it].env,[Point(m.avec[1],ev[1])])
+                # if !issorted(m.c[id,it].env)
+                #     println(isecs)
+                #     xx = getx(m.c[id,it].env)
+                #     ii = findfirst( vcat(0,diff(xx)) .< 0 )
+                #     println(m.c[id,it].env.v[ii-1:ii+1])
+                #     sortx!(m.c[id,it].env)
+                # end
+                @assert issorted(m.c[id,it].env)
                 # sortx!(m.c[id,it].env)
                 # sortx!(m.v[id,it].env)
                 # prepend!(m.v[id,it].env,p.a_low,ev[1])
