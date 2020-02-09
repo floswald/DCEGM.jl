@@ -256,13 +256,14 @@ end
 end
 
 # plot env and initial mline next to each other, showing new points and removed ones
-@recipe function f(x::Envelope{T},L::MLine{T}) where T
+@recipe function f(x::Envelope{T},L::MLine{T};numerate=false) where T
 
     # defaults
     grid --> true
     xticks := true
     legend --> false
     layout := (1,2)
+    title --> ["Backwards-Bending" "Envelope"]
 
     any_isec = length(x.isects) > 0
     any_rmv = length(x.removed) > 0
@@ -279,6 +280,9 @@ end
         markerstrokecolor --> :black
         markercolor --> :white
         markersize := 3
+        if numerate
+            series_annotations := ["$i" for i in 1:length(getx(L))]
+        end
         (getx(L),gety(L))
     end
     if any_rmv
@@ -463,12 +467,12 @@ function tplot2()
     L1 = MLine(x1,x1)
     L2 = MLine(x2,ones(n)*5)
     LL = [L1,L2]
-    p1 = plot(LL)
 
-    e = upper_env(en)
-    removed!(en)
-    p2 = plot(en,removed=true)
-    plot(p1,p2)
+    # a = splitLine(LL)
+    e = upper_env(LL)
+    p2 = plot(e,LL)
+    savefig(p2,joinpath(@__DIR__,"..","images","tplot2.png"))
+    p2
 end
 function tplot3a()
 
@@ -519,16 +523,13 @@ function tplot4()
          collect(range(2   , stop =  7   ,length = 15))  ,
          collect(range(4   , stop =  8   ,length = 25))]
     ls = [MLine(i[1],i[2](i[1])) for i in zip(xs,fs)]
-    e = Envelope(ls)
+    e = DCEGM.upper_env(ls)
 
-    p1 = plot(e)
-
-    upper_env!(e)
-    removed!(e)
-
-    p2 = plot(e,removed=true)
-
-    plot(p1,p2)
+    p1 = plot(ls)
+    p2 = plot(e,ls,title="envelope")
+    p = plot(p1,p2)
+    savefig(p,joinpath(@__DIR__,"..","images","tplot4.png"))
+    p
 end
 
 function tplot5()
@@ -536,16 +537,17 @@ function tplot5()
     x1 = collect(-0.9:0.3:2.7)
     L1 = MLine(x1, x1)
     x2 = collect(0.0:0.1:1)
-    L2 = MLine(x2, 2 .* x2, extrap = false)
+    L2 = MLine(x2, 2 .* x2)
     x3 = collect(1.0:0.45:2.9)
-    L3 = MLine(x3, (0.1 .* x3) .+ 1.9, extrap = false)
-    e = Envelope([L1,L2,L3])
-    p1 = plot(e,title = "set extrap=false")
-    upper_env!(e)
-    removed!(e)
-    p2 = plot(e,removed=true, title = "correct envelope")
-    println("env = $(e.env.v)")
-    plot(p1,p2)
+    L3 = MLine(x3, (0.1 .* x3) .+ 1.9 )
+    ls = [L1,L2,L3]
+    e = DCEGM.upper_env(ls)
+    p1 = plot(ls)
+    p2 = plot(e,ls,title="envelope")
+
+    p = plot(p1,p2)
+    savefig(p,joinpath(@__DIR__,"..","images","tplot5.png"))
+    p
 
 end
 
@@ -556,7 +558,9 @@ function splitf()
     p1 = plot(L,title="original",numerate=true)
     e = splitLine(L)
     p2 = plot(e,title="split MLine",numerate=true)
-    plot(p1,p2)
+    p = plot(p1,p2)
+    savefig(p,joinpath(@__DIR__,"..","images","split.png"))
+    p
 end
 
 function splitf2()
@@ -566,19 +570,19 @@ function splitf2()
     p1 = plot(L,title="original",numerate=true)
     e = splitLine(L)
     p2 = plot(e,title="split MLine",numerate=true)
-    plot(p1,p2)
+    p = plot(p1,p2)
+    savefig(p,joinpath(@__DIR__,"..","images","split2.png"))
+    p
 end
 
 function splitf3()
     x = [1,2,3,2.9,2.5,1.9,1.8,1.5,2.1,2.9]
     y = [1,1.5,1.7,1.6,1.55,1.4,1.3,1.2,1.8,2.1]
-    L = MLine(x,y, extrap = false)
-    e = splitLine(L)
-    upper_env!(e)
-    p1 = plot(e,title="MLine(x,y,extrap=false)")
-    removed!(e)
-    p2 = plot(e,title="with removed points",removed=true)
-    plot(p1,p2)
+    L = MLine(x,y)
+    e = DCEGM.secondary_envelope(L)
+    p2 = plot(e,L,numerate=true)
+    savefig(p2,joinpath(@__DIR__,"..","images","split3.png"))
+    p2
 end
 
 function splitf3a()
@@ -598,11 +602,13 @@ function test_upper_env_dec()
     y = vcat(x1[end:-1:1],ones(n)*5)
     L = MLine(x,y)
     e = splitLine(L)
-    p1 = plot(L,marker=true,title = "initial line")
+    p1 = plot(L,numerate=true,title = "initial line")
     p2 = plot(e,marker=true,title = "split line")
-    upper_env!(e)
+    e = upper_env(e)
     p3 = plot(e,marker=true,title = "Envelope w new pts")
-    L,e,x1,x2,plot(p1,p2,p3,layout = (1,3))
+    p4 = plot(p1,p2,p3,layout = (1,3),size=(1200,500))
+    savefig(p4,joinpath(@__DIR__,"..","images","descending_upper.png"))
+    L,e,x1,x2,p4
 end
 
 function split_test()
@@ -657,23 +663,19 @@ end
 
 
 function allplots()
-    p = joinpath(dirname(@__FILE__),"..","images")
     tplot1()
-    savefig(joinpath(p,"tplot1.png"))
     tplot2()
-    savefig(joinpath(p,"tplot2.png"))
-    tplot3a()
-    savefig(joinpath(p,"tplot3a.png"))
-    tplot3b()
-    savefig(joinpath(p,"tplot3b.png"))
-    tplot3c()
-    savefig(joinpath(p,"tplot3c.png"))
+    # savefig(joinpath(p,"tplot3a.png"))
+    # tplot3b()
+    # savefig(joinpath(p,"tplot3b.png"))
+    # tplot3c()
+    # savefig(joinpath(p,"tplot3c.png"))
+    tplot4()
     tplot5()
-    savefig(joinpath(p,"tplot5.png"))
     splitf()
-    savefig(joinpath(p,"split.png"))
     splitf2()
-    savefig(joinpath(p,"split2.png"))
     splitf3()
-    savefig(joinpath(p,"split3.png"))
+    demo()
+    demo2()
+    test_upper_env_dec()
 end
