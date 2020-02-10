@@ -31,17 +31,15 @@
 
 	# run benchmark
 	# 1. warm up julia JIT on a small version
-	pd = Dict(:na => 15,
+	pd = Dict(:na => 500,
 			   :beta => 0.95,
 			   :sigma => 0.35,
 			   :R => 1.05,
 			   :lambda => 0.000002)
 
-	DCEGM.runf(par = pd)
-
-	# 2. take actual timing
+	# DCEGM.runf(par = pd)
 	pd[:na] = 500
-	m,p = @time DCEGM.runf(par = pd)
+	m,p = DCEGM.runf(par = pd)
 
 	# read matlab results and test against each julia result set
 	for i in 1:p.nD
