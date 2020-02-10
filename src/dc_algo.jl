@@ -89,6 +89,11 @@ function plot_minimal()
 end
 
 
+"""
+    dc_EGM!(m::FModel,p::Param)
+
+DCEGM algorithm as in Ishkakov et al.
+"""
 function dc_EGM!(m::FModel,p::Param)
 
     for it in p.nT:-1:1
@@ -277,6 +282,197 @@ function dc_EGM!(m::FModel,p::Param)
 
 end
 
+"""
+    dc_EGM!(m::GModel,p::Param)
+
+DCEGM algorithm for a model with state dependence.
+"""
+function dc_EGM!(m::GModel,p::Param)
+
+    for it in p.nT:-1:1
+        for iy in 1:p.ny  # current state
+            for id in 1:p.nD  # current dchoice
+                if it==p.nT
+                    # final period: consume everyting.
+                    m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
+                    # initialize value function with vf(1) = 0
+                    m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
+                    # note that 0.0 as first value of the vfun is not innocuous here!
+                else
+                    for jy in 1:p.ny # future state: owner, renter, income, etc
+                        pr = m.ywgt[iy,jy]  # transprob
+
+                        for iid in 1:p.nD  # future dchoice
+                            # only feasible choices at this state
+                            # if renter, cannot sell
+
+                            m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
+                            c1 = interp(m.c[iid,jy,it+1], m1) # C(d',y',m')
+                            floory!(c1,p.cfloor)   # floor negative consumption
+                            ctmp[iid,jy,:] = pr .* gety(c1)
+                            vtmp[iid,jy,:] = pr .* vfun(iid,it+1,cmat[iid,jy,:],m1,m.v[iid,jy,it+1])
+                        end
+                    end # end future state
+
+                    # now get expectations conditional on iy: E[c(t+1,iid,y')|iy]
+                    # cmat = integrate over second dimension: nD by na
+                    # vmat = integrate over second dimension
+                    cmat = reduce(+, ctmp, dims = 2)
+                    vmat = reduce(+, vtmp, dims = 2)
+
+                    # get ccp of choices: P(d'|iy), pwork
+                    pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
+
+                    # get MU of cons
+                    mu1 = pwork .* up(cmat[1,:],p) .+ (1.0 .- pwork) .* up(cmat[2,:],p) # 1,na
+
+                    #RHS
+                    RHS = p.beta * p.R * mu1
+
+                    #optimal cons
+                    c0 = iup(RHS,p)
+                    # set optimal consumption function today. endo grid m and cons c0
+                    cline = MLine(m.avec .+ c0, c0)
+                    # store
+                    m.c[id,iy,it] = Envelope(cline)
+                    # consumption function done.
+
+                    # compute value function
+                    # ----------------------
+                    if working
+                        ev =  logsum(vmat,p)
+                    else
+                        ev =  vmat[2,:]
+                    end
+                    vline = MLine(m.avec .+ c0, u(c0,id==1,p) .+ p.beta * ev[:])
+
+                    # SECONDARY ENVELOPE COMPUTATION
+                    # ==============================
+
+                    if id==1   # only for workers
+                        minx = min_x(vline)
+                        if vline.v[1].x <= minx
+                            # normal case - no bending back behind first point
+                            # call secondary_envelope on vline
+                            m.v[id,iy,it] = secondary_envelope(vline)
+
+                        else
+                            # non-convex region lies inside credit constraint.
+                            # endogenous x grid bends back before the first x grid point.
+                            x0 = collect(range(minx,stop = vline.v[1].x,length = floor(Integer,p.na/10))) # some points to the left of first x point
+                            x0 = x0[1:end-1]
+                            y0 = u(x0,working,p) .+ p.beta .* ev[1]
+                            prepend!(vline,convert(Point,x0,y0))
+                            prepend!(cline,convert(Point,x0,x0))  # cons policy in credit constrained is 45 degree line
+                            m.c[id,iy,it] = Envelope(cline)
+                            m.v[id,iy,it] = secondary_envelope(vline)
+                        end
+
+                        # now we have a cleaned value function
+
+                        # if any points were removed from vline:
+                        if length(getr(m.v[id,iy,it])) > 0
+
+                            # analyse policy function
+                            # =======================
+
+                            rmidx = getr(m.v[id,iy,it])  # indices removed from value function
+                            insert_left = Point[]
+                            insert_right = Point[]
+
+                            # remove illegal points from c
+                            # deleteat!(m.c[id,iy,it].env.v, rmidx)
+
+                            # insert new intersections into consumption function
+                            isecs = gets(m.v[id,iy,it])
+                            consx = getx(m.c[id,iy,it].env)
+
+                            # compute any new cons-points (intersections in v)
+                            # ---------------------------------------
+
+                            for isec in 1:length(isecs)
+                                I = isecs[isec]
+
+                                # interpolate from left
+                                jl = findall(consx .< I.x)
+                                jl = jl[ jl .∉ Ref(rmidx) ]  # keep those who are not to be deleted
+                                if length(jl) > 0
+                                    jl = maximum(jl)  # biggest of those
+                                    newleft = MLine(m.c[id,iy,it].env.v[jl:jl+1])
+                                    # @fediskhakov: who guarantees that jl+1 is not to be deleted?
+                                    # more generally: why do we not delete points before we
+                                    # insert the new intersections?
+
+                                    sortx!(newleft)
+                                    tmp = getv(interp(newleft, [ I.x ] ))[1]
+                                    # take this new point at a minimal left shift in x
+                                    push!(insert_left, Point(tmp.x - 1e3 * eps(), tmp.y) )
+                                # else
+                                #     push!(insert_left,I)
+                                end
+
+                                # interpolate from right
+                                jr = findall(consx .> I.x)
+                                jr = jr[ jr .∉ Ref(rmidx) ]  # keep those who are not to be deleted
+                                if length(jr) > 0
+                                    jr = minimum(jr)   # smallest of those
+                                    # push!(insert_right, interp(m.c[id,iy,it].env[jr-1:jr], [ I.x ] ) )
+                                    newright = MLine(m.c[id,iy,it].env.v[jr-1:jr])
+                                    sortx!(newright)
+                                    push!(insert_right, getv(interp(newright, [ I.x ] ))[1] )
+                                # else
+                                #     push!(insert_right,I)
+                                end
+                            end # all intersections
+
+                            # remove illegal points from c
+                            deleteat!(m.c[id,iy,it].env.v, rmidx)
+
+                            # add new points in twice with a slight offset from left
+                            # to preserve the ordering in x.
+                            for ileft in 1:length(insert_left)
+
+                                consx = getx(m.c[id,iy,it].env)
+                                j = findfirst(consx .> insert_left[ileft].x)  # first point past new intersection
+                                insert!(m.c[id,iy,it].env.v,j,insert_left[ileft])  # item is j-th index
+                                insert!(m.c[id,iy,it].env.v,j+1,insert_right[ileft])
+                            end
+
+
+                        end
+                    else   # if id==1
+                        m.v[id,iy,it] = Envelope(vline)
+                    end
+
+                    # store the expected value at the lower boundary
+                    # in a separate object
+                    m.v[id,iy,it].vbound = ev[1]
+
+                    # this creates the credit constrained region
+                    prepend!(m.c[id,iy,it].env,[Point(m.avec[1],0.0)])
+                    prepend!(m.v[id,iy,it].env,[Point(m.avec[1],ev[1])])
+                    # if !issorted(m.c[id,iy,it].env)
+                    #     println(isecs)
+                    #     xx = getx(m.c[id,iy,it].env)
+                    #     ii = findfirst( vcat(0,diff(xx)) .< 0 )
+                    #     println(m.c[id,iy,it].env.v[ii-1:ii+1])
+                        sortx!(m.c[id,iy,it].env)  # sort cons by default
+                    # end
+                    # @assert issorted(m.c[id,iy,it].env)
+                    # sortx!(m.c[id,it].env)
+                    # sortx!(m.v[id,it].env)
+                    # prepend!(m.v[id,it].env,p.a_low,ev[1])
+                    # do NOT prepend the value function with the special value from above.
+                end # if last period
+            end  # current id
+        end  # iy
+    end # it
+
+end
+
+
+
+
 
 
 
@@ -338,201 +534,6 @@ function logsum(x::Matrix,p::Param)
     mx .+ p.lambda * log.( sum(exp.(mxx./p.lambda), dims = 1) )
 end
 
-
-"""
-    dcegm!(m::GModel,p::Param)
-
-Main body of the DC-EGM algorithm version
-"""
-function dc_EGM!(m::GModel,p::Param)
-    for it in p.nT:-1:1
-        println(it)
-        # @info("period = $it")
-
-        if it==p.nT
-            for iy in 1:p.ny
-                for id in 1:p.nD   # work of dont work
-                    # final period: consume everyting.
-                    # set the consumption function
-                    # remember this is a `MLine`, i.e. it has an x and a y Vector
-                    # x: endogenous grid m
-                    # y: optimal consumption at that grid x
-                    m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
-
-                    # initialize value function with vf(1) = 0
-                    m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
-                    # note that 0.0 as first value of the vfun is not innocuous here!
-                end
-            end
-
-        else
-            for iy in 1:p.ny
-                # @info("iy: $iy")
-                for id in 1:p.nD   # current period dchoice
-                    working = id==1  # working today is id=1
-                    # @info("current period status id: $id")
-
-                    # next period consumption and value y-coords
-                    # for each d-choice
-                    cmat = fill(-Inf,p.nD,p.na*p.ny)
-                    vmat = fill(-Inf,p.nD,p.na*p.ny)
-
-                    if working
-
-                        for iid in 1:p.nD   # next periods' discrete choice!
-                            # precomputed next period's cash on hand on all income states
-                            # what's next period's cash on hand given you work/not tomorrow?
-                            mm1 = m.m1[it+1][iid]
-
-                            # interpolate the iid-choice next period's consumtion function on next cash on hand, given that discrete choice
-                            # println(m.c[iid,iy,it+1].env.v)
-                            c1 = interp(m.c[iid,iy,it+1].env, mm1[:])
-                            floory!(c1,p.cfloor)   # floor negative consumption
-                            cmat[iid,:] = gety(c1)  # get y-values
-
-                            vmat[iid,:] = vfun(iid,it+1,cmat[iid,:],mm1[:],m.v[iid,iy,it+1],p)
-                        end
-
-                    else  # retirees have no discrete choice - absorbing state
-
-                        iid = 2   # no work next period
-                        mm1 = m.m1[it+1][iid]  # non-work wealth
-                        c1 = interp(m.c[iid,iy,it+1].env, mm1[:])
-                        floory!(c1,p.cfloor)   # floor negative consumption
-                        cmat[iid,:] = gety(c1)
-
-                        vmat[iid,:] = vfun(iid,it+1,cmat[iid,:],mm1[:],m.v[iid,iy,it+1],p)
-
-                    end
-
-                    # get ccp to be a worker
-                    pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
-
-                    # get marginal utility of that consumption
-                    mu1 = reshape(pwork .* up(cmat[1,:],p) .+ (1.0 .- pwork) .* up(cmat[2,:],p),p.ny,p.na)
-                    # println("mu1 = ")
-                    # display(mu1[1:10,:])
-
-                    # get expected marginal value of saving: RHS of euler equation
-                    # beta * R * E[ u'(c_{t+1}) | iy ]
-                    # need to integrate out Py here
-                    RHS = p.beta * p.R *  m.ywgt[iy,:]' * mu1
-                    # RHS = p.beta * p.R * mu1 * vec(m.ywgt)
-                    # println("RHS = $(RHS[1:10])")
-
-                    # optimal consumption today: invert the RHS of euler equation
-                    c0 = iup(Array(RHS)[:],p)
-
-                    # set optimal consumption function today. endo grid m and cons c0
-                    cline = MLine((m.avec[it]) .+ c0, c0)
-                    # store
-                    m.c[id,iy,it] = Envelope(cline)
-
-                    # consumption function done.
-
-
-                    # compute value function
-                    # ----------------------
-                    if working
-                        # ev = reshape(logsum(vmat,p),p.na,p.ny) * m.ywgt[:,iy]
-                        ev =  m.ywgt[iy,:]' * reshape(logsum(vmat,p),p.ny,p.na)
-                    else
-                        ev =  m.ywgt[iy,:]' * reshape(vmat[2,:],p.ny,p.na)
-                    end
-                    vline = MLine((m.avec[it]) .+ c0, u(c0,id==1,p) .+ p.beta * ev[:])
-
-                    # println(vline)
-
-                    if any(isnan.(ev))
-                        println("ev = ")
-                        display(ev)
-                    end
-
-
-
-                    # vline and cline may have backward-bending regions: let's prune those
-                    # SECONDARY ENVELOPE COMPUTATION
-
-                    if id==1   # only for workers
-                        minx = min_x(vline)
-                        if minx < vline.v[1].x
-                            # non-convex region lies inside credit constraint.
-                            # endogenous x grid bends back before the first x grid point.
-                            x0 = collect(range(minx,stop = vline.v[1].x,length = max(10,floor(Integer,p.na/10)))) # some points to the left of first x point
-                            x0 = x0[1:end-1]
-                            y0 = u(x0,working,p) .+ p.beta .* ev[1]
-                            prepend!(vline,convert(Point,x0,y0))
-                            prepend!(cline,convert(Point,x0,y0))  # cons policy in credit constrained is 45 degree line
-                        end
-
-                        # split the vline at potential backward-bending points
-                        # and save as Envelope object
-                        m.v[id,iy,it] = splitLine(vline)  # splits line at backward bends
-
-                        # if there is just one line (i.e. nothing was split in preceding step)
-                        # then this IS a valid envelope
-                        # else, need to compute the upper envelope.
-                        if !m.v[id,iy,it].env_set
-                            upper_env!(m.v[id,iy,it])   # compute upper envelope of this
-                            # println(m.c[id,iy,it].env)
-
-                            removed!(m.v[id,iy,it])
-                            remove_c!(m.v[id,iy,it],m.c[id,iy,it])
-                            sortx!(m.c[id,iy,it].env)
-
-                            @assert(issorted(getx(m.v[id,iy,it].env)))
-                            # display(hcat(getx(m.v[id,iy,it]),getx(m.c[id,iy,it])))
-                            @assert(issorted(getx(m.c[id,iy,it].env)))
-                            # insert new intersections into consumption function
-                            isecs = gets(m.v[id,iy,it])
-                            if length(isecs) > 0
-                                for isec in 1:length(isecs)
-                                    I = isecs[isec]
-
-                                    # if that intersection is a new point
-                                    # # i.e. intersection was not a member of any `MLine`
-                                    # if I.new_point
-                                    #     # insert intersection into env over cons function
-                                    #     println("I.x = $(I.x)")
-                                    #     println("I.i = $(I.i)")
-
-                                    #     if !issorted(m.c[id,iy,it].env.x)
-                                    #         println("m.c[id,iy,it].env.x = $(m.c[id,iy,it].env.x)")
-                                    #         println("m.c[id,iy,it].env.y = $(m.c[id,iy,it].env.y)")
-                                    #     end
-
-                                    #     insert!(m.c[id,iy,it].env,I.x,interp(m.c[id,iy,it].env,[I.x]),I.i)
-
-                                    #     # add to both adjacent `MLine` segments:
-                                    #     # 1) append to end of segment preceding intersection:
-                                    #     newy = interp(m.c[id,iy,it].L[I.i],[I.x])
-                                    #     append!(m.c[id,iy,it].L[I.i],I.x,newy)
-                                    #     # 1) prepend to beginning of segment following intersection:
-                                    #     prepend!(m.c[id,iy,it].L[I.i+1],I.x,newy)
-                                    # end
-                                end
-                            end
-                        end
-                    else   # if id==1
-                        m.v[id,iy,it] = Envelope(vline)
-                    end
-
-                    # store the expected value at the lower boundary
-                    # in a separate object
-                    # NOT as the first value in the vfun as Fedor.
-                    m.v[id,iy,it].vbound = ev[1]
-
-                    # this creates the credit constrained region
-                    prepend!(m.c[id,iy,it].env,[Point(m.avec[it][1],0.0)])
-                    sortx!(m.c[id,iy,it].env)
-                    sortx!(m.v[id,iy,it].env)
-                    # prepend!(m.v[id,it].env,p.a_low,ev[1])
-                    # do NOT prepend the value function with the special value from above.
-                end # current discrete choice
-            end   # iy
-        end    # if final perio
-    end     # loop over time
-end
 
 function runf(;par=Dict())
     p = Param(par=par)
