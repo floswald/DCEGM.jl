@@ -98,9 +98,9 @@ function dc_EGM!(m::FModel,p::Param)
         if it==p.nT
             for id in 1:p.nD   # work of dont work
                 # final period: consume everyting.
-                m.c[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)), clean = true )
+                m.c[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
                 # initialize value function with vf(1) = 0
-                m.v[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)), clean = true )
+                m.v[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
                 # note that 0.0 as first value of the vfun is not innocuous here!
             end
         else
@@ -139,7 +139,7 @@ function dc_EGM!(m::FModel,p::Param)
                 # set optimal consumption function today. endo grid m and cons c0
                 cline = MLine(m.avec .+ c0, c0)
                 # store
-                m.c[id,it] = Envelope(cline,clean = true)  # that's poor notation
+                m.c[id,it] = Envelope(cline)
 
                 # consumption function done.
 
@@ -152,17 +152,9 @@ function dc_EGM!(m::FModel,p::Param)
                     ev =  m.ywgt' * reshape(vmat[2,:],p.ny,p.na)
                 end
                 vline = MLine(m.avec .+ c0, u(c0,id==1,p) .+ p.beta * ev[:])
-                # vline is an *uncleaned* value function which may have backward bends
 
-                if any(isnan.(ev))
-                    println("ev = ")
-                    display(ev)
-                end
-
-
-
-                # vline and cline may have backward-bending regions: let's prune those
                 # SECONDARY ENVELOPE COMPUTATION
+                # ==============================
 
                 if id==1   # only for workers
                     minx = min_x(vline)
@@ -172,7 +164,6 @@ function dc_EGM!(m::FModel,p::Param)
                         m.v[id,it] = secondary_envelope(vline)
 
                     else
-
                         # non-convex region lies inside credit constraint.
                         # endogenous x grid bends back before the first x grid point.
                         x0 = collect(range(minx,stop = vline.v[1].x,length = floor(Integer,p.na/10))) # some points to the left of first x point
@@ -180,7 +171,7 @@ function dc_EGM!(m::FModel,p::Param)
                         y0 = u(x0,working,p) .+ p.beta .* ev[1]
                         prepend!(vline,convert(Point,x0,y0))
                         prepend!(cline,convert(Point,x0,x0))  # cons policy in credit constrained is 45 degree line
-                        m.c[id,it] = Envelope(cline, clean = true)  # poor notation
+                        m.c[id,it] = Envelope(cline)
                         m.v[id,it] = secondary_envelope(vline)
                     end
 
@@ -247,14 +238,17 @@ function dc_EGM!(m::FModel,p::Param)
                         # add new points in twice with a slight offset from left
                         # to preserve the ordering in x.
                         for ileft in 1:length(insert_left)
+
                             consx = getx(m.c[id,it].env)
                             j = findfirst(consx .> insert_left[ileft].x)  # first point past new intersection
                             insert!(m.c[id,it].env.v,j,insert_left[ileft])  # item is j-th index
                             insert!(m.c[id,it].env.v,j+1,insert_right[ileft])
                         end
+
+
                     end
                 else   # if id==1
-                    m.v[id,it] = Envelope(vline, clean = true)
+                    m.v[id,it] = Envelope(vline)
                 end
 
                 # store the expected value at the lower boundary
@@ -264,6 +258,14 @@ function dc_EGM!(m::FModel,p::Param)
                 # this creates the credit constrained region
                 prepend!(m.c[id,it].env,[Point(m.avec[1],0.0)])
                 prepend!(m.v[id,it].env,[Point(m.avec[1],ev[1])])
+                # if !issorted(m.c[id,it].env)
+                #     println(isecs)
+                #     xx = getx(m.c[id,it].env)
+                #     ii = findfirst( vcat(0,diff(xx)) .< 0 )
+                #     println(m.c[id,it].env.v[ii-1:ii+1])
+                    sortx!(m.c[id,it].env)  # sort cons by default
+                # end
+                # @assert issorted(m.c[id,it].env)
                 # sortx!(m.c[id,it].env)
                 # sortx!(m.v[id,it].env)
                 # prepend!(m.v[id,it].env,p.a_low,ev[1])
@@ -532,8 +534,9 @@ function dc_EGM!(m::GModel,p::Param)
     end     # loop over time
 end
 
-function runf()
-    p = Param()
+function runf(;par=Dict())
+    p = Param(par=par)
+    p.beta = 1/p.R
     m = FModel(p)
     dc_EGM!(m,p)
     (m,p)

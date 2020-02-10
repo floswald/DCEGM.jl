@@ -52,32 +52,19 @@ Base.promote_op(::typeof(*), ::Type{T1}, ::Type{Point{T2}}) where {T1<:Number,T2
 """
 # MLine
 
-A `MLine` is a vector of `Point`s. The x-coordinates of the points can be irregularly spaced.
+A `MLine` is a vector of `Point`[@ref]. The x-coordinates of the points can be irregularly spaced.
 
 ## Fields
 
 * `v`: Vector of `Point`s
-* `n`: number of points in line
-* `xvec`: a vector of the x values for gridded interpolation
-* `xrange`: the xrange of the line, i.e. the range of `x`.
-* `yrange`: the yrange of the line, i.e. the range of `x`.
-* `extrapolated`: indices of points that have been extrapolated
+* `iextrap`: indices of points that have been extrapolated
 """
 mutable struct MLine{T} <: AbstractArray{T,1}
     v::Vector{Point{T}}
-    # n::Int
-    # xvec ::Vector{T}
-    # xrange::Tuple
-    # yrange::Tuple
     iextrap::Vector{Int}
     function MLine(v::Vector{Point{T}}; extrapolated=nothing) where {T<:Number}
         this = new{T}()
         this.v = v
-        # this.n = length(v)
-        # this.xvec = [i.x for i in v]
-        # y = [i.y for i in v]
-        # this.xrange = extrema(this.xvec)
-        # this.yrange = extrema(y)
         if isnothing(extrapolated)
             this.iextrap = Int[]
         else
@@ -89,11 +76,7 @@ mutable struct MLine{T} <: AbstractArray{T,1}
         this = new{T}()
         n = length(x)
         @assert n == length(y)
-        # this.xvec = copy(x)
         this.v = [Point(x[i],y[i]) for i in 1:n]
-        # # this.n = length(this.v)
-        # this.xrange = extrema(this.xvec)
-        # this.yrange = extrema(y)
         if isnothing(extrapolated)
             this.iextrap = Int[]
         else
@@ -119,14 +102,6 @@ function getindex(l::MLine,i::Int)
 end
 Base.IndexStyle(::Type{<:MLine}) = IndexLinear()
 getindex(l::MLine, I...) = l.v[I]
-# getindex(l::MLine, I::Vararg{Int, N}) = l.v[I]
-# function setindex!(l::MLine{T},v::Point{T},i::Int) where {T<:Number}
-#     println(l[i])
-#     println(v)
-#     l[i] = v
-#     # reconfigure xvec
-#     # l.xvec = getx(l)
-# end
 endof(l::MLine) = length(l.v)
 
 # iteration
@@ -239,7 +214,7 @@ end
    interp(l::MLine{T},ix::Vector{T};Bool::extrap = false) where {T<:Number}
 
 Interpolate a `MLine` on a vector of values `x`.
-Importantly, this returns a new vector of `Point` (i.e. tuples of (x,y)).
+Importantly, this returns a new vector of `Point` (i.e. tuples of (x,y), and not just a function value y).
 """
 function interp(l::MLine{T},ix::Vector{T};extrap::Bool = true) where {T<:Number}
     # # whenever
@@ -279,16 +254,10 @@ end
 function interp(e::Array{MLine{T}},ix::Vector{T};extrap::Bool = true) where {T<:Number}
     [interp(e[i],ix,extrap=extrap) for i in eachindex(e)]
 end
-# function interp!(o::Matrix{Point{T}},e::Array{MLine{T}},ix::Vector{T};extrap::Bool=false) where {T<:Number}
-#     for i in eachindex(e)
-#         o[i,:] = MLine(interp(e[i],ix,extrap))
-#     end
-#     # [MLine(interp(e[i],ix,extrap)) for i in eachindex(e)]
-# end
 
 
 """
-    linemax(e::Array{MLine{T}}; noextrap::Bool=true) where {T<:Number}
+    linemax(e::Array{MLine{T}}) where {T<:Number}
 
 For an array of `MLine`s on identical support `xx`,
 computes the index in `e` of the `MLine` where the `y`-value is highest for each `xx`.
@@ -306,7 +275,7 @@ function linemax(e::Array{MLine{T}}) where {T<:Number}
         for row in 1:rows
             ic += 1
             # if (e[row][j].y > v) && ( !(j ∈ e[row].iextrap) )   # if best value and not extrapolated
-            if (e[row][j].y > v)    # if best value 
+            if (e[row][j].y > v)    # if best value
                 v = e[row][j].y
                 iv = ic
             end
@@ -323,13 +292,6 @@ function prepend!(m::MLine{T},p::Vector{Point{T}}) where T
     # reconfigure!(m)
 end
 
-# function reconfigure!(m::MLine)
-#     # after having updated some objects, need to recompute n
-#     m.xvec = [i.x for i in m.v]
-#     m.n = length(m.v)
-#     m.xrange = extrema(m.xvec)
-#     m.yrange = (min_y(m),max_y(m))
-# end
 
 "delete an index"
 function delete!(m::MLine,idx)
@@ -352,7 +314,9 @@ end
 """
     splitat(m::MLine,j::Int,repeat_boundary::Bool=true)
 
-Splits a `MLine` object after given index and returns 2 new `MLine`s as a tuple. If `repeat_boundary` is true, then the separating index is the first point of the second new `MLine`.
+Splits a `MLine` object after given index and returns 2 new `MLine`s as a tuple.
+If `repeat_boundary` is true, then the separating index is the first point of the second new `MLine`.
+Propagates the `iextrap` vector of indices to the newly formed `MLine`s.
 """
 function splitat(m::MLine,j::Int,repeat_boundary::Bool=true)
     iex = getex(m)
@@ -383,41 +347,3 @@ function sortx!(m::MLine)
     sort!(m.v)  # sorts v
     # reconfigure!(m)
 end
-
-
-# """
-#     intersect(L1::MLine,L2::MLine,s::Int)
-
-# Intersecting two lines returns a [`Point`](@ref)
-
-# Both L1 and L2 are lines with identical support.
-
-# return (Point,true) where true indicates that this point should be added to the envelope
-# """
-# function intersect(L1::MLine,L2::MLine,s::Int)
-#     x1,v1 = (L1[s].x,L1[s].y)
-#     x2,v2 = (L2[s+1].x,L2[s+1].y)
-
-#     # println("x1,v1 = $x1,$v1")
-#     # println("x2,v2 = $x2,$v2")
-#     # x_x = 0.0
-#     # v_x = 0.0
-
-#     # check if both lines are interpolable in both points
-#     f1 = interp(L1,[x1,x2])
-#     f2 = interp(L2,[x1,x2])
-
-#     # check that not extrapolated in both x1 and x2
-#     if ( (f1.iextrap != [1,2]) && (f2.iextrap != [1,2]) )
-#         # check that predicted values are different, so we can find a zero
-#         f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
-#         if f_closure(x1) * f_closure(x2) < 0
-#             # find intersection point
-#             x_0 = fzero(f_closure,x1,x2)
-#             v_x = interp(L1,[x_0])[1]  # get function value
-#             return (v_x,true)
-#         end
-#     else
-#         return nothing
-#     end
-# end

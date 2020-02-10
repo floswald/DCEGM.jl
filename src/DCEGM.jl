@@ -29,7 +29,7 @@ import Base.prepend!,
 export MLine, Point, Envelope, yisless
 
 # methods
-export interp, splitat,upper_env!, getx, gety, gets, splitLine, getr
+export interp, splitat, getx, gety, gets, splitLine, getr
 
 # includes for MultiLine
 include("line.jl")
@@ -40,6 +40,7 @@ include("param.jl")
 include("utils.jl")
 include("dc_algo.jl")
 include("plotting.jl")
+include("bench.jl")
 
 
 function doi()
