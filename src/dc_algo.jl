@@ -289,9 +289,16 @@ DCEGM algorithm for a model with state dependence.
 """
 function dc_EGM!(m::GModel,p::Param)
 
+    cmat = fill(-Inf,p.nD,p.na)
+    vmat = fill(-Inf,p.nD,p.na)
+    ctmp = fill(-Inf,p.nD,p.ny,p.na)
+    vtmp = fill(-Inf,p.nD,p.ny,p.na)
+
     for it in p.nT:-1:1
         for iy in 1:p.ny  # current state
             for id in 1:p.nD  # current dchoice
+                working = id==1  # working today is id=1
+
                 if it==p.nT
                     # final period: consume everyting.
                     m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
@@ -299,6 +306,14 @@ function dc_EGM!(m::GModel,p::Param)
                     m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
                     # note that 0.0 as first value of the vfun is not innocuous here!
                 else
+                    # next period consumption and values y-coords
+                    # for each d-choice
+                    # reset all value matrices
+                    fill!(cmat,-Inf)
+                    fill!(vmat,-Inf)
+                    fill!(ctmp,-Inf)
+                    fill!(vtmp,-Inf)
+
                     for jy in 1:p.ny # future state: owner, renter, income, etc
                         pr = m.ywgt[iy,jy]  # transprob
 
@@ -307,18 +322,18 @@ function dc_EGM!(m::GModel,p::Param)
                             # if renter, cannot sell
 
                             m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
-                            c1 = interp(m.c[iid,jy,it+1], m1) # C(d',y',m')
+                            c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
                             floory!(c1,p.cfloor)   # floor negative consumption
                             ctmp[iid,jy,:] = pr .* gety(c1)
-                            vtmp[iid,jy,:] = pr .* vfun(iid,it+1,cmat[iid,jy,:],m1,m.v[iid,jy,it+1])
+                            vtmp[iid,jy,:] = pr .* vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
                         end
                     end # end future state
 
                     # now get expectations conditional on iy: E[c(t+1,iid,y')|iy]
                     # cmat = integrate over second dimension: nD by na
                     # vmat = integrate over second dimension
-                    cmat = reduce(+, ctmp, dims = 2)
-                    vmat = reduce(+, vtmp, dims = 2)
+                    cmat = dropdims( reduce(+, ctmp, dims = 2), dims = 2)
+                    vmat = dropdims( reduce(+, vtmp, dims = 2), dims = 2)
 
                     # get ccp of choices: P(d'|iy), pwork
                     pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
@@ -539,6 +554,14 @@ function runf(;par=Dict())
     p = Param(par=par)
     p.beta = 1/p.R
     m = FModel(p)
+    dc_EGM!(m,p)
+    (m,p)
+end
+
+function rung(;par=Dict())
+    p = Param(par=par)
+    p.beta = 1/p.R
+    m = GModel(p)
     dc_EGM!(m,p)
     (m,p)
 end
