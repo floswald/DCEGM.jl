@@ -463,6 +463,7 @@ function dc_EGM!(m::GModel,p::Param)
                     # in a separate object
                     m.v[id,iy,it].vbound = ev[1]
 
+
                     # this creates the credit constrained region
                     prepend!(m.c[id,iy,it].env,[Point(m.avec[1],0.0)])
                     prepend!(m.v[id,iy,it].env,[Point(m.avec[1],ev[1])])
