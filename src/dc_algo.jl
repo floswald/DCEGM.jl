@@ -92,7 +92,7 @@ end
 function dc_EGM!(m::FModel,p::Param)
 
     for it in p.nT:-1:1
-        println(it)
+        # println(it)
         # @info("period = $it")
 
         if it==p.nT
@@ -164,7 +164,6 @@ function dc_EGM!(m::FModel,p::Param)
                         m.v[id,it] = secondary_envelope(vline)
 
                     else
-
                         # non-convex region lies inside credit constraint.
                         # endogenous x grid bends back before the first x grid point.
                         x0 = collect(range(minx,stop = vline.v[1].x,length = floor(Integer,p.na/10))) # some points to the left of first x point
@@ -264,9 +263,9 @@ function dc_EGM!(m::FModel,p::Param)
                 #     xx = getx(m.c[id,it].env)
                 #     ii = findfirst( vcat(0,diff(xx)) .< 0 )
                 #     println(m.c[id,it].env.v[ii-1:ii+1])
-                #     sortx!(m.c[id,it].env)
+                    sortx!(m.c[id,it].env)  # sort cons by default
                 # end
-                @assert issorted(m.c[id,it].env)
+                # @assert issorted(m.c[id,it].env)
                 # sortx!(m.c[id,it].env)
                 # sortx!(m.v[id,it].env)
                 # prepend!(m.v[id,it].env,p.a_low,ev[1])

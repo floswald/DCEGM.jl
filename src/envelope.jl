@@ -246,78 +246,64 @@ function upper_env(L::Vector{MLine{T}}) where T<:Number
             y1 = interp(L[ln1],[pt1,pt2],extrap=true)
             y2 = interp(L[ln2],[pt1,pt2],extrap=true)
 
-            # if intersection is *on* either pt1 or pt2, this is not an intersection
-            # but needs to be part of the upper envelope of course
-            onboth = y2.v .== y1.v
-            # debug> y2.v .== y1.v
-            # 2-element BitArray{1}:
-            #  1
-            #  0
-            if any(onboth)
-                @assert sum(onboth) == 1
-                push!(env,y2.v[onboth][1])
-                # push!(isec,y2.v[onboth][1])
-            else
-                # check neither y1 nor y2 have any extrapolated points
-                neither = (length(y1.iextrap) == 0) && ( length(y2.iextrap) == 0 )
-                # neither = (y1.iextrap != [1,2]) && (y2.iextrap != [1,2])
-                # and that we have different signs on both ends of search interval
-                f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
-                diffsign = f_closure(pt1) * f_closure(pt2) < 0
 
-                if neither && diffsign
+            # check neither y1 nor y2 have any extrapolated points
+            neither = (length(y1.iextrap) == 0) && ( length(y2.iextrap) == 0 )
+            # neither = (y1.iextrap != [1,2]) && (y2.iextrap != [1,2])
+            # and that we have different signs on both ends of search interval
+            f_closure(z) = interp(L1,[z])[1].y - interp(L2,[z])[1].y
+            diffsign = f_closure(pt1) * f_closure(pt2) < 0
 
-                    # find intersection point
-                    while true
-                        # @debug "checking lines ln1=$ln1 ln2=$ln2 in [$(round(pt1,digits=3)),$(round(pt1,digits=3))]"
-                        pt3 = fzero(x -> interp(L[ln1],[x])[1].y - interp(L[ln2],[x])[1].y,pt1,pt2)
-                        y3  = interp(L[ln1],[pt3])[1].y  # get function value of ln1 at intersection
-                        # @debug "found intersection" pt3=pt3 y3=y3
+            if neither && diffsign
 
-                        # are there other lines above this intersection point?
-                        # interpolate *all* lines in new point pt3
-                        yy2 = interp(L,[pt3],extrap=false)
-                        y3, ln3 = findmax([yy2[i].v[1].y for i in 1:length(L)])
+                # find intersection point
+                while true
+                    # @debug "checking lines ln1=$ln1 ln2=$ln2 in [$(round(pt1,digits=3)),$(round(pt1,digits=3))]"
+                    pt3 = fzero(x -> interp(L[ln1],[x])[1].y - interp(L[ln2],[x])[1].y,pt1,pt2)
+                    y3  = interp(L[ln1],[pt3])[1].y  # get function value of ln1 at intersection
+                    # @debug "found intersection" pt3=pt3 y3=y3
 
-                        if ln3 == ln2 || ln3 == ln1
-                            # @debug "no higher line at" pt3=pt3
-                            # no new lines above at pt3!
-                            # add intersection point to the end of the env points
-                            push!(env, Point(pt3,y3))
-                            # add intersection to intersections container
-                            push!(isec, Point(pt3,y3))
-                            # additional intersections before next point?
-                            if ln2 == k1
-                                # no other intersection.
-                                # if ln2 is new optimal line and there is no ln3 above,
-                                # there cannot be an additional intersection to the right of pt3.
-                                break
+                    # are there other lines above this intersection point?
+                    # interpolate *all* lines in new point pt3
+                    yy2 = interp(L,[pt3],extrap=false)
+                    y3, ln3 = findmax([yy2[i].v[1].y for i in 1:length(L)])
 
-                            else
-                                #
-                                # @debug "additional iscecs. updating" ln1=ln2 pt1=pt3 ln2=k1 pt2=xx[j]
-                                ln1=ln2
-                                pt1=pt3
-                                ln2=k1
-                                pt2=xx[j]
-
-                            end
+                    if ln3 == ln2 || ln3 == ln1
+                        # @debug "no higher line at" pt3=pt3
+                        # no new lines above at pt3!
+                        # add intersection point to the end of the env points
+                        push!(env, Point(pt3,y3))
+                        # add intersection to intersections container
+                        push!(isec, Point(pt3,y3))
+                        # additional intersections before next point?
+                        if ln2 == k1
+                            # no other intersection.
+                            # if ln2 is new optimal line and there is no ln3 above,
+                            # there cannot be an additional intersection to the right of pt3.
+                            break
 
                         else
-                            # there is indeed a third line over point pt3
-                            # what we have is not the upper envelope yet.
-                            # redo search.
-                            # there must be an intersection to the left of pt3
-                            # @debug "additional isec to left. updating" ln2=ln3 pt2=pt3
-                            ln2 = ln3 # new candidate line's index
-                            pt2 = pt3 # new right boundary of search interval
-
+                            #
+                            # @debug "additional iscecs. updating" ln1=ln2 pt1=pt3 ln2=k1 pt2=xx[j]
+                            ln1=ln2
+                            pt1=pt3
+                            ln2=k1
+                            pt2=xx[j]
                         end
+                    else
+                        # there is indeed a third line over point pt3
+                        # what we have is not the upper envelope yet.
+                        # redo search.
+                        # there must be an intersection to the left of pt3
+                        # @debug "additional isec to left. updating" ln2=ln3 pt2=pt3
+                        ln2 = ln3 # new candidate line's index
+                        pt2 = pt3 # new right boundary of search interval
+
                     end
-                else
-                    # @debug "no valid intersection" notboth=notboth diffsign=diffsign
                 end
-            end  # if candidate intersection on both lines
+            else
+                # @debug "no valid intersection" notboth=notboth diffsign=diffsign
+            end
         end # if k0 != k1
         # regular addition of points
         # if current xx[j] is a member of line k1, add the point
