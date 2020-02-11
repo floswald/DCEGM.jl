@@ -162,7 +162,11 @@ function rouwenhorst(rho::Float64,mu_eps,sigma_eps,n)
 end
 
 # asset grid scaling
-function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1)
+function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1,offset=0.05)
+	if lb >= ub
+		@warn("lower bound $lb is greater than upper bound $ub: forcing lb < ub.")
+		lb = ub - abs(ub)*offset
+	end
 	out = zeros(n)
 	if logorder==0
 		out    = collect(range(lb,stop = ub,length = n))

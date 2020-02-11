@@ -50,12 +50,14 @@ mutable struct Param
 	a_lowT                :: Float64
 	nD                    :: Int # number of discrete choices
 	cfloor                :: Float64
+	cfloor_plot           :: Float64
 	alpha                 :: Float64
 	inc0                 :: Float64
 	inc1                 :: Float64
 	inc2                 :: Float64
 	ρ                    :: Float64
 	ϵ                    :: Float64
+	k                    :: Int
 
 	# constructor
     function Param(;par::Dict=Dict())
@@ -252,19 +254,19 @@ mutable struct GModel <: Model
 		# get borrowing limits
 		# η = abounds(this.yvec[1],p)
 
-		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
+		this.avec          = scaleGrid(p.a_low,p.a_high,p.na,logorder = 2)
 		# this.avec          = [collect(range(p.a_low,stop = p.a_high,length = p.na))]
 		# this.avec          = [scaleGrid(p.a_low,p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
 		# this.avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
 		# this.avec          = [scaleGrid(p.a_low,p.a_high,p.na,logorder = 0) for it in 1:p.nT-1]
 		# push!(this.avec, scaleGrid(0.0,p.a_high,p.na,logorder = 0))  # last period
-		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+		# this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
 		# precompute next period's cash on hand.
 		# (na,ny,nD)
 		# iD = 1: tomorrow work
 		# iD = 2: tomorrow no work
-		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it,p,this.yvec[iy]) * (id==1) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it,p,this.yvec[iy]) * (id==1) * (it < p.nT) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 

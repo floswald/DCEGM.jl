@@ -1,49 +1,144 @@
 
-@recipe function f(m::GModel;id=1,iy=2)
+
+function v_analytic(m::Model,p::Param,id,it)
+    vf = m.v[id,it]
+    c = m.c[id,it]
+    cons = scaleGrid(p.cfloor_plot,gety(c.env)[2],p.k,logorder = 1)
+    cash = scaleGrid(p.a_low,getx(vf.env)[2],p.k,logorder = 1)
+    pts = convert(Point,cash,vfun(id,it,cons,cash,vf,p))
+    vcat(pts, vf.env.v[2:end])  # connect at second point
+end
+
+function v_analytic(m::Model,p::Param,id,iy,it)
+    vf = m.v[id,iy,it]
+    c = m.c[id,iy,it]
+    cons = scaleGrid(p.cfloor_plot,gety(c.env)[2],p.k,logorder = 1)
+    cash = scaleGrid(p.a_low,getx(vf.env)[2],p.k,logorder = 1)
+    pts = convert(Point,cash,vfun(id,it,cons,cash,vf,p))
+    vcat(pts, vf.env.v[2:end])  # connect at second point
+end
+
+
+@recipe function f(m::GModel,p::Param;id=1,iy=nothing,it=nothing)
     grid --> true
     xticks := true
-    legend --> true
-    cg = cgrad(:inferno)
-    c1 = colorant"red"
-    c2 = colorant"blue"
-    # alow,ahi = extrema(m.avec)
-    # aspect = (ahi-alow)/(ahi - 0.0)
+    legend --> false
+    # cg = cgrad(:inferno)
+    # c1 = colorant"red"
+    # c2 = colorant"blue"
+    xrange = zeros(2)
+    xa = extrema(m.avec)
+    xrange[1] = xa[1] .- diff(vcat(xa...))[1] .* 0.01
+    xrange[2] = xa[2]
 
     nT = size(m.v)[3]
-    cols = range(c1,stop=c2,length=nT)
+    # cols = range(c1,stop=c2,length=nT)
 
     layout := grid(1,2)
-    for i in 1:nT
-        lab = ((i==1)|(i==nT)) ? "$i" : ""
+
+    if isnothing(iy)
+        legend := true
+        if !isnothing(it)
+            title --> ["value period $it" "consumption period $it"]
+            for jy in 1:p.ny
+                vt = v_analytic(m,p,id,jy,it)
+                @series begin
+                    linetype --> :path
+                    linewidth --> 1
+                    legend := :bottomright
+                    label := "y$jy"
+                    # seriescolor --> cols[i]
+                    subplot := 1  # value function
+                    yguide := "value"
+                    xguide := "Cash on Hand M"
+                    xlim := xrange
+                    ylim := (-15,15)
+                    getx(vt),gety(vt)
+                    # getx(m.v[id,iy,it].env),gety(m.v[id,iy,it].env)
+                end
+            end
+            for jy in 1:p.ny
+                @series begin
+                    linetype --> :path
+                    linewidth --> 1
+                    legend --> :bottomright
+                    # seriescolor --> cols[i]
+                    subplot := 2  # 
+                    label := "y$jy"
+                    xlim := xa 
+                    ylim := xa
+                    yguide := "consumption"
+                    xguide := "Cash on Hand M"
+                    # aspect_ratio := aspect
+                    getx(m.c[id,jy,it].env),gety(m.c[id,jy,it].env)
+                end
+            end
+        end
+    elseif isnothing(it) & !isnothing(iy)
+        for i in 1:nT
+            vt = v_analytic(m,p,id,iy,i)
+            @series begin
+                linetype --> :path
+                linewidth --> 1
+                legend --> :bottomright
+                # seriescolor --> cols[i]
+                # label := lab
+                xlim := xrange
+                ylim := (-15,15)
+                subplot := 1  # value function
+                yguide := "value"
+                xguide := "Cash on Hand M"
+                getx(vt),gety(vt)
+            end
+            @series begin
+                linetype --> :path
+                linewidth --> 1
+                legend --> :bottomright
+                # seriescolor --> cols[i]
+                subplot := 2  # 
+                # label := lab
+                xlim := xa 
+                ylim := xa
+                yguide := "consumption"
+                xguide := "Cash on Hand M"
+                # aspect_ratio := aspect
+                getx(m.c[id,iy,i].env),gety(m.c[id,iy,i].env)
+            end
+        end
+    else
+        title --> ["value period $it" "value period $it"]
+        vt = v_analytic(m,p,id,iy,it)
         @series begin
             linetype --> :path
             linewidth --> 1
             legend --> :bottomright
-            seriescolor --> cols[i]
-            label := lab
+            # seriescolor --> cols[i]
             subplot := 1  # value function
             yguide := "value"
             xguide := "Cash on Hand M"
-            getx(m.v[id,iy,i].env),gety(m.v[id,iy,i].env)
+            xlim := xrange
+            ylim := (-15,15)
+            getx(vt),gety(vt)
+            # getx(m.v[id,iy,it].env),gety(m.v[id,iy,it].env)
         end
         @series begin
             linetype --> :path
             linewidth --> 1
             legend --> :bottomright
-            seriescolor --> cols[i]
+            # seriescolor --> cols[i]
             subplot := 2  # 
-            label := lab
-            # xlim := (alow,ahi)
-            # ylim := (0,ahi)
+            xlim := xa 
+            ylim := xa
             yguide := "consumption"
             xguide := "Cash on Hand M"
             # aspect_ratio := aspect
-            getx(m.c[id,iy,i].env),gety(m.c[id,iy,i].env)
+            getx(m.c[id,iy,it].env),gety(m.c[id,iy,it].env)
         end
     end
+
 end
 
-@recipe function f(m::FModel;id=1)
+@recipe function f(m::FModel,p::Param;id=1)
     grid --> true
     xticks := true
     legend --> true
@@ -56,23 +151,28 @@ end
     nT = size(m.v)[2]
     # cols = range(c1,stop=c2,length=nT)
     cols = cg[range(0.0,stop=1.0,length=nT)]
+    xrange = zeros(2)
+    xa = extrema(m.avec)
+    xrange[1] = xa[1] .- diff(vcat(xa...))[1] .* 0.01
+    xrange[2] = xa[2]
 
-    # layout := grid(1,2)
+    layout := grid(1,2)
     for i in 1:nT
+        vt = v_analytic(m,p,id,i)
         lab = ((i==1)|(i==nT)) ? "$i" : ""
-        # @series begin
-        #     linetype --> :path
-        #     linewidth --> 1
-        #     legend --> :bottomright
-        #     seriescolor --> cols[i]
-        #     label := lab
-        #     subplot := 1  # value function
-        #     yguide := "value"
-        #     xguide := "Cash on Hand M"
-        #     xlim := extrema(m.avec)
-        #     ylim := (-15,15)
-        #     getx(m.v[id,i].env),gety(m.v[id,i].env)
-        # end
+        @series begin
+            linetype --> :path
+            linewidth --> 1
+            legend --> :bottomright
+            seriescolor --> cols[i]
+            label := lab
+            subplot := 1  # value function
+            yguide := "value"
+            xguide := "Cash on Hand M"
+            xlim := xrange
+            ylim := (-15,15)
+            getx(vt),gety(vt)
+        end
         @series begin
             linetype --> :path
             linewidth --> 1
@@ -82,8 +182,8 @@ end
             label := lab
             # xlim := (alow,ahi)
             # ylim := (0,ahi)
-            xlim := extrema(m.avec)
             ylim := extrema(m.avec)
+            xlim := extrema(m.avec)
             yguide := "consumption"
             xguide := "Cash on Hand M"
             # aspect_ratio := aspect
@@ -107,6 +207,28 @@ end
     end
 end
 
+
+@recipe function f(l::Vector{Point{T}};numerate=false,marker=false) where T
+    # defaults
+    grid --> true
+    xticks := true
+    legend := false
+    @series begin
+        linetype --> :path
+        linecolor --> :black
+        linewidth --> 1
+        if marker
+            markershape --> :circle
+            markerstrokecolor --> :black
+            markercolor --> :white
+            markersize --> 1
+        end
+        if numerate
+            series_annotations := ["$i" for i in 1:length(l.v)]
+        end
+        (getx(l),gety(l))
+    end
+end
 
 @recipe function f(l::MLine;numerate=false,marker=false)
     # defaults

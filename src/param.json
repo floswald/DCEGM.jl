@@ -60,7 +60,7 @@
 		"symbol" : "\\sigma"
 	},
 	"lambda" : {
-		"value" : 0.000002,
+		"value" : 0.00002,
 		"description" : "scale of EV shocks",
 		"symbol" : "\\lambda"
 	},
@@ -84,6 +84,11 @@
 		"description" : "consumption floor",
 		"symbol" : "\\underline{c}"
 	},
+	"cfloor_plot" : {
+		"value" : 0.01,
+		"description" : "plotting floor",
+		"symbol" : "\\underline{cp}"
+	},
 	"ρ" : {
 		"value" : 0.95,
 		"description" : "AR1 persistence of log income",
@@ -95,5 +100,11 @@
 		"description" : "std dev of log income",
 		"symbol" : "\\rho"
 
+	},
+	"k" : {
+		"value" : 100,
+		"description" : "Points to add for analytic values",
+		"symbol" : "k"
 	}
+
 }
