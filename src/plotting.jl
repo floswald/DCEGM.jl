@@ -5,6 +5,8 @@ function v_analytic(m::Model,p::Param,id,it)
     c = m.c[id,it]
     cons = scaleGrid(p.cfloor_plot,gety(c.env)[2],p.k,logorder = 1)
     cash = scaleGrid(p.a_low,getx(vf.env)[2],p.k,logorder = 1)
+    # deleteat!(cons,length(cons))
+    # deleteat!(cash,length(cash))
     pts = convert(Point,cash,vfun(id,it,cons,cash,vf,p))
     vcat(pts, vf.env.v[2:end])  # connect at second point
 end
@@ -14,8 +16,11 @@ function v_analytic(m::Model,p::Param,id,iy,it)
     c = m.c[id,iy,it]
     cons = scaleGrid(p.cfloor_plot,gety(c.env)[2],p.k,logorder = 1)
     cash = scaleGrid(p.a_low,getx(vf.env)[2],p.k,logorder = 1)
+    # deleteat!(cons,length(cons))
+    # deleteat!(cash,length(cash))
     pts = convert(Point,cash,vfun(id,it,cons,cash,vf,p))
     vcat(pts, vf.env.v[2:end])  # connect at second point
+    # vf.env.v[2:end]  # connect at second point
 end
 
 
@@ -65,7 +70,7 @@ end
                     # seriescolor --> cols[i]
                     subplot := 2  # 
                     label := "y$jy"
-                    xlim := xa 
+                    xlim := xa
                     ylim := xa
                     yguide := "consumption"
                     xguide := "Cash on Hand M"
@@ -97,7 +102,7 @@ end
                 # seriescolor --> cols[i]
                 subplot := 2  # 
                 # label := lab
-                xlim := xa 
+                xlim := xa
                 ylim := xa
                 yguide := "consumption"
                 xguide := "Cash on Hand M"
@@ -127,7 +132,7 @@ end
             legend --> :bottomright
             # seriescolor --> cols[i]
             subplot := 2  # 
-            xlim := xa 
+            xlim := xa
             ylim := xa
             yguide := "consumption"
             xguide := "Cash on Hand M"

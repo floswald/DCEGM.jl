@@ -60,7 +60,7 @@
 		"symbol" : "\\sigma"
 	},
 	"lambda" : {
-		"value" : 0.00002,
+		"value" : 0.000002,
 		"description" : "scale of EV shocks",
 		"symbol" : "\\lambda"
 	},
@@ -90,7 +90,7 @@
 		"symbol" : "\\underline{cp}"
 	},
 	"ρ" : {
-		"value" : 0.95,
+		"value" : 0.0,
 		"description" : "AR1 persistence of log income",
 		"symbol" : "\\rho"
 

@@ -324,7 +324,7 @@ function dc_EGM!(m::GModel,p::Param)
                             m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
                             c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
                             floory!(c1,p.cfloor)   # floor negative consumption
-                            ctmp[iid,jy,:] = pr .* gety(c1)
+                            ctmp[iid,jy,:] = gety(c1)
                             vtmp[iid,jy,:] = pr .* vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
                         end
                     end # end future state
