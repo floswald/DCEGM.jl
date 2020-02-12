@@ -54,6 +54,11 @@ function up(c::Array{Float64,2},p::Param)
 	end
 	x
 end
+function up!(c::Array{Float64},p::Param)
+	for i in eachindex(c)
+		c[i] = up(c[i],p)
+	end
+end
 function up(c::Array{Float64},p::Param)
 	n = length(c)
 	x = zeros(n)

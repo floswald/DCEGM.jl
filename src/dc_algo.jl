@@ -309,7 +309,6 @@ function dc_EGM!(m::GModel,p::Param)
                     # next period consumption and values y-coords
                     # for each d-choice
                     # reset all value matrices
-                    fill!(cmat,-Inf)
                     fill!(vmat,-Inf)
                     fill!(ctmp,-Inf)
                     fill!(vtmp,-Inf)
@@ -329,17 +328,29 @@ function dc_EGM!(m::GModel,p::Param)
                         end
                     end # end future state
 
-                    # now get expectations conditional on iy: E[c(t+1,iid,y')|iy]
-                    # cmat = integrate over second dimension: nD by na
+                    # now get expectated value function conditional on iy: E[V(t+1,iid,y')|iy]
                     # vmat = integrate over second dimension
-                    cmat = dropdims( reduce(+, ctmp, dims = 2), dims = 2)
                     vmat = dropdims( reduce(+, vtmp, dims = 2), dims = 2)
 
                     # get ccp of choices: P(d'|iy), pwork
                     pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
 
-                    # get MU of cons
-                    mu1 = pwork .* up(cmat[1,:],p) .+ (1.0 .- pwork) .* up(cmat[2,:],p) # 1,na
+                    # get y-expected MU of cons(t+1): uprime
+                    up!(ctmp,p)
+
+                    # integrate to get E[ u'(c(t+1,y')) | y]
+                    # prepare
+                    fill!(cmat,0.0)
+                    for jd in 1:p.nD
+                        for ja in 1:p.na
+                            for jy in 1:p.ny
+                                cmat[jd,ja] =+ m.ywgt[iy,jy] * ctmp[jd,jy,ja]
+                            end
+                        end
+                    end
+
+                    # compute tomorrow's marginal utility
+                    mu1 = pwork .* cmat[1,:] .+ (1.0 .- pwork) .* cmat[2,:] # 1,na
 
                     #RHS
                     RHS = p.beta * p.R * mu1

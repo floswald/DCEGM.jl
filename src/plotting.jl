@@ -57,7 +57,7 @@ end
                     yguide := "value"
                     xguide := "Cash on Hand M"
                     xlim := xrange
-                    ylim := (-15,15)
+                    ylim --> (-15,15)
                     getx(vt),gety(vt)
                     # getx(m.v[id,iy,it].env),gety(m.v[id,iy,it].env)
                 end
@@ -71,7 +71,7 @@ end
                     subplot := 2  # 
                     label := "y$jy"
                     xlim := xa
-                    ylim := xa
+                    ylim --> xa
                     yguide := "consumption"
                     xguide := "Cash on Hand M"
                     # aspect_ratio := aspect
@@ -89,7 +89,7 @@ end
                 # seriescolor --> cols[i]
                 # label := lab
                 xlim := xrange
-                ylim := (-15,15)
+                ylim --> (-15,15)
                 subplot := 1  # value function
                 yguide := "value"
                 xguide := "Cash on Hand M"
@@ -103,7 +103,7 @@ end
                 subplot := 2  # 
                 # label := lab
                 xlim := xa
-                ylim := xa
+                ylim --> xa
                 yguide := "consumption"
                 xguide := "Cash on Hand M"
                 # aspect_ratio := aspect
@@ -122,7 +122,7 @@ end
             yguide := "value"
             xguide := "Cash on Hand M"
             xlim := xrange
-            ylim := (-15,15)
+            ylim --> (-15,15)
             getx(vt),gety(vt)
             # getx(m.v[id,iy,it].env),gety(m.v[id,iy,it].env)
         end
@@ -133,7 +133,7 @@ end
             # seriescolor --> cols[i]
             subplot := 2  # 
             xlim := xa
-            ylim := xa
+            ylim --> xa
             yguide := "consumption"
             xguide := "Cash on Hand M"
             # aspect_ratio := aspect
