@@ -29,7 +29,9 @@ function plot_s(s::Simulation)
     py = plot(s.inc',leg = false, title = "income")
     pc = plot(s.cons',leg = false, title = "consumption")
     pw0 = plot(s.w0',leg = false, title = "w0")
-    plot(py,pc,pw0,layout = (1,3),size = (700,300))
+    ppr = plot(s.prob_work',leg = false, title = "p(work)")
+    pw1 = plot(s.w1',leg = false, title = "w1")
+    plot(py,pc,pw0,ppr,pw1,plot(),layout = (2,3))
 end
 
 @recipe function f(m::GModel,p::Param;id=1,iy=nothing,it=nothing)
@@ -65,7 +67,7 @@ end
                     yguide := "value"
                     xguide := "Cash on Hand M"
                     xlim := xrange
-                    ylim --> (-15,15)
+                    # ylim --> (-15,15)
                     getx(vt),gety(vt)
                     # getx(m.v[id,iy,it].env),gety(m.v[id,iy,it].env)
                 end
@@ -97,7 +99,7 @@ end
                 # seriescolor --> cols[i]
                 # label := lab
                 xlim := xrange
-                ylim --> (-15,15)
+                # ylim --> (-15,15)
                 subplot := 1  # value function
                 yguide := "value"
                 xguide := "Cash on Hand M"
@@ -130,7 +132,7 @@ end
             yguide := "value"
             xguide := "Cash on Hand M"
             xlim := xrange
-            ylim --> (-15,15)
+            # ylim --> (-15,15)
             getx(vt),gety(vt)
             # getx(m.v[id,iy,it].env),gety(m.v[id,iy,it].env)
         end

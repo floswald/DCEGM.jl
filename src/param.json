@@ -96,7 +96,7 @@
 
 	},
 	"ϵ" : {
-		"value" : 0.12,
+		"value" : 0.1,
 		"description" : "std dev of log income",
 		"symbol" : "\\rho"
 
