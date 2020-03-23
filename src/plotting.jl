@@ -23,6 +23,14 @@ function v_analytic(m::Model,p::Param,id,iy,it)
     # vf.env.v[2:end]  # connect at second point
 end
 
+function plot_s(s::Simulation)
+
+    # inc, cons, w
+    py = plot(s.inc',leg = false, title = "income")
+    pc = plot(s.cons',leg = false, title = "consumption")
+    pw0 = plot(s.w0',leg = false, title = "w0")
+    plot(py,pc,pw0,layout = (1,3),size = (700,300))
+end
 
 @recipe function f(m::GModel,p::Param;id=1,iy=nothing,it=nothing)
     grid --> true

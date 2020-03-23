@@ -214,10 +214,10 @@ function income(it::Int,p::Param,shock::Float64)
 	age = it + 19
 	exp( p.inc0 + p.inc1*age - p.inc2*(age^2) + shock)
 end
-function income(it::Int,shock::Array{Float64})
+function income(it::Int,p::Param,shock::Array{Float64})
 	x = similar(shock)
 	for i=1:length(x)
-		x[i] = income(it,shock[i])
+		x[i] = income(it,p,shock[i])
 	end
 	return x
 end

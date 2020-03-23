@@ -59,6 +59,11 @@ mutable struct Param
 	ϵ                    :: Float64
 	k                    :: Int
 
+	# simulation
+	nsims                 :: Int64
+	initw0                :: Float64   # low/high bounds on initial wealth from this interval
+	initw1                :: Float64   # low/high bounds on initial wealth from this interval
+
 	# constructor
     function Param(;par::Dict=Dict())
 		f=open(joinpath(dirname(@__FILE__),"param.json"))
@@ -81,6 +86,7 @@ mutable struct Param
 		this.oneminusgamma         = 1.0 - this.gamma
 		this.oneover_oneminusgamma = 1.0 / this.oneminusgamma
 		this.neg_oneover_gamma     = (-1.0) / this.gamma
+
 
 		# this.beta = 1/this.R  # hard wire that beta = 1/R
 		# this is not good.
