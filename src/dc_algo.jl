@@ -337,7 +337,7 @@ function dc_EGM!(m::GModel,p::Param)
                     pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
 
                     # get y-expected MU of cons(t+1): uprime
-                    # up!(ctmp,p)
+                    up!(ctmp,p)
 
                     # integrate to get E[ u'(c(t+1,y')) | y]
                     # prepare
@@ -345,7 +345,8 @@ function dc_EGM!(m::GModel,p::Param)
                     for jd in 1:p.nD
                         for ja in 1:p.na
                             for jy in 1:p.ny
-                                cmat[jd,ja] += m.ywgt[iy,jy] * up(ctmp[jd,jy,ja],p)
+                                # cmat[jd,ja] += m.ywgt[iy,jy] * up(ctmp[jd,jy,ja],p)
+                                cmat[jd,ja] += m.ywgt[iy,jy] * ctmp[jd,jy,ja]
                             end
                         end
                     end
@@ -386,11 +387,18 @@ function dc_EGM!(m::GModel,p::Param)
                         else
                             # non-convex region lies inside credit constraint.
                             # endogenous x grid bends back before the first x grid point.
+                            println("minx = $minx")
+                            println("first point = $(vline.v[1].x)")
                             x0 = collect(range(minx,stop = vline.v[1].x,length = floor(Integer,p.na/10))) # some points to the left of first x point
                             x0 = x0[1:end-1]
-                            y0 = u(x0,working,p) .+ p.beta .* ev[1]
+                            c0 = copy(x0)
+                            if minx < 0
+                                c0[:] .= c0 .+ abs(minx) .+ p.cfloor
+                            end
+                            y0 = u(c0,working,p) .+ p.beta .* ev[1]   # use c0: positive consumption even with neg assets!
+
                             prepend!(vline,convert(Point,x0,y0))
-                            prepend!(cline,convert(Point,x0,x0))  # cons policy in credit constrained is 45 degree line
+                            prepend!(cline,convert(Point,x0,c0))  # cons policy in credit constrained is 45 degree line
                             m.c[id,iy,it] = Envelope(cline)
                             m.v[id,iy,it] = secondary_envelope(vline)
                         end
