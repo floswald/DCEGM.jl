@@ -292,7 +292,7 @@ function dc_EGM!(m::GModel,p::Param)
     cmat = fill(-Inf,p.nD,p.na)
     vmat = fill(-Inf,p.nD,p.na)
     ctmp = fill(-Inf,p.nD,p.ny,p.na)
-    vtmp = fill(-Inf,p.nD,p.ny,p.na)
+    # vtmp = fill(-Inf,p.nD,p.ny,p.na)
 
     for it in p.nT:-1:1
         for iy in 1:p.ny  # current state
@@ -309,34 +309,35 @@ function dc_EGM!(m::GModel,p::Param)
                     # next period consumption and values y-coords
                     # for each d-choice
                     # reset all value matrices
-                    fill!(vmat,-Inf)
+                    fill!(vmat,0.0)
                     fill!(ctmp,-Inf)
-                    fill!(vtmp,-Inf)
+                    # fill!(vtmp,0.0)
 
                     for jy in 1:p.ny # future state: owner, renter, income, etc
                         pr = m.ywgt[iy,jy]  # transprob
 
                         for iid in 1:p.nD  # future dchoice
                             # only feasible choices at this state
-                            # if renter, cannot sell
+                            # if renter, cannot sell etc
 
                             m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
                             c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
                             floory!(c1,p.cfloor)   # floor negative consumption
                             ctmp[iid,jy,:] = gety(c1)
-                            vtmp[iid,jy,:] = pr .* vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+                            # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+                            vmat[iid,:] += pr * vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
                         end
                     end # end future state
 
                     # now get expectated value function conditional on iy: E[V(t+1,iid,y')|iy]
                     # vmat = integrate over second dimension
-                    vmat = dropdims( reduce(+, vtmp, dims = 2), dims = 2)
+                    # vmat = dropdims( reduce(+, vtmp, dims = 2), dims = 2)
 
                     # get ccp of choices: P(d'|iy), pwork
                     pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
 
                     # get y-expected MU of cons(t+1): uprime
-                    up!(ctmp,p)
+                    # up!(ctmp,p)
 
                     # integrate to get E[ u'(c(t+1,y')) | y]
                     # prepare
@@ -344,7 +345,7 @@ function dc_EGM!(m::GModel,p::Param)
                     for jd in 1:p.nD
                         for ja in 1:p.na
                             for jy in 1:p.ny
-                                cmat[jd,ja] =+ m.ywgt[iy,jy] * ctmp[jd,jy,ja]
+                                cmat[jd,ja] += m.ywgt[iy,jy] * up(ctmp[jd,jy,ja],p)
                             end
                         end
                     end

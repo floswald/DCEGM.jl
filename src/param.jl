@@ -274,8 +274,8 @@ mutable struct GModel <: Model
 		# (na,ny,nD)
 		# iD = 1: tomorrow work
 		# iD = 2: tomorrow no work
-		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it,p,this.yvec[iy]) * (id==1) *(it < p.nT) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
-		# this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it,p,this.yvec[iy]) * (id==1) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
+		# this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it,p,this.yvec[iy]) * (id==1) *(it < p.nT) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it,p,this.yvec[iy]) * (id==1) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 
