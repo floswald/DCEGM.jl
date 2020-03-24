@@ -28,6 +28,7 @@ function plot_s(s::Simulation)
     # inc, cons, w
     py = plot(s.inc',leg = false, title = "income")
     pc = plot(s.cons',leg = false, title = "consumption")
+    scatter!(pc, s.ret_age, [s.cons[i,s.ret_age[i]] for i in 1:length(s.ret_age)], m = (:rect, 2, 0.6))
     pw0 = plot(s.w0',leg = false, title = "w0")
     ppr = plot(s.prob_work',leg = false, title = "p(work)")
     pw1 = plot(s.w1',leg = false, title = "w1")
@@ -118,7 +119,7 @@ end
                 getx(m.c[id,iy,i].env),gety(m.c[id,iy,i].env)
             end
         end
-    else 
+    else
         println("you need to either give it or iy. not both. not none.")
     end
     # elseif isnothing(it) & isnothing(iy)

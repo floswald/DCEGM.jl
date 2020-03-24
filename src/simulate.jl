@@ -5,6 +5,7 @@ mutable struct Simulation
 	w1        :: Matrix{Float64}
 	cons      :: Matrix{Float64}
 	shocks    :: Matrix{Float64}
+	ystate    :: Matrix{Int64}
 	inc       :: Matrix{Float64}
 	prob_work :: Matrix{Float64}
 	ret_age   :: Vector{Int64}
@@ -15,6 +16,7 @@ mutable struct Simulation
 		this.w1        = fill(NaN,p.nsims,p.nT)  # end of period wealth
 		this.cons      = fill(NaN,p.nsims,p.nT)
 		this.shocks    = fill(NaN,p.nsims,p.nT)
+		this.ystate    = zeros(Int,p.nsims,p.nT)
 		this.inc       = fill(NaN,p.nsims,p.nT)
 		this.worker    = zeros(Int,p.nsims,p.nT)
 		this.prob_work = fill(NaN,p.nsims,p.nT)
@@ -65,6 +67,69 @@ function sim(m::FModel,p::Param)
 		# CCP to remain worker
 		vmat[1,:] = vfun(1,it, s.cons[:,it] ,s.w0[:,it], m.v[1,it],p )
 		vmat[2,:] = vfun(2,it, s.cons[:,it] ,s.w0[:,it], m.v[2,it],p )
+		s.prob_work[:,it] = (s.worker[:,it] .== 1) .* ccp(vmat,p)  # prob to remain worker
+
+		# discrete choice
+		working[:] = s.prob_work[:,it] .> rand(p.nsims)
+	end
+	s
+end
+
+
+function sim(m::GModel,p::Param)
+
+	s = Simulation(p)
+
+	iy = 0 # y-state index
+	working   = trues(p.nsims)  # indicator of currentlcy working or not
+	vmat      = zeros(2,p.nsims)
+	s.ystate[:,1] .= rand(1:p.ny,p.nsims)   # randomly allocate to an income state
+	s.shocks[:] = rand(p.nT * p.nsims)
+	GG = cumsum(m.ywgt,dims = 2)
+	for it in 2:p.nT
+		for i in 1:p.nsims
+			s.ystate[i,it] = searchsortedfirst(GG[s.ystate[i,it-1],:], s.shocks[i,it])
+		end
+	end
+
+	for it in 1:p.nT
+		if it == 1
+			# draw from initial distributions
+			s.w0[:, it] = p.initw0 .+ rand(p.nsims)*(p.initw1 - p.initw0)
+			s.worker[:, it] .= 1   # all work in frist period
+			s.inc[ working, it] .= income(it,p,m.yvec[s.ystate[working,it]])
+		else
+
+			# working state
+			s.worker[ working, it] .= 1 # chose working, so stay worker
+			s.worker[.!(working), it] .= 2 # chose retire
+			s.ret_age[(s.worker[:,it-1] .== 1) .& (s.worker[:,it] .== 2)] .= it
+
+			# income
+			s.inc[.!(working), it] .= 0.0
+			s.inc[ working, it] .= income(it,p,m.yvec[s.ystate[working,it]])
+
+
+			# end of period wealth in period it
+			s.w0[ :     , it] .= s.w1[:      , it-1]*p.R
+			s.w0[working, it] .= s.w1[working, it-1]*p.R .+ s.inc[ working, it]
+		end
+		# consumption and value
+		# can be made much faster by grouping individuals by `iy` state
+		for i in 1:p.nsims
+			iy = s.ystate[i,it]
+			if working[i]
+				s.cons[i,it]    = gety(interp(m.c[1,iy,it].env,[s.w0[ i, it]]))[1]
+			else
+				s.cons[i,it]    = gety(interp(m.c[2,iy,it].env,[s.w0[ i, it]]))[1]
+			end
+			vmat[1,i] = vfun(1,it, [s.cons[i,it] ],[s.w0[i,it]], m.v[1,iy,it],p )[1]
+			vmat[2,i] = vfun(2,it, [s.cons[i,it] ],[s.w0[i,it]], m.v[2,iy,it],p )[1]
+		end
+		# end of period wealth
+		s.w1[:,it] = s.w0[:,it] - s.cons[:,it]
+
+		# CCP to remain worker
 		s.prob_work[:,it] = (s.worker[:,it] .== 1) .* ccp(vmat,p)  # prob to remain worker
 
 		# discrete choice
