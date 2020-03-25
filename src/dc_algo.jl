@@ -387,8 +387,8 @@ function dc_EGM!(m::GModel,p::Param)
                         else
                             # non-convex region lies inside credit constraint.
                             # endogenous x grid bends back before the first x grid point.
-                            println("minx = $minx")
-                            println("first point = $(vline.v[1].x)")
+                            # println("minx = $minx")
+                            # println("first point = $(vline.v[1].x)")
                             x0 = collect(range(minx,stop = vline.v[1].x,length = floor(Integer,p.na/10))) # some points to the left of first x point
                             x0 = x0[1:end-1]
                             c0 = copy(x0)
@@ -433,15 +433,19 @@ function dc_EGM!(m::GModel,p::Param)
                                 jl = jl[ jl .∉ Ref(rmidx) ]  # keep those who are not to be deleted
                                 if length(jl) > 0
                                     jl = maximum(jl)  # biggest of those
-                                    newleft = MLine(m.c[id,iy,it].env.v[jl:jl+1])
-                                    # @fediskhakov: who guarantees that jl+1 is not to be deleted?
-                                    # more generally: why do we not delete points before we
-                                    # insert the new intersections?
+                                    if jl < length(consx)
+                                        newleft = MLine(m.c[id,iy,it].env.v[jl:jl+1])
+                                        # @fediskhakov: who guarantees that jl+1 is not to be deleted?
+                                        # more generally: why do we not delete points before we
+                                        # insert the new intersections?
 
-                                    sortx!(newleft)
-                                    tmp = getv(interp(newleft, [ I.x ] ))[1]
-                                    # take this new point at a minimal left shift in x
-                                    push!(insert_left, Point(tmp.x - 1e3 * eps(), tmp.y) )
+                                        sortx!(newleft)
+                                        tmp = getv(interp(newleft, [ I.x ] ))[1]
+                                        # take this new point at a minimal left shift in x
+                                        push!(insert_left, Point(tmp.x - 1e3 * eps(), tmp.y) )
+                                    # else
+                                    #     println("trying to insert after last point")
+                                    end
                                 # else
                                 #     push!(insert_left,I)
                                 end
@@ -573,7 +577,7 @@ end
 
 function runf(;par=Dict())
     p = Param(par=par)
-    p.beta = 1/p.R
+    # p.beta = 1/p.R
     m = FModel(p)
     dc_EGM!(m,p)
     (m,p)
@@ -581,7 +585,7 @@ end
 
 function rung(;par=Dict())
     p = Param(par=par)
-    p.beta = 1/p.R
+    # p.beta = 1/p.R
     m = GModel(p)
     dc_EGM!(m,p)
     (m,p)

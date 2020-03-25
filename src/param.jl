@@ -56,13 +56,13 @@ mutable struct Param
 	inc1                 :: Float64
 	inc2                 :: Float64
 	ρ                    :: Float64
-	ϵ                    :: Float64
 	k                    :: Int
 
 	# simulation
 	nsims                 :: Int64
 	initw0                :: Float64   # low/high bounds on initial wealth from this interval
 	initw1                :: Float64   # low/high bounds on initial wealth from this interval
+	rseed                 :: Int64     # random generator seed
 
 	# constructor
     function Param(;par::Dict=Dict())
@@ -177,6 +177,7 @@ mutable struct FModel <: Model
 	v :: Array{Envelope}  # arrays of Envelope objects
 	c :: Array{Envelope}
 
+
 	function FModel(p::Param)
 
 		this = new()
@@ -187,6 +188,8 @@ mutable struct FModel <: Model
 		nodes = quantile.(N,nodes)
 		this.yvec = nodes * p.sigma
 		this.ywgt = weights
+
+		# simulation shocks
 
 		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
@@ -228,6 +231,12 @@ mutable struct GModel <: Model
 	v :: Array{Envelope}  # arrays of Envelope objects
 	c :: Array{Envelope}
 
+	# simulation settings
+	wshocks :: Matrix{Float64}  # wage shocks
+	dshocks :: Matrix{Float64}  # discrete choice shocks
+	w0shocks :: Vector{Float64}  # initial wealth shock
+	y0shocks :: Vector{Int64}  # initial income state
+
 	"""
 	Constructor for discrete choice GModel
 	"""
@@ -250,17 +259,13 @@ mutable struct GModel <: Model
 
 		if p.ρ == 0
 			nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-			this.yvec = sqrt(2.0) * p.ϵ .* nodes
+			this.yvec = sqrt(2.0) * p.sigma .* nodes
 			this.ywgt = reshape(repeat(weights .* pi^(-0.5),inner = p.ny),p.ny,p.ny)  # make a matrix
 		else
 			# version with income persistence
-			this.yvec, this.ywgt = rouwenhorst(p.ρ,0,p.ϵ,p.ny)
+			this.yvec, this.ywgt = rouwenhorst(p.ρ,0,p.sigma,p.ny)
 		end
-		# this.yvec = zeros(p.ny)
-		# fill!(this.ywgt , 1/p.ny)
 
-		# get borrowing limits
-		# η = abounds(this.yvec[1],p)
 
 		this.avec          = scaleGrid(p.a_low,p.a_high,p.na,logorder = 2)
 		# this.avec          = [collect(range(p.a_low,stop = p.a_high,length = p.na))]

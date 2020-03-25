@@ -9,6 +9,8 @@ using Roots
 using Plots
 using Colors
 using Statistics
+using Random
+using Interact
 gr()
 
 

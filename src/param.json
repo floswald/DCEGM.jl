@@ -10,7 +10,7 @@
 		"symbol" : "\\beta"
 	},
 	"R" : {
-		"value" : 1.05,
+		"value" : 1.0526315789473684,
 		"description" : "gross interest rate",
 		"symbol" : "R"
 	},
@@ -93,13 +93,6 @@
 		"value" : 0.95,
 		"description" : "AR1 persistence of log income",
 		"symbol" : "\\rho"
-
-	},
-	"ϵ" : {
-		"value" : 0.1,
-		"description" : "std dev of log income",
-		"symbol" : "\\rho"
-
 	},
 	"k" : {
 		"value" : 100,
@@ -120,6 +113,10 @@
 		"value" : 20.0,
 		"description" : "Upper bound on initial wealth",
 		"symbol" : "w_1"
+	},
+	"rseed" : {
+		"value" : 25032020,
+		"description" : "Random Seed",
+		"symbol" : "randseed"
 	}
-
 }

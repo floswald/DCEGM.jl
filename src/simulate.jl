@@ -4,23 +4,23 @@ mutable struct Simulation
 	w0        :: Matrix{Float64}
 	w1        :: Matrix{Float64}
 	cons      :: Matrix{Float64}
-	shocks    :: Matrix{Float64}
 	ystate    :: Matrix{Int64}
 	inc       :: Matrix{Float64}
 	prob_work :: Matrix{Float64}
 	ret_age   :: Vector{Int64}
 	worker    :: Matrix{Int64}
+	p :: Param
 	function Simulation(p::Param)
 		this = new()
 		this.w0        = fill(NaN,p.nsims,p.nT)  # beginning of period wealth
 		this.w1        = fill(NaN,p.nsims,p.nT)  # end of period wealth
 		this.cons      = fill(NaN,p.nsims,p.nT)
-		this.shocks    = fill(NaN,p.nsims,p.nT)
 		this.ystate    = zeros(Int,p.nsims,p.nT)
 		this.inc       = fill(NaN,p.nsims,p.nT)
 		this.worker    = zeros(Int,p.nsims,p.nT)
 		this.prob_work = fill(NaN,p.nsims,p.nT)
 		this.ret_age   = zeros(Int,p.nsims)
+		this.p = deepcopy(p)
 		this
 	end
 end
@@ -34,11 +34,18 @@ function sim(m::FModel,p::Param)
 
 	N = Normal(0,1)  # normal dist N(0,σ)
 
+	# random setup
+	Random.seed!(p.rseed)
+	wshocks = quantile.(N, rand(p.nsims,p.nT)) .* p.sigma
+	dshocks = rand(p.nsims,p.nT)
+	w0shocks = rand(p.nsims)
+
+
 
 	for it in 1:p.nT
 		if it == 1
 			# draw from initial distributions
-			s.w0[:, it] = p.initw0 .+ rand(p.nsims)*(p.initw1 - p.initw0)
+			s.w0[:, it] = p.initw0 .+ w0shocks *(p.initw1 - p.initw0)
 			s.worker[:, it] .= 1   # all work in frist period
 		else
 
@@ -47,11 +54,9 @@ function sim(m::FModel,p::Param)
 			s.worker[.!(working), it] .= 2 # chose retire
 			s.ret_age[(s.worker[:,it-1] .== 1) .& (s.worker[:,it] .== 2)] .= it
 
-			s.shocks[working,it] = quantile.(N,rand(sum(working))) .* p.sigma
-
 			# income
 			s.inc[.!(working), it] .= 0.0
-			s.inc[ working, it] .= income(it,p,s.shocks[working,it])
+			s.inc[ working, it] .= income(it,p,wshocks[working,it])
 
 
 			# end of period wealth in period it
@@ -70,7 +75,7 @@ function sim(m::FModel,p::Param)
 		s.prob_work[:,it] = (s.worker[:,it] .== 1) .* ccp(vmat,p)  # prob to remain worker
 
 		# discrete choice
-		working[:] = s.prob_work[:,it] .> rand(p.nsims)
+		working[:] = s.prob_work[:,it] .> dshocks[:,it]
 	end
 	s
 end
@@ -80,22 +85,28 @@ function sim(m::GModel,p::Param)
 
 	s = Simulation(p)
 
+	# random
+	Random.seed!(p.rseed)
+	wshocks = rand(p.nsims,p.nT)
+	dshocks = rand(p.nsims,p.nT)
+	w0shocks = rand(p.nsims)
+	s.ystate[:,1] .= rand(1:p.ny,p.nsims)  # randomly allocate to an income state
+
 	iy = 0 # y-state index
 	working   = trues(p.nsims)  # indicator of currentlcy working or not
 	vmat      = zeros(2,p.nsims)
-	s.ystate[:,1] .= rand(1:p.ny,p.nsims)   # randomly allocate to an income state
-	s.shocks[:] = rand(p.nT * p.nsims)
+	# s.shocks[:] = rand(p.nT * p.nsims)
 	GG = cumsum(m.ywgt,dims = 2)
 	for it in 2:p.nT
 		for i in 1:p.nsims
-			s.ystate[i,it] = searchsortedfirst(GG[s.ystate[i,it-1],:], s.shocks[i,it])
+			s.ystate[i,it] = searchsortedfirst(GG[s.ystate[i,it-1],:], wshocks[i,it])
 		end
 	end
 
 	for it in 1:p.nT
 		if it == 1
 			# draw from initial distributions
-			s.w0[:, it] = p.initw0 .+ rand(p.nsims)*(p.initw1 - p.initw0)
+			s.w0[:, it] = p.initw0 .+ w0shocks * (p.initw1 - p.initw0)
 			s.worker[:, it] .= 1   # all work in frist period
 			s.inc[ working, it] .= income(it,p,m.yvec[s.ystate[working,it]])
 		else
@@ -133,12 +144,44 @@ function sim(m::GModel,p::Param)
 		s.prob_work[:,it] = (s.worker[:,it] .== 1) .* ccp(vmat,p)  # prob to remain worker
 
 		# discrete choice
-		working[:] = s.prob_work[:,it] .> rand(p.nsims)
+		working[:] = s.prob_work[:,it] .> dshocks[:,it]
 	end
 	s
 end
-
 function rs(;par = Dict())
 	m,p = DCEGM.runf(par = par)
 	sim(m,p)
+end
+function rsp(;par = Dict())
+	plot_s(rs(par=par))
+end
+
+function rsg(;par = Dict())
+	m,p = DCEGM.rung(par = par)
+	sim(m,p)
+end
+function rsgp(;par = Dict())
+	plot_s(rsg(par=par))
+end
+
+function interact(fun::Function)
+	p = Param()
+	gammas = 1.0:0.1:3.0
+	betas  = 0.5:0.05:1.0
+	Rs  = 1.0:0.05:1.5
+	alphas = [0.0,0.35,0.5]
+	sigmas = 0.0:0.05:0.35
+	lambdas = 0.0000002:0.05:1
+	rhos = 0.1:0.05:1
+
+	mp = @manipulate for γ in slider(gammas, label = "γ", value =p.gamma ),
+						 β in slider(betas, label = "β", value =p.beta) ,
+						 R in slider(Rs, label = "R", value =p.R) ,
+						 α in slider(alphas, label = "α", value =p.alpha) ,
+						 σ in slider(sigmas, label = "σ", value =p.sigma) ,
+						 λ in slider(lambdas, label = "λ", value =p.lambda),
+						 ρ in slider(rhos, label = "ρ", value =p.ρ)
+
+		fun(par = Dict(:ρ => ρ, :gamma => γ, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R))
+	end
 end
