@@ -277,108 +277,6 @@ function dc_EGM!(m::GModel,p::Param)
                     # ==============================
 
                     if id==1   # only for workers
-                        # minx = min_x(vline)
-                        # if vline.v[1].x <= minx
-                        #     # normal case - no bending back behind first point
-                        #     # call secondary_envelope on vline
-                        #     m.v[id,iy,it] = secondary_envelope(vline)
-                        #     m.c[id,iy,it] = Envelope(cline)
-                        #
-                        # else
-                        #     # non-convex region lies inside credit constraint.
-                        #     # endogenous x grid bends back before the first x grid point.
-                        #     # println("minx = $minx")
-                        #     # println("first point = $(vline.v[1].x)")
-                        #     x0 = collect(range(minx,stop = vline.v[1].x,length = floor(Integer,p.na/10))) # some points to the left of first x point
-                        #     x0 = x0[1:end-1]
-                        #     c0 = copy(x0)
-                        #     if minx < 0
-                        #         c0[:] .= c0 .+ abs(minx) .+ p.cfloor
-                        #     end
-                        #     y0 = u(c0,working,p) .+ p.beta .* ev[1]   # use c0: positive consumption even with neg assets!
-                        #
-                        #     prepend!(vline,convert(Point,x0,y0))
-                        #     prepend!(cline,convert(Point,x0,c0))  # cons policy in credit constrained is 45 degree line
-                        #     m.c[id,iy,it] = Envelope(cline)
-                        #     m.v[id,iy,it] = secondary_envelope(vline)
-                        # end
-                        #
-                        # # now we have a cleaned value function
-                        #
-                        # # if any points were removed from vline:
-                        # if length(getr(m.v[id,iy,it])) > 0
-                        #
-                        #     # analyse policy function
-                        #     # =======================
-                        #
-                        #     rmidx = getr(m.v[id,iy,it])  # indices removed from value function
-                        #     insert_left = Point[]
-                        #     insert_right = Point[]
-                        #
-                        #     # remove illegal points from c
-                        #     # deleteat!(m.c[id,iy,it].env.v, rmidx)
-                        #
-                        #     # insert new intersections into consumption function
-                        #     isecs = gets(m.v[id,iy,it])
-                        #     consx = getx(m.c[id,iy,it].env)
-                        #
-                        #     # compute any new cons-points (intersections in v)
-                        #     # ---------------------------------------
-                        #
-                        #     for isec in 1:length(isecs)
-                        #         I = isecs[isec]
-                        #
-                        #         # interpolate from left
-                        #         jl = findall(consx .< I.x)
-                        #         jl = jl[ jl .∉ Ref(rmidx) ]  # keep those who are not to be deleted
-                        #         if length(jl) > 0
-                        #             jl = maximum(jl)  # biggest of those
-                        #             if jl < length(consx)
-                        #                 newleft = MLine(m.c[id,iy,it].env.v[jl:jl+1])
-                        #                 # @fediskhakov: who guarantees that jl+1 is not to be deleted?
-                        #                 # more generally: why do we not delete points before we
-                        #                 # insert the new intersections?
-                        #
-                        #                 sortx!(newleft)
-                        #                 tmp = getv(interp(newleft, [ I.x ] ))[1]
-                        #                 # take this new point at a minimal left shift in x
-                        #                 push!(insert_left, Point(tmp.x - 1e3 * eps(), tmp.y) )
-                        #             # else
-                        #             #     println("trying to insert after last point")
-                        #             end
-                        #         # else
-                        #         #     push!(insert_left,I)
-                        #         end
-                        #
-                        #         # interpolate from right
-                        #         jr = findall(consx .> I.x)
-                        #         jr = jr[ jr .∉ Ref(rmidx) ]  # keep those who are not to be deleted
-                        #         if length(jr) > 0
-                        #             jr = minimum(jr)   # smallest of those
-                        #             # push!(insert_right, interp(m.c[id,iy,it].env[jr-1:jr], [ I.x ] ) )
-                        #             newright = MLine(m.c[id,iy,it].env.v[jr-1:jr])
-                        #             sortx!(newright)
-                        #             push!(insert_right, getv(interp(newright, [ I.x ] ))[1] )
-                        #         # else
-                        #         #     push!(insert_right,I)
-                        #         end
-                        #     end # all intersections
-                        #
-                        #     # remove illegal points from c
-                        #     deleteat!(m.c[id,iy,it].env.v, rmidx)
-                        #
-                        #     # add new points in twice with a slight offset from left
-                        #     # to preserve the ordering in x.
-                        #     for ileft in 1:length(insert_left)
-                        #
-                        #         consx = getx(m.c[id,iy,it].env)
-                        #         j = findfirst(consx .> insert_left[ileft].x)  # first point past new intersection
-                        #         insert!(m.c[id,iy,it].env.v,j,insert_left[ileft])  # item is j-th index
-                        #         insert!(m.c[id,iy,it].env.v,j+1,insert_right[ileft])
-                        #     end
-                        #
-                        #
-                        # end
                         m.v[id,iy,it], m.c[id,iy,it] = do_secondary(vline,cline,working,ev[1],p)
                     else   # if id==1
                         m.v[id,iy,it] = Envelope(vline)
@@ -393,23 +291,11 @@ function dc_EGM!(m::GModel,p::Param)
                     # this creates the credit constrained region
                     prepend!(m.c[id,iy,it].env,[Point(m.avec[1],0.0)])
                     prepend!(m.v[id,iy,it].env,[Point(m.avec[1],ev[1])])
-                    # if !issorted(m.c[id,iy,it].env)
-                    #     println(isecs)
-                    #     xx = getx(m.c[id,iy,it].env)
-                    #     ii = findfirst( vcat(0,diff(xx)) .< 0 )
-                    #     println(m.c[id,iy,it].env.v[ii-1:ii+1])
-                        sortx!(m.c[id,iy,it].env)  # sort cons by default
-                    # end
-                    # @assert issorted(m.c[id,iy,it].env)
-                    # sortx!(m.c[id,it].env)
-                    # sortx!(m.v[id,it].env)
-                    # prepend!(m.v[id,it].env,p.a_low,ev[1])
-                    # do NOT prepend the value function with the special value from above.
+                    sortx!(m.c[id,iy,it].env)  # sort cons by default
                 end # if last period
             end  # current id
         end  # iy
     end # it
-
 end
 
 
