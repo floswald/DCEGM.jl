@@ -339,6 +339,35 @@ function vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},v::Envelop
     return r
 end
 
+function vfun(ufun::Function,it::Int,c1::Vector{Float64},m1::Vector{Float64},v::Envelope,p::Param)
+
+    # L = en.L[id]
+    # v = en[id,iy,it]
+
+    # computes v_{it}(m) = u(c) + beta v_{it+1}(m1)
+
+    if length(getx(v.env)) < 2
+        error("need more than 2 points in envelope object")
+    end
+
+    r = fill(NaN,size(m1))
+    mask = m1.<getx(v.env)[2]
+    mask = it==p.nT ? trues(size(mask)) : mask
+
+    if all(mask)
+        # in the credit constrained region:
+        r[:] = ufun(c1) .+ p.beta * bound(v)
+    elseif any(mask)
+        r[mask] = ufun(c1[mask]) .+ p.beta * bound(v)
+        # elsewhere
+        r[.!mask] = gety(interp(v.env,m1[.!mask]))
+    else
+        r[:] = gety(interp(v.env,m1))
+    end
+
+    return r
+end
+
 """
     ccp(x::Matrix,p::Param)
 

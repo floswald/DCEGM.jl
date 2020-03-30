@@ -254,7 +254,7 @@ mutable struct BModel <: Model
 		# state = 1: tomorrow bk flag off
 		# state = 2: tomorrow bk flag on
 		this.m1 = Dict(it => Dict(id =>
-		                          Float64[p.R* (this.aposvec[ia]*(id==2) + (1 - (id==2))*this.avec[ia]).+ income(it+1,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na] for id=1:(p.nD) for it=1:(p.nT-1))
+		                          Float64[p.R* (this.aposvec[ia]*(id==2) + (1 - (id==2))*this.avec[ia]).+ income(it+1,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na] for id=1:(p.nD)) for it=1:(p.nT-1))
 
 		# result arrays: matrices of type Envelope.
 		# this allocation is only to reserve about the right amount of memory. those will be overwritten in the algo.
