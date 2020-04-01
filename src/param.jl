@@ -215,7 +215,7 @@ mutable struct BModel <: Model
 	avec::Vector{Float64}
 	aposvec::Vector{Float64}
 	yvec::Vector{Float64}   # income support
-	ywgt::Vector{Float64}   # income support
+	ywgt::Matrix{Float64}   # income support
 
 	# intermediate objects (na,nD)
 	m1::Dict{Int,Dict}	# a dict[it] for each period
@@ -232,12 +232,14 @@ mutable struct BModel <: Model
 
 		this = new()
 
-		# fedors version:
-		nodes,weights = quadpoints(p.ny,0,1)
-		N = Normal(0,1)
-		nodes = quantile.(N,nodes)
-		this.yvec = nodes * p.sigma
-		this.ywgt = weights
+		if p.ρ == 0
+			nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+			this.yvec = sqrt(2.0) * p.sigma .* nodes
+			this.ywgt = reshape(repeat(weights .* pi^(-0.5),inner = p.ny),p.ny,p.ny)  # make a matrix
+		else
+			# version with income persistence
+			this.yvec, this.ywgt = rouwenhorst(p.ρ,0,p.sigma,p.ny)
+		end
 
 		if p.a_low >= 0
 			error("need a_low < 0 for bankruptcy model")
@@ -254,15 +256,15 @@ mutable struct BModel <: Model
 		# state = 1: tomorrow bk flag off
 		# state = 2: tomorrow bk flag on
 		this.m1 = Dict(it => Dict(id =>
-		                          Float64[p.R* (this.aposvec[ia]*(id==2) + (1 - (id==2))*this.avec[ia]).+ income(it+1,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na] for id=1:(p.nD)) for it=1:(p.nT-1))
+		                          Float64[p.R* (this.aposvec[ia]*(id==2) + (1 - (id==2))*this.avec[ia]).+ income(it,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na] for id=1:(p.nD)) for it=2:(p.nT))
 
 		# result arrays: matrices of type Envelope.
 		# this allocation is only to reserve about the right amount of memory. those will be overwritten in the algo.
-		this.v = [Envelope(MLine(fill(NaN,p.na),fill(NaN, p.na))) for id in 1:(p.nD), it in 1:p.nT]
-		this.c = [Envelope(MLine(fill(NaN,p.na),fill(NaN, p.na))) for id in 1:(p.nD), it in 1:p.nT]
+		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny, it in 1:p.nT]
+		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny,it in 1:p.nT]
 		# for bankruptcy flag on there is no discrete choice
-		this.vbk = [Envelope(MLine(fill(NaN,p.na),fill(NaN, p.na))) for it in 1:p.nT]
-		this.cbk = [Envelope(MLine(fill(NaN,p.na),fill(NaN, p.na))) for it in 1:p.nT]
+		this.vbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny, it in 1:p.nT]
+		this.cbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny,it in 1:p.nT]
 
 
 		return this
