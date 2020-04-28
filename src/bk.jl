@@ -174,7 +174,7 @@ end
 
 
 function runbk()
-    p = Param(par = Dict(:a_low => -5.0,:na =>101, :alpha => 0.1))
+    p = Param(par = Dict(:a_low => -5.0,:a_lowT => -5.0,:na =>101, :alpha => 0.1))
     m = BModel(p)
     bk!(m,p)
     m,p
