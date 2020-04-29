@@ -148,6 +148,75 @@ function sim(m::GModel,p::Param)
 	end
 	s
 end
+
+function sim(m::BModel,p::Param)
+
+	s = Simulation(p)
+
+	# random
+	Random.seed!(p.rseed)
+	wshocks = rand(p.nsims,p.nT)
+	dshocks = rand(p.nsims,p.nT)
+	w0shocks = rand(p.nsims)
+	s.ystate[:,1] .= rand(1:p.ny,p.nsims)  # randomly allocate to an income state
+
+	iy = 0 # y-state index
+	working   = trues(p.nsims)  # indicator of currentlcy notfiling or not
+	vmat      = zeros(2,p.nsims)
+	# s.shocks[:] = rand(p.nT * p.nsims)
+	GG = cumsum(m.ywgt,dims = 2)
+	for it in 2:p.nT
+		for i in 1:p.nsims
+			s.ystate[i,it] = searchsortedfirst(GG[s.ystate[i,it-1],:], wshocks[i,it])
+		end
+	end
+
+	for it in 1:p.nT
+		if it == 1
+			# draw from initial distributions
+			s.w0[:, it] = p.initw0 .+ w0shocks * (p.initw1 - p.initw0)
+			s.worker[:, it] .= 1   # all work in frist period
+			s.inc[ notfiling, it] .= income(it,p,m.yvec[s.ystate[notfiling,it]])
+		else
+
+			# notfiling state
+			s.worker[ notfiling, it] .= 1 # chose working, so stay worker
+			s.worker[.!(notfiling), it] .= 2 # chose retire
+			s.ret_age[(s.worker[:,it-1] .== 1) .& (s.worker[:,it] .== 2)] .= it
+
+			# income
+			s.inc[.!(notfiling), it] .= 0.0
+			s.inc[ notfiling, it] .= income(it,p,m.yvec[s.ystate[notfiling,it]])
+
+
+			# end of period wealth in period it
+			s.w0[ :     , it] .= s.w1[:      , it-1]*p.R
+			s.w0[notfiling, it] .= s.w1[notfiling, it-1]*p.R .+ s.inc[ notfiling, it]
+		end
+		# consumption and value
+		# can be made much faster by grouping individuals by `iy` state
+		for i in 1:p.nsims
+			iy = s.ystate[i,it]
+			if notfiling[i]
+				s.cons[i,it]    = gety(interp(m.c[1,iy,it].env,[s.w0[ i, it]]))[1]
+			else
+				s.cons[i,it]    = gety(interp(m.c[2,iy,it].env,[s.w0[ i, it]]))[1]
+			end
+			vmat[1,i] = vfun(1,it, [s.cons[i,it] ],[s.w0[i,it]], m.v[1,iy,it],p )[1]
+			vmat[2,i] = vfun(2,it, [s.cons[i,it] ],[s.w0[i,it]], m.v[2,iy,it],p )[1]
+		end
+		# end of period wealth
+		s.w1[:,it] = s.w0[:,it] - s.cons[:,it]
+
+		# CCP to remain worker
+		s.prob_work[:,it] = (s.worker[:,it] .== 1) .* ccp(vmat,p)  # prob to remain worker
+
+		# discrete choice
+		notfiling[:] = s.prob_work[:,it] .> dshocks[:,it]
+	end
+	s
+end
+
 function rs(;par = Dict())
 	m,p = DCEGM.runf(par = par)
 	sim(m,p)
@@ -162,96 +231,4 @@ function rsg(;par = Dict())
 end
 function rsgp(;par = Dict())
 	plot_s(rsg(par=par))
-end
-
-
-# DCEGM.interact(DCEGM.rsgp) for sim
-# DCEGM.interact(DCEGM.runfp) for fedors model
-function interact(fun::Function)
-	p = Param()
-	gammas = 1.0:0.1:3.0
-	betas  = 0.5:0.05:1.0
-	Rs  = 1.0:0.05:1.5
-	alphas = [0.0,0.35,0.5]
-	sigmas = 0.0:0.05:0.35
-	lambdas = 0.0000002:0.05:1
-	rhos = 0.1:0.05:1
-
-	mp = @manipulate for γ in slider(gammas, label = "γ", value =p.gamma ),
-						 β in slider(betas, label = "β", value =p.beta) ,
-						 R in slider(Rs, label = "R", value =p.R) ,
-						 α in slider(alphas, label = "α", value =p.alpha) ,
-						 σ in slider(sigmas, label = "σ", value =p.sigma) ,
-						 λ in slider(lambdas, label = "λ", value =p.lambda),
-						 ρ in slider(rhos, label = "ρ", value =p.ρ)
-
-		fun(par = Dict(:ρ => ρ, :gamma => γ, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R))
-	end
-end
-
-function igmodel()
-	p = Param()
-	gammas = 1.0:0.1:3.0
-	betas  = 0.5:0.05:1.0
-	Rs  = 1.0:0.05:1.5
-	alphas = [0.0,0.35,0.5]
-	sigmas = 0.0:0.05:0.35
-	lambdas = 0.0000002:0.05:1
-	rhos = 0.1:0.05:1
-
-	mp = @manipulate for iy = OrderedDict("iy=$iy" => iy for iy in 1:p.ny) ,
-		                 id = Dict("id=$id" => id for id in 1:2),
-		                 γ in slider(gammas, label = "γ", value =p.gamma ),
-						 β in slider(betas, label = "β", value =p.beta) ,
-						 σ in slider(sigmas, label = "σ", value =p.sigma) ,
-						 λ in slider(lambdas, label = "λ", value =p.lambda),
-						 ρ in slider(rhos, label = "ρ", value =p.ρ)
-
-		m,p = rung(par = Dict(:ρ => ρ, :gamma => γ, :beta => β, :sigma => σ, :lambda => λ))
-		plot(m,p,iy = iy, id = id,ylims = (-15,13),size = (700,400))
-	end
-end
-
-function ibkmodel(;it::Bool=false)
-	p = Param()
-	gammas = 1.0:0.1:3.0
-	betas  = 0.5:0.05:1.0
-	Rs  = 1.0:0.05:1.5
-	alphas = [0.0,0.1,0.35,0.5,1.0]
-	alphaT = -1000:1:0.0
-	lambdas = 0.2:0.1:1.0
-	rhos = 0.1:0.05:1
-	times = 1:p.nT
-
-	if it
-		mp = @manipulate for id = Dict("id=$id" => id for id in 1:2),
-							 ti in slider(times, label = "period", value = 1),
-			                 γ in slider(gammas, label = "γ", value =p.gamma ),
-							 β in slider(betas, label = "β", value =p.beta) ,
-							 a in slider(alphas, label = "α", value = p.alpha) ,
-							 aT in slider(alphaT, label = "αT", value = p.alphaT) ,
-							 λ in slider(lambdas, label = "λ", value =p.lambda)#,
-							 # ρ in slider(rhos, label = "ρ", value =p.ρ)
-
-			m,p = runbk(par = Dict(:a_low => -5.0,:a_lowT => -5.0,:na =>101,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
-			plot(m,p,it = ti, id = id,ylims = (-5,13),size = (700,400))
-		end
-
-	else
-		mp = @manipulate for iy = OrderedDict("iy=$iy" => iy for iy in 1:p.ny) ,
-			                 id = Dict("id=$id" => id for id in 1:2),
-			                 γ in slider(gammas, label = "γ", value =p.gamma ),
-							 β in slider(betas, label = "β", value =p.beta) ,
-							 a in slider(alphas, label = "α", value = p.alpha) ,
-							 aT in slider(alphaT, label = "αT", value = p.alphaT) ,
-							 λ in slider(lambdas, label = "λ", value =p.lambda)#,
-							 # ρ in slider(rhos, label = "ρ", value =p.ρ)
-
-			m,p = runbk(par = Dict(:a_low => -5.0,:a_lowT => -5.0,:na =>101,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
-			plot(m,p,iy = iy, id = id,ylims = (-5,13),size = (700,400))
-		end
-
-	end
-
-
 end
