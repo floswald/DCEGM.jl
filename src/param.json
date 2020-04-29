@@ -54,6 +54,11 @@
 		"description" : "disutility of work",
 		"symbol" : "\\alpha"
 	},
+	"alphaT" : {
+		"value" : -100.0,
+		"description" : "final period disutility",
+		"symbol" : "\\alpha_T"
+	},
 	"sigma" : {
 		"value" : 0.35,
 		"description" : "Income shock variance",

@@ -8,10 +8,10 @@ function bk!(m::BModel,p::Param)
     # vtmp = fill(-Inf,p.nD,p.ny,p.na)
 
     for it in p.nT:-1:1
-        println(it)
+        # println(it)
         for iy in 1:p.ny  # current state
             for id in 1:p.nD  # current dchoice
-                println("id = $id")
+                # println("id = $id")
                 filer = id==2  # filing is id=2
 
                 if it==p.nT
@@ -25,7 +25,7 @@ function bk!(m::BModel,p::Param)
                     m.cbk[iy,it] = Envelope(MLine(vcat(0.0,p.a_high),vcat(0.0,p.a_high)) )
                     # initiz,iae value function with vf(1) = 0
                     m.vbk[iy,it] = Envelope(MLine(vcat(0.0,p.a_high),vcat(-p.alpha,NaN)) )
-                    m.vbk[iy,it].vbound = -p.alpha
+                    m.vbk[iy,it].vbound = p.alphaT
                 else
                     # next period consumption and values y-coords
                     # for each d-choice
@@ -128,8 +128,8 @@ function bk!(m::BModel,p::Param)
                             floory!(c1,p.cfloor)   # floor negative consumption
                             ctmp[iid,jy,:] = gety(c1)
                             # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
-                            vmat[iid,:] += pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.vbk[jy,it+1],p)
-                            cmat[iid,:] += pr * up(ctmp[iid,jy,:],p)
+                            vmat[iid,:] += (pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.vbk[jy,it+1],p))
+                            cmat[iid,:] += (pr * up(ctmp[iid,jy,:],p))
                         end  # future states
 
                         mu1 = cmat[iid,:]
@@ -173,8 +173,8 @@ function bk!(m::BModel,p::Param)
 end
 
 
-function runbk()
-    p = Param(par = Dict(:a_low => -5.0,:a_lowT => -5.0,:na =>101, :alpha => 0.1))
+function runbk(; par = Dict(:a_low => -5.0,:a_lowT => -5.0,:na =>101, :alpha => 0.0, :lambda => 0.5))
+    p = Param(par = par)
     m = BModel(p)
     bk!(m,p)
     m,p

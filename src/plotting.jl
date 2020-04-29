@@ -11,6 +11,18 @@ function v_analytic(m::Model,p::Param,id,it)
     vcat(pts, vf.env.v[2:end])  # connect at second point
 end
 
+function v_analytic(m::BModel,p::Param,id,iy,it)
+    vf = m.v[id,iy,it]
+    c = m.c[id,iy,it]
+    cons = scaleGrid(p.cfloor_plot,gety(c.env)[2],p.k,logorder = 1)
+    cash = scaleGrid(p.a_low,getx(vf.env)[2],p.k,logorder = 1)
+    # deleteat!(cons,length(cons))
+    # deleteat!(cash,length(cash))
+    pts = convert(Point,cash,vfun(x->u(x,id==2,p),it,cons,cash,vf,p))
+    vcat(pts, vf.env.v[2:end])  # connect at second point
+    # vf.env.v[2:end]  # connect at second point
+end
+
 function v_analytic(m::Model,p::Param,id,iy,it)
     vf = m.v[id,iy,it]
     c = m.c[id,iy,it]
@@ -182,7 +194,6 @@ end
     xa = extrema(m.avec)
     xrange[1] = xa[1] .- diff(vcat(xa...))[1] .* 0.01
     xrange[2] = xa[2]
-
     nT = size(m.v)[3]
     # cols = range(c1,stop=c2,length=nT)
 
@@ -196,7 +207,7 @@ end
             @series begin
                 seriestype --> :path
                 linewidth --> 1
-                legend := :bottomright
+                legend --> :bottomright
                 label := "y$jy"
                 # seriescolor --> cols[i]
                 subplot := 1  # value function
@@ -217,7 +228,7 @@ end
                 subplot := 2  # 
                 label := "y$jy"
                 xlims := xa
-                ylims --> xa
+                ylims := xa
                 yguide := "consumption"
                 xguide := "Cash on Hand M"
                 # aspect_ratio := aspect
@@ -248,7 +259,7 @@ end
                 subplot := 2  # 
                 # label := lab
                 xlims := xa
-                ylims --> xa
+                ylims := xa
                 yguide := "consumption"
                 xguide := "Cash on Hand M"
                 # aspect_ratio := aspect

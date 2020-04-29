@@ -52,6 +52,7 @@ mutable struct Param
 	cfloor                :: Float64
 	cfloor_plot           :: Float64
 	alpha                 :: Float64
+	alphaT                 :: Float64
 	inc0                 :: Float64
 	inc1                 :: Float64
 	inc2                 :: Float64
