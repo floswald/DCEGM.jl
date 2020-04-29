@@ -97,7 +97,7 @@ end
                 subplot := 2  # 
                 label := "y$jy"
                 xlims := xa
-                ylims --> xa
+                ylims := xa
                 yguide := "consumption"
                 xguide := "Cash on Hand M"
                 # aspect_ratio := aspect
@@ -128,7 +128,7 @@ end
                 subplot := 2  # 
                 # label := lab
                 xlims := xa
-                ylims --> xa
+                ylims := xa
                 yguide := "consumption"
                 xguide := "Cash on Hand M"
                 # aspect_ratio := aspect
