@@ -20,7 +20,7 @@ function bk!(m::BModel,p::Param)
                         m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,0.0,p.a_high),vcat( 0.0 , p.cfloor , p.a_high)) )
                         m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat( 0.0 , p.a_high)) )
                     else
-                        m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,0.0,p.a_high),vcat( 0.0 , 0.0 , p.a_high)) )
+                        m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,0.0,p.a_high),vcat( 0.0 , p.cfloor , p.a_high)) )
                         m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat( 0.0 + p.alphaT  , p.a_high + p.alphaT)) )
                         m.v[id,iy,it].vbound = p.alphaT
                     end

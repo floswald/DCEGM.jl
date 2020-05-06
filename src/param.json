@@ -115,7 +115,7 @@
 		"symbol" : "k"
 	},
 	"nsims" : {
-		"value" : 10,
+		"value" : 100,
 		"description" : "number of simulated individuals",
 		"symbol" : "n_s"
 	},

@@ -209,7 +209,7 @@ function sim(m::BModel,p::Param)
 	end
 
 	for it in 1:p.nT
-		println(it)
+		# println(it)
 		notfiling[:] .= .!(filing)
 		if it == 1
 			# draw from initial distributions
