@@ -47,6 +47,7 @@ include("simulate.jl")
 include("plotting.jl")
 include("bench.jl")
 include("bk.jl")
+include("interact.jl")
 
 
 function doi()

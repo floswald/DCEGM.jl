@@ -212,7 +212,11 @@ lifecycle profile in income
 """
 function income(it::Int,p::Param,shock::Float64)
 	age = it + 19
-	exp( p.inc0 + p.inc1*age - p.inc2*(age^2) + shock)
+	if it > p.retage
+		p.pension
+	else
+		exp( p.inc0 + p.inc1*age - p.inc2*(age^2) + shock)
+	end
 end
 function income(it::Int,p::Param,shock::Array{Float64})
 	x = similar(shock)
@@ -221,6 +225,8 @@ function income(it::Int,p::Param,shock::Array{Float64})
 	end
 	return x
 end
+
+
 
 function quadpoints(n,lbnd,ubnd)
 

@@ -16,10 +16,16 @@ function bk!(m::BModel,p::Param)
 
                 if it==p.nT
                     # final period: consume everyting.
-                    m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(id == 1 ? 0.0 : NaN,p.a_high)) )
+                    if id == 1
+                        m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,0.0,p.a_high),vcat( 0.0 , p.cfloor , p.a_high)) )
+                        m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat( 0.0 , p.a_high)) )
+                    else
+                        m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,0.0,p.a_high),vcat( 0.0 , 0.0 , p.a_high)) )
+                        m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat( 0.0 + p.alphaT  , p.a_high + p.alphaT)) )
+                        m.v[id,iy,it].vbound = p.alphaT
+                    end
                     # initialize value function with vf(1) = 0
-                    m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(id == 1 ? 0.0 : NaN,NaN)) )
-                    # note that 0.0 as first value of the vfun is not innocuous here!
+                    # m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(id == 1 ? 0.0 : p.alphaT,p.alphaT)) )
 
                     # with bk flag on:
                     m.cbk[iy,it] = Envelope(MLine(vcat(0.0,p.a_high),vcat(0.0,p.a_high)) )
@@ -173,7 +179,7 @@ function bk!(m::BModel,p::Param)
 end
 
 
-function runbk(; par = Dict(:a_low => -5.0,:a_lowT => -5.0,:na =>101, :alpha => 0.0, :lambda => 0.5))
+function runbk(; par = Dict(:nT => 50, :a_low => -5.0,:a_lowT => -5.0,:na =>101, :alpha => 0.0,  :alphaT => 0.0, :lambda => 0.5))
     p = Param(par = par)
     m = BModel(p)
     bk!(m,p)

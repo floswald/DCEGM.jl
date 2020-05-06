@@ -63,6 +63,34 @@ function plot_s(s::Simulation)
           layout = (2,3))
 end
 
+function plot_s(s::BSimulation)
+
+    # inc, cons, w
+    py = plot(s.inc',leg = false, title = "income")
+    pc = plot(s.cons',leg = false, title = "consumption")
+    i_retires = findall(s.file_age .> 0)
+    scatter!(pc, s.file_age[i_retires], [s.cons[i,s.file_age[i]] for i in i_retires], m = (:rect, 2, 0.6, :white))
+    pw0 = plot(s.w0',leg = false, title = "w0")
+    scatter!(pw0, s.file_age[i_retires], [s.w0[i,s.file_age[i]] for i in i_retires], m = (:rect, 2, 0.6, :white))
+
+    ppr = plot(s.prob_nofile',leg = false, title = "p(nofile)")
+    scatter!(ppr, s.file_age[i_retires], [s.prob_nofile[i,s.file_age[i]] for i in i_retires], m = (:rect, 2, 0.6, :white))
+
+    pw1 = plot(s.w1',leg = false, title = "w1")
+    pempty = plot(legend=false,grid=false,foreground_color_subplot=:white)
+    asize = 10
+    annotate!(pempty, [(0.3,1,Plots.text("gamma = $(s.p.gamma)",     :left, asize)),
+                       (0.3,0.9,Plots.text("R = $(s.p.R)",     :left, asize)),
+                       (0.3,0.8,Plots.text("beta = $(round(s.p.beta,digits=2))", :left, asize)),
+                       (0.3,0.7,Plots.text("alpha = $(s.p.alpha)",   :left, asize)),
+                       (0.3,0.6,Plots.text("sigma = $(s.p.sigma)",   :left, asize)),
+                       (0.3,0.5,Plots.text("lambda = $(s.p.lambda)", :left, asize)),
+                       (0.3,0.4,Plots.text("rho = $(s.p.ρ)",         :left, asize))])
+    plot(py,pc,pw0,ppr,pw1,
+          pempty ,
+          layout = (2,3))
+end
+
 @recipe function f(m::GModel,p::Param;id=1,iy=nothing,it=nothing)
     grid --> true
     xticks := true

@@ -369,6 +369,35 @@ function vfun(ufun::Function,it::Int,c1::Vector{Float64},m1::Vector{Float64},v::
 end
 
 """
+vfun used in simulation of state dependent model
+"""
+function vfun(ufun::Function,it::Int,c1::Vector{Float64},m1::Vector{Float64},vv::Vector{Envelope},p::Param)
+
+    # each entry of c1,m1 and v represents an individual
+    N = length(c1)
+    @assert N == length(m1) == length(vv)
+    # L = en.L[id]
+    # v = en[id,iy,it]
+
+    # computes v_{it}(m) = u(c) + beta v_{it+1}(m1)
+
+    r = fill(NaN,N)
+    critx = map(x -> getx(x.env)[2],vv)
+    for (i,v) in enumerate(vv)
+        if length(getx(v.env)) < 2
+            error("need more than 2 points in envelope object")
+        end
+        if m1[i] < critx[i]  # credit constrained
+        # if m1[i] < getx(v.env)[2]  # credit constrained
+            r[i] = ufun(c1[i]) + p.beta * bound(v)
+        else
+            r[i] = gety(interp(v.env,[m1[i]]))[1]
+        end
+    end
+    r
+end
+
+"""
     ccp(x::Matrix,p::Param)
 
 Conditional Choice probability of working

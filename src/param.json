@@ -49,13 +49,23 @@
 		"description" : "number of years",
 		"symbol" : "nT"
 	},
+	"retage" : {
+		"value" : 26,
+		"description" : "Mandatory Retirement age",
+		"symbol" : "retage"
+	},
+	"pension" : {
+		"value" : 1.0,
+		"description" : "Pension",
+		"symbol" : "pension"
+	},
 	"alpha" : {
 		"value" : 0.35,
 		"description" : "disutility of work",
 		"symbol" : "\\alpha"
 	},
 	"alphaT" : {
-		"value" : -100.0,
+		"value" : -1.0,
 		"description" : "final period disutility",
 		"symbol" : "\\alpha_T"
 	},

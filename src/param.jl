@@ -1,9 +1,6 @@
 
 abstract type Model end
 
-
-
-
 """
 Holds the user-set parameter values.
 
@@ -22,7 +19,6 @@ Holds the user-set parameter values.
 * `sigma`: unconditional variance of income (iid case)
 * `rho_z`: AR1 coefficient of income (AR1 case)
 * `eps_z`: standard deviation of AR1 innovation (AR1 case)
-* `dorefinements`: boolean switch of whether to filter out whiggles
 * `alpha`: disutility of work
 * `inc0`: income equation
 * `inc1`: income equation
@@ -58,6 +54,8 @@ mutable struct Param
 	inc2                 :: Float64
 	ρ                    :: Float64
 	k                    :: Int
+	retage               :: Int # mandatory retirement age
+	pension              :: Float64 # pension
 
 	# simulation
 	nsims                 :: Int64
