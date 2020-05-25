@@ -94,7 +94,7 @@ function ibkmodel(;it::Bool=false)
 end
 
 
-function ibksim(;pars = Dict(:nT => 50),it::Bool=false, simulate=false)
+function ibksim(;pars = Dict(:nT => 50),it::Bool=false)
 	p = Param(par = pars )
 	gammas = 1.0:0.1:3.0
 	betas  = 0.5:0.05:1.0
@@ -106,7 +106,8 @@ function ibksim(;pars = Dict(:nT => 50),it::Bool=false, simulate=false)
 	times = 1:p.nT
 
 	if it
-		mp = @manipulate for id = Dict("id=$id" => id for id in 1:2),
+		mp = @manipulate for dosim = Dict("sim" => true, "sol" => false),
+			id = Dict("id=$id" => id for id in 1:2),
 							 ti in slider(times, label = "period", value = 1),
 			                 γ in slider(gammas, label = "γ", value =p.gamma ),
 							 β in slider(betas, label = "β", value =p.beta) ,
@@ -117,7 +118,7 @@ function ibksim(;pars = Dict(:nT => 50),it::Bool=false, simulate=false)
 							 # ρ in slider(rhos, label = "ρ", value =p.ρ)
 			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alow,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
 			m,p = runbk(par = pp)
-			if simulate
+			if dosim
 				s = sim(m,p)
 				plot_s(s)
 			else
@@ -126,7 +127,8 @@ function ibksim(;pars = Dict(:nT => 50),it::Bool=false, simulate=false)
 		end
 
 	else
-		mp = @manipulate for iy = OrderedDict("iy=$iy" => iy for iy in 1:p.ny) ,
+		mp = @manipulate for dosim = Dict("sim" => true, "sol" => false),
+			iy = OrderedDict("iy=$iy" => iy for iy in 1:p.ny) ,
 			                 id = Dict("id=$id" => id for id in 1:2),
 			                 γ in slider(gammas, label = "γ", value =p.gamma ),
 							 β in slider(betas, label = "β", value =p.beta) ,
@@ -138,7 +140,7 @@ function ibksim(;pars = Dict(:nT => 50),it::Bool=false, simulate=false)
 
 			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alow,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
  			m,p = runbk(par = pp)
-			if simulate
+			if dosim
  				s = sim(m,p)
  				plot_s(s)
  			else
