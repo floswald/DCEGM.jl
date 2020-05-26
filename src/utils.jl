@@ -54,6 +54,11 @@ function up(c::Array{Float64,2},p::Param)
 	end
 	x
 end
+function up!(c::Array{Float64},p::Param)
+	for i in eachindex(c)
+		c[i] = up(c[i],p)
+	end
+end
 function up(c::Array{Float64},p::Param)
 	n = length(c)
 	x = zeros(n)
@@ -162,7 +167,11 @@ function rouwenhorst(rho::Float64,mu_eps,sigma_eps,n)
 end
 
 # asset grid scaling
-function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1)
+function scaleGrid(lb::Float64,ub::Float64,n::Int;logorder::Int=1,offset=0.05)
+	if lb >= ub
+		@warn("lower bound $lb is greater than upper bound $ub: forcing lb < ub.")
+		lb = ub - abs(ub)*offset
+	end
 	out = zeros(n)
 	if logorder==0
 		out    = collect(range(lb,stop = ub,length = n))
@@ -203,15 +212,21 @@ lifecycle profile in income
 """
 function income(it::Int,p::Param,shock::Float64)
 	age = it + 19
-	exp( p.inc0 + p.inc1*age - p.inc2*(age^2) + shock)
+	if it > p.retage
+		p.pension
+	else
+		exp( p.inc0 + p.inc1*age - p.inc2*(age^2) + shock)
+	end
 end
-function income(it::Int,shock::Array{Float64})
+function income(it::Int,p::Param,shock::Array{Float64})
 	x = similar(shock)
 	for i=1:length(x)
-		x[i] = income(it,shock[i])
+		x[i] = income(it,p,shock[i])
 	end
 	return x
 end
+
+
 
 function quadpoints(n,lbnd,ubnd)
 

@@ -36,6 +36,7 @@
 			   :sigma => 0.35,
 			   :R => 1.05,
 			   :lambda => 0.000002)
+	pd[:beta] = 1 / pd[:R]
 
 	# DCEGM.runf(par = pd)
 	pd[:na] = 500

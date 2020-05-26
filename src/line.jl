@@ -222,7 +222,7 @@ function interp(l::MLine{T},ix::Vector{T};extrap::Bool = true) where {T<:Number}
     # @debug(logger,"interpolating $ix ")
     xvec = getx(l)
     if !issorted(xvec)
-        println(xvec)
+        # println(xvec)
     end
     xrange = extrema(xvec)
 

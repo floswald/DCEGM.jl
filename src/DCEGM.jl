@@ -9,6 +9,9 @@ using Roots
 using Plots
 using Colors
 using Statistics
+using Random
+using Interact
+using DataStructures: OrderedDict
 gr()
 
 
@@ -39,8 +42,12 @@ include("envelope.jl")
 include("param.jl")
 include("utils.jl")
 include("dc_algo.jl")
+include("simulate.jl")
+
 include("plotting.jl")
 include("bench.jl")
+include("bk.jl")
+include("interact.jl")
 
 
 function doi()

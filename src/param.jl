@@ -1,9 +1,6 @@
 
 abstract type Model end
 
-
-
-
 """
 Holds the user-set parameter values.
 
@@ -22,7 +19,6 @@ Holds the user-set parameter values.
 * `sigma`: unconditional variance of income (iid case)
 * `rho_z`: AR1 coefficient of income (AR1 case)
 * `eps_z`: standard deviation of AR1 innovation (AR1 case)
-* `dorefinements`: boolean switch of whether to filter out whiggles
 * `alpha`: disutility of work
 * `inc0`: income equation
 * `inc1`: income equation
@@ -50,12 +46,22 @@ mutable struct Param
 	a_lowT                :: Float64
 	nD                    :: Int # number of discrete choices
 	cfloor                :: Float64
+	cfloor_plot           :: Float64
 	alpha                 :: Float64
+	alphaT                 :: Float64
 	inc0                 :: Float64
 	inc1                 :: Float64
 	inc2                 :: Float64
 	ρ                    :: Float64
-	ϵ                    :: Float64
+	k                    :: Int
+	retage               :: Int # mandatory retirement age
+	pension              :: Float64 # pension
+
+	# simulation
+	nsims                 :: Int64
+	initw0                :: Float64   # low/high bounds on initial wealth from this interval
+	initw1                :: Float64   # low/high bounds on initial wealth from this interval
+	rseed                 :: Int64     # random generator seed
 
 	# constructor
     function Param(;par::Dict=Dict())
@@ -79,6 +85,7 @@ mutable struct Param
 		this.oneminusgamma         = 1.0 - this.gamma
 		this.oneover_oneminusgamma = 1.0 / this.oneminusgamma
 		this.neg_oneover_gamma     = (-1.0) / this.gamma
+
 
 		# this.beta = 1/this.R  # hard wire that beta = 1/R
 		# this is not good.
@@ -169,6 +176,7 @@ mutable struct FModel <: Model
 	v :: Array{Envelope}  # arrays of Envelope objects
 	c :: Array{Envelope}
 
+
 	function FModel(p::Param)
 
 		this = new()
@@ -179,6 +187,8 @@ mutable struct FModel <: Model
 		nodes = quantile.(N,nodes)
 		this.yvec = nodes * p.sigma
 		this.ywgt = weights
+
+		# simulation shocks
 
 		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
@@ -197,6 +207,69 @@ mutable struct FModel <: Model
 	end
 end
 
+"""
+Fedor's Model with bankruptcy
+"""
+mutable struct BModel <: Model
+	avec::Vector{Float64}
+	aposvec::Vector{Float64}
+	yvec::Vector{Float64}   # income support
+	ywgt::Matrix{Float64}   # income support
+
+	# intermediate objects (na,nD)
+	m1::Dict{Int,Dict}	# a dict[it] for each period
+	# result objects
+	v :: Array{Envelope}  # arrays of Envelope objects
+	c :: Array{Envelope}
+	vbk :: Array{Envelope}  # arrays of Envelope objects
+	cbk :: Array{Envelope}
+	iazero :: Int  # index of first non-negative asset state
+
+
+
+	function BModel(p::Param)
+
+		this = new()
+
+		if p.ρ == 0
+			nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+			this.yvec = sqrt(2.0) * p.sigma .* nodes
+			this.ywgt = reshape(repeat(weights .* pi^(-0.5),inner = p.ny),p.ny,p.ny)  # make a matrix
+		else
+			# version with income persistence
+			this.yvec, this.ywgt = rouwenhorst(p.ρ,0,p.sigma,p.ny)
+		end
+
+		if p.a_low >= 0
+			error("need a_low < 0 for bankruptcy model")
+		end
+
+		# simulation shocks
+
+		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+		this.aposvec       = collect(range(0.0,stop = p.a_high,length = p.na))
+		this.iazero = findfirst(this.avec .>= 0)
+
+		# precompute next period's cash on hand.
+		# (na,ny,nState)
+		# state = 1: tomorrow bk flag off
+		# state = 2: tomorrow bk flag on
+		this.m1 = Dict(it => Dict(id =>
+		                          Float64[p.R* (this.aposvec[ia]*(id==2) + (1 - (id==2))*this.avec[ia]).+ income(it,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na] for id=1:(p.nD)) for it=2:(p.nT))
+
+		# result arrays: matrices of type Envelope.
+		# this allocation is only to reserve about the right amount of memory. those will be overwritten in the algo.
+		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny, it in 1:p.nT]
+		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny,it in 1:p.nT]
+		# for bankruptcy flag on there is no discrete choice
+		this.vbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny, it in 1:p.nT]
+		this.cbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny,it in 1:p.nT]
+
+
+		return this
+	end
+end
+
 
 
 """
@@ -207,7 +280,7 @@ mutable struct GModel <: Model
 	# nD is number of discrete choices: nD = 2
 
 	# computation grids
-	avec::Vector{Vector{Float64}}   # each period has its own avec
+	avec::Vector{Float64}  # each period has its own avec
 	yvec::Vector{Float64}   # income support
 	ywgt::Matrix{Float64}   # income weights
 
@@ -219,6 +292,12 @@ mutable struct GModel <: Model
 	# result objects
 	v :: Array{Envelope}  # arrays of Envelope objects
 	c :: Array{Envelope}
+
+	# simulation settings
+	wshocks :: Matrix{Float64}  # wage shocks
+	dshocks :: Matrix{Float64}  # discrete choice shocks
+	w0shocks :: Vector{Float64}  # initial wealth shock
+	y0shocks :: Vector{Int64}  # initial income state
 
 	"""
 	Constructor for discrete choice GModel
@@ -242,28 +321,28 @@ mutable struct GModel <: Model
 
 		if p.ρ == 0
 			nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-			this.yvec = sqrt(2.0) * p.ϵ .* nodes
+			this.yvec = sqrt(2.0) * p.sigma .* nodes
 			this.ywgt = reshape(repeat(weights .* pi^(-0.5),inner = p.ny),p.ny,p.ny)  # make a matrix
 		else
 			# version with income persistence
-			this.yvec, this.ywgt = rouwenhorst(p.ρ,0,p.ϵ,p.ny)
+			this.yvec, this.ywgt = rouwenhorst(p.ρ,0,p.sigma,p.ny)
 		end
 
-		# get borrowing limits
-		# η = abounds(this.yvec[1],p)
 
-		# avec          = scaleGrid(0.0,p.a_high,p.na,2)
+		this.avec          = scaleGrid(p.a_low,p.a_high,p.na,logorder = 2)
 		# this.avec          = [collect(range(p.a_low,stop = p.a_high,length = p.na))]
 		# this.avec          = [scaleGrid(p.a_low,p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
 		# this.avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
-		this.avec          = [scaleGrid(p.a_low,p.a_high,p.na,logorder = 0) for it in 1:p.nT-1]
-		push!(this.avec, scaleGrid(0.0,p.a_high,p.na,logorder = 0))  # last period
+		# this.avec          = [scaleGrid(p.a_low,p.a_high,p.na,logorder = 0) for it in 1:p.nT-1]
+		# push!(this.avec, scaleGrid(0.0,p.a_high,p.na,logorder = 0))  # last period
+		# this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
 		# precompute next period's cash on hand.
 		# (na,ny,nD)
 		# iD = 1: tomorrow work
 		# iD = 2: tomorrow no work
-		this.m1 = Dict(it => Dict(id => Float64[this.avec[it][ia]*p.R .+ income(it,p,this.yvec[iy]) * (id==1) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
+		# this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it,p,this.yvec[iy]) * (id==1) *(it < p.nT) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*((this.avec[ia] < 0)*0.5 + p.R)  .+ income(it,p,this.yvec[iy]) * (id==1) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=2:p.nT)
 		this.c1 = zeros(p.na,p.ny)
 		this.ev = zeros(p.na,p.ny)
 
@@ -276,7 +355,7 @@ mutable struct GModel <: Model
 end
 
 
-function GModel()
+function gmodel()
 	p = Param()
 	(GModel(p),p)
 end

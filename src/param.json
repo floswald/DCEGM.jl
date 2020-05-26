@@ -10,7 +10,7 @@
 		"symbol" : "\\beta"
 	},
 	"R" : {
-		"value" : 1.05,
+		"value" : 1.0526315789473684,
 		"description" : "gross interest rate",
 		"symbol" : "R"
 	},
@@ -49,10 +49,25 @@
 		"description" : "number of years",
 		"symbol" : "nT"
 	},
+	"retage" : {
+		"value" : 26,
+		"description" : "Mandatory Retirement age",
+		"symbol" : "retage"
+	},
+	"pension" : {
+		"value" : 1.0,
+		"description" : "Pension",
+		"symbol" : "pension"
+	},
 	"alpha" : {
 		"value" : 0.35,
 		"description" : "disutility of work",
 		"symbol" : "\\alpha"
+	},
+	"alphaT" : {
+		"value" : -1.0,
+		"description" : "final period disutility",
+		"symbol" : "\\alpha_T"
 	},
 	"sigma" : {
 		"value" : 0.35,
@@ -84,16 +99,39 @@
 		"description" : "consumption floor",
 		"symbol" : "\\underline{c}"
 	},
+	"cfloor_plot" : {
+		"value" : 0.01,
+		"description" : "plotting floor",
+		"symbol" : "\\underline{cp}"
+	},
 	"ρ" : {
 		"value" : 0.95,
 		"description" : "AR1 persistence of log income",
 		"symbol" : "\\rho"
-
 	},
-	"ϵ" : {
-		"value" : 0.12,
-		"description" : "std dev of log income",
-		"symbol" : "\\rho"
-
+	"k" : {
+		"value" : 100,
+		"description" : "Points to add for analytic values",
+		"symbol" : "k"
+	},
+	"nsims" : {
+		"value" : 100,
+		"description" : "number of simulated individuals",
+		"symbol" : "n_s"
+	},
+	"initw0" : {
+		"value" : 5.0,
+		"description" : "Lower bound on initial wealth",
+		"symbol" : "w_0"
+	},
+	"initw1" : {
+		"value" : 20.0,
+		"description" : "Upper bound on initial wealth",
+		"symbol" : "w_1"
+	},
+	"rseed" : {
+		"value" : 25032020,
+		"description" : "Random Seed",
+		"symbol" : "randseed"
 	}
 }
