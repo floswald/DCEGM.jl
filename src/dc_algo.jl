@@ -211,14 +211,14 @@ function dc_EGM!(m::GModel,p::Param)
                     # reset all value matrices
                     fill!(vmat,0.0)
                     fill!(ctmp,-Inf)
-                    fill!(vtmp,-Inf)
+                    # fill!(vtmp,-Inf)
 
-                    Threads.@threads for jy in 1:p.ny # future state: owner, renter, income, etc
-                    # for jy in 1:p.ny # future state: owner, renter, income, etc
+                    # Threads.@threads for jy in 1:p.ny # future state: owner, renter, income, etc
+                    for jy in 1:p.ny # future state: owner, renter, income, etc
                         pr = m.ywgt[iy,jy]  # transprob
 
-                        # Threads.@threads for iid in 1:p.nD  # future dchoice
-                        for iid in 1:p.nD  # future dchoice
+                        Threads.@threads for iid in 1:p.nD  # future dchoice
+                        # for iid in 1:p.nD  # future dchoice
                             # only feasible choices at this state
                             # if renter, cannot sell etc
 
@@ -226,8 +226,8 @@ function dc_EGM!(m::GModel,p::Param)
                             c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
                             floory!(c1,p.cfloor)   # floor negative consumption
                             ctmp[iid,jy,:] = gety(c1)
-                            vtmp[jy,iid,:] = pr * vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
-                            # vmat[iid,:] += pr * vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+                            # vtmp[jy,iid,:] = pr * vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+                            vmat[iid,:] += pr * vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
                         end
                     end # end future state
 
@@ -236,7 +236,7 @@ function dc_EGM!(m::GModel,p::Param)
                     # vmat2 = dropdims( reduce(+, vtmp, dims = 1), dims = 1)
                     # @assert all(vmat2 .== vmat)
 
-                    vmat = dropdims( reduce(+, vtmp, dims = 1), dims = 1)
+                    # vmat = dropdims( reduce(+, vtmp, dims = 1), dims = 1)
 
                     # get ccp of choices: P(d'|iy), pwork
                     pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
