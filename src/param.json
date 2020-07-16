@@ -133,5 +133,10 @@
 		"value" : 25032020,
 		"description" : "Random Seed",
 		"symbol" : "randseed"
+	},
+	"delta" : {
+		"value" : 0.2,
+		"description" : "Probability of going back to work",
+		"symbol" : "\\delta"
 	}
 }
