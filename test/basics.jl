@@ -1,6 +1,10 @@
 
-
-
+@testset "deltatest" begin
+	p=DCEGM.Param()
+	@test p.delta == 0.2
+	p=DCEGM.Param(par=Dict(:delta => 0.9))
+	@test p.delta == 0.9
+end
 
 @testset "basics" begin
 	p = DCEGM.Param()

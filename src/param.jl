@@ -24,6 +24,7 @@ Holds the user-set parameter values.
 * `inc1`: income equation
 * `inc2`: income equation
 * `cfloor`: consumption floor
+* `delta`: probability of going back to work
 
 
 """
@@ -56,6 +57,7 @@ mutable struct Param
 	k                    :: Int
 	retage               :: Int # mandatory retirement age
 	pension              :: Float64 # pension
+	delta 				 :: Float64 # probability of going back to work
 
 	# simulation
 	nsims                 :: Int64
@@ -197,7 +199,7 @@ mutable struct FModel <: Model
 		# iD = 1: tomorrow work
 		# iD = 2: tomorrow no work - absorbing state and retire
 		# notice: you decide to work today (t), but your shock realises tomorrow (t+1) in their formulation
-		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it+1,p,this.yvec[iy]) * (id==1) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=1:(p.nT-1))
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it+1,p,this.yvec[iy]) * (id==1) + (id==2) * p.delta * income(it+1,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=1:(p.nT-1))
 
 		# result arrays: matrices of type Envelope.
 		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
