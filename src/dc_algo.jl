@@ -121,6 +121,7 @@ function dc_EGM!(m::FModel,p::Param)
                 vmat = fill(-Inf,p.nD,p.na*p.ny)
 
                 # get future cons and values
+                # for future nD compute consumption and value function
                 for iid in 1:p.nD
                     c1 = interp(m.c[iid,it+1].env, mm1[:])
                     floory!(c1,p.cfloor)   # floor negative consumption
@@ -129,13 +130,14 @@ function dc_EGM!(m::FModel,p::Param)
                 end
 
                 # get ccp to be a worker
-                pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
+                pwork = working ? ccp(vmat,p) : p.delta*ones(size(vmat)[2])
 
                 # get expected marginal utility of that consumption
                 mu1 = reshape(pwork .* up(cmat[1,:],p) .+ (1.0 .- pwork) .* up(cmat[2,:],p),p.ny,p.na)
 
                 # get expected marginal value of saving: RHS of euler equation
                 # beta * R * E[ u'(c_{t+1}) ]
+                # ywgt: weight on the income states
                 RHS = p.beta * p.R *  m.ywgt' * mu1
 
                 # optimal consumption today: invert the RHS of euler equation
@@ -154,7 +156,7 @@ function dc_EGM!(m::FModel,p::Param)
                 if working
                     ev =  m.ywgt' * reshape(logsum(vmat,p),p.ny,p.na)
                 else
-                    ev =  m.ywgt' * reshape(vmat[2,:],p.ny,p.na)
+                    ev =  (1-p.delta)*m.ywgt' * reshape(vmat[2,:],p.ny,p.na)+p.delta*m.ywgt' * reshape(logsum(vmat,p),p.ny,p.na)
                 end
                 vline = MLine(m.avec .+ c0, u(c0,id==1,p) .+ p.beta * ev[:])
 

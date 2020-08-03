@@ -6,11 +6,11 @@
 	# set up git repo. that's a submodule at matlab/
 	tdir = @__DIR__
 	mldir = joinpath(tdir,"..","matlab")
-	cd(mldir)
-	br = chomp(read(`git rev-parse --abbrev-ref HEAD`,String))
-	if br !="bm"
-		run(`git checkout bm`)
-	end
+	# cd(mldir)
+	# br = chomp(read(`git rev-parse --abbrev-ref HEAD`,String))
+	# if br !="bm"
+	# 	run(`git checkout bm`)
+	# end
 
 	# run fedor's matlab code
 	# if haskey(ENV,"TRAVIS")
@@ -35,7 +35,8 @@
 			   :beta => 0.95,
 			   :sigma => 0.35,
 			   :R => 1.05,
-			   :lambda => 0.000002)
+			   :lambda => 0.000002,
+			   :delta=> 0.0)
 	pd[:beta] = 1 / pd[:R]
 
 	# DCEGM.runf(par = pd)

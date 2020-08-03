@@ -11,6 +11,7 @@ function interact(fun::Function)
 	sigmas = 0.0:0.05:0.35
 	lambdas = 0.0000002:0.05:1
 	rhos = 0.1:0.05:1
+	deltas = 0.05:0.05:0.5
 
 	mp = @manipulate for γ in slider(gammas, label = "γ", value =p.gamma ),
 						 β in slider(betas, label = "β", value =p.beta) ,
@@ -18,9 +19,10 @@ function interact(fun::Function)
 						 α in slider(alphas, label = "α", value =p.alpha) ,
 						 σ in slider(sigmas, label = "σ", value =p.sigma) ,
 						 λ in slider(lambdas, label = "λ", value =p.lambda),
-						 ρ in slider(rhos, label = "ρ", value =p.ρ)
+						 ρ in slider(rhos, label = "ρ", value =p.ρ),
+						 δ in slider(deltas, label= "δ",value = p.delta)
 
-		fun(par = Dict(:ρ => ρ, :gamma => γ, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R))
+		fun(par = Dict(:ρ => ρ, :gamma => γ, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ))
 	end
 end
 
@@ -33,6 +35,7 @@ function igmodel()
 	sigmas = 0.0:0.05:0.35
 	lambdas = 0.0000002:0.05:1
 	rhos = 0.1:0.05:1
+
 
 	mp = @manipulate for iy = OrderedDict("iy=$iy" => iy for iy in 1:p.ny) ,
 		                 id = Dict("id=$id" => id for id in 1:2),
