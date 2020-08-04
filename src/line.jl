@@ -239,8 +239,8 @@ function interp(l::MLine{T},ix::Vector{T};extrap::Bool = true) where {T<:Number}
             for xi in fi
                 out.v[xi] = Point(ix[xi],typemin(T))
             end
-            # for xi in setdiff(1:length(ix),fi)
-            for xi in (1:length(xvec))[Not(fi)]
+            for xi in setdiff(1:length(ix),fi)
+            # for xi in collect((1:length(xvec)))[Not(fi)]
                 out.v[xi] = interpolate((xvec,),l.v,Gridded(Linear()))(ix[xi])
             end
         end
