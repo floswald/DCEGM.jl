@@ -128,7 +128,7 @@ function bk!(m::BModel,p::Param)
                         # ==============================
                         m.v[id,iy,it], m.c[id,iy,it] = do_secondary(vline,cline,filer,minv,p)
                         m.v[id,iy,it].vbound = minv
-                        m.ccp[id,iy,it].ccp = MLine(m.avec .+ c0, pnofile)
+                        m.ccp[id,iy,it] = MLine(m.avec .+ c0, pnofile)
 
 
 
@@ -174,6 +174,7 @@ function bk!(m::BModel,p::Param)
 
                         # probability of returning to non-bkstate
                         pnobkflag = p.delta*ones(size(vmat)[2])
+                        cons_t1_noflag = interp(m.ccp[id,iy,it], )
 
                         mu1 = (1 - pnobkflag) * cmat[2, : ] + pnobkflag * (expected_cons_nonbkstate(m1))
                         #RHS

@@ -3,7 +3,7 @@
 
 ## Envelope
 
-Holds an array of `MLine`s, the upper envelope of those MLines, and a vector of `Point`s marking the intersections between MLines.
+Holds an `MLine`, and a vector of `Point`s marking the intersections between MLines.
 
 ### Fields
 
