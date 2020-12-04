@@ -22,7 +22,9 @@ function interact(fun::Function)
 						 ρ in slider(rhos, label = "ρ", value =p.ρ),
 						 δ in slider(deltas, label= "δ",value = p.delta)
 
-		fun(par = Dict(:ρ => ρ, :gamma => γ, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ))
+		fun(par = Dict(:ρ => ρ, :gamma => γ, :beta => β,
+		               :alpha => α, :sigma => σ, :lambda => λ,
+					   :R => R, :delta => δ))
 	end
 end
 

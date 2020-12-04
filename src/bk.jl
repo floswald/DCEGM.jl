@@ -1,8 +1,40 @@
 
 
+"""
+    bkdchoice!(ctmp::Array,vmat::Array,p::Param,m::Model,it::Int,jy::Int,pr::Float64)
+
+fills preallocated ctmp and vmat arrays with state-specific future consumption and value functions _conditional_
+on future discrete choices taken.
+
+* `ctmp`: next period consumption in state `jy` and dchoice `iid`
+* `vmat`: next period value in dchoice `iid`. Expectation wrt `jy` integrated out.
+"""
+function bkdchoice!(ctmp::Array,vmat::Array,p::Param,m::Model,m1::Vector{Float64},it::Int,jy::Int,pr::Float64)
+    for iid in 1:p.nD  # future dchoice
+        # only feasible choices at this state
+        # if renter, cannot sell etc
+        if iid == 1
+            m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
+            c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
+            floory!(c1,p.cfloor)   # floor negative consumption
+            ctmp[iid,jy,:] = gety(c1)
+            # filer = false
+            vmat[iid,:] += pr * vfun(x->u(x,false,p),it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+        else
+            # you are filing now : no savings and analytic value function
+            ctmp[iid,jy,:] .= income(it+1,p,repeat([m.yvec[jy]],p.na))
+            vmat[iid,:] += pr * (u(ctmp[iid,jy,:],true,p) .+ p.beta * bound(m.vbk[jy,it+1]))
+            vmat[iid,m.iazero:end] .= -Inf   # filing only with negative assets!
+            ctmp[iid,jy,m.iazero:end] .= -Inf   # filing only with negative assets!
+        end
+    end
+end
+
+
 function bk!(m::BModel,p::Param)
 
     cmat = fill(-Inf,p.nD,p.na)
+    cmat1 = fill(-Inf,p.nD,p.na)
     vmat = fill(-Inf,p.nD,p.na)
     ctmp = fill(-Inf,p.nD,p.ny,p.na)
     # vtmp = fill(-Inf,p.nD,p.ny,p.na)
@@ -39,35 +71,18 @@ function bk!(m::BModel,p::Param)
                     fill!(vmat,0.0)
                     fill!(ctmp,-Inf)
                     fill!(cmat,0.0)
+                    fill!(cmat1,0.0)
 
                     # fill!(vtmp,0.0)
 
                     if !filer
                         for jy in 1:p.ny # future state: owner, renter, income, etc
                             pr = m.ywgt[iy,jy]  # transprob
-
-                            for iid in 1:p.nD  # future dchoice
-                                # only feasible choices at this state
-                                # if renter, cannot sell etc
-                                if iid == 1
-                                    m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
-                                    c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
-                                    floory!(c1,p.cfloor)   # floor negative consumption
-                                    ctmp[iid,jy,:] = gety(c1)
-                                    # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
-                                    vmat[iid,:] += pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
-                                else
-                                    # you are a filer: no savings and analytic value function
-                                    ctmp[iid,jy,:] .= income(it+1,p,repeat([m.yvec[jy]],p.na))
-                                    vmat[iid,:] += pr * (u(ctmp[iid,jy,:],true,p) .+ p.beta * bound(m.vbk[jy,it+1]))
-                                    vmat[iid,m.iazero:end] .= -Inf   # filing only with negative assets!
-                                    ctmp[iid,jy,m.iazero:end] .= -Inf   # filing only with negative assets!
-                                end
-                            end
+                            bkdchoice!(ctmp,vmat,p,m,m.m1[it+1][1][jy,:],it,jy,pr)
                         end # end future state
 
-                        # Discrete choice setup next period
-                        # =================================
+                        # Probability of making Discrete choices next period
+                        # ==================================================
 
                         # get ccp of filing next period: P(d'|iy), pfile
                         pnofile = ccp(vmat,p)
@@ -113,6 +128,7 @@ function bk!(m::BModel,p::Param)
                         # ==============================
                         m.v[id,iy,it], m.c[id,iy,it] = do_secondary(vline,cline,filer,minv,p)
                         m.v[id,iy,it].vbound = minv
+                        m.ccp[id,iy,it].ccp = MLine(m.avec .+ c0, pnofile)
 
 
 
@@ -123,22 +139,43 @@ function bk!(m::BModel,p::Param)
 
                     else  # if you are filing today (or you have filed previously)
 
-                        iid = 2 # hard code to 2 - we only will use the second row of vmat here
                         # there is no discrete choice for you next period.
+                        # but there is probilistic exist from the punishment state
 
-                        # we compute the value and savings function of being in bk state first.
-                        for jy in 1:p.ny # future state:
+                        # compute future consumption if no longer in bk state
+                        # identical to above, but cash on hand is defined only on positive domain (index `2`)
+                        for jy in 1:p.ny # future state: owner, renter, income, etc
+                            pr = m.ywgt[iy,jy]  # transprob
+                            bkdchoice!(ctmp,vmat,p,m,m.m1[it+1][2][jy,:],it,jy,pr)
+                        end # end future state
+
+                        # we compute the next period value and savings function of remaining in bk state.
+                        for jy in 1:p.ny # future y-state:
+                            iid = 2 # hard code to 2 - we only will use the second row of vmat here
                             pr = m.ywgt[iy,jy]  # transprob
                             m1 = m.m1[it+1][iid][jy,:]  # cash on hand in bk state
-                            c1 = interp(m.cbk[jy,it+1].env, m1) # C(d',y',m')
+                            c1 = interp(m.cbk[jy,it+1].env, m1) # Cbk(d',y',m')
                             floory!(c1,p.cfloor)   # floor negative consumption
                             ctmp[iid,jy,:] = gety(c1)
                             # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
-                            vmat[iid,:] += (pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.vbk[jy,it+1],p))
+                            vmat[iid,:] += (pr * vfun(x->u(x,true,p),it+1,ctmp[iid,jy,:],m1,m.vbk[jy,it+1],p))
                             cmat[iid,:] += (pr * up(ctmp[iid,jy,:],p))
+
+                            iid = 1
+                            # now when you go back to normal state with same cash on hand (i.e only positive next period)
+                            c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
+                            floory!(c1,p.cfloor)   # floor negative consumption
+                            ctmp[iid,jy,:] = gety(c1)
+                            # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+                            vmat[iid,:] += (pr * vfun(x->u(x,false,p),it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p))
+                            cmat[iid,:] += (pr * up(ctmp[iid,jy,:],p))
+
                         end  # future states
 
-                        mu1 = cmat[iid,:]
+                        # probability of returning to non-bkstate
+                        pnobkflag = p.delta*ones(size(vmat)[2])
+
+                        mu1 = (1 - pnobkflag) * cmat[2, : ] + pnobkflag * (expected_cons_nonbkstate(m1))
                         #RHS
                         RHS = p.beta * p.R * mu1
                         #optimal cons
@@ -146,7 +183,7 @@ function bk!(m::BModel,p::Param)
                         # set optimal consumption function today. endo grid m and cons c0
                         cline = MLine(m.aposvec .+ c0, c0)
                         # consumption function done.
-                        ev = vmat[iid,:]
+                        ev = (1 - pnobkflag) * vmat[1,:] + pnobkflag * ev_from_above
                         vline = MLine(m.aposvec .+ c0, u(c0,id==2,p) .+ p.beta * ev[:])
 
                         m.cbk[iy,it] = Envelope(cline)
