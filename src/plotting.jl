@@ -11,9 +11,9 @@ function v_analytic(m::Model,p::Param,id,it)
     vcat(pts, vf.env.v[2:end])  # connect at second point
 end
 
-function v_analytic(m::BModel,p::Param,id,iy,it)
-    vf = m.v[id,iy,it]
-    c = m.c[id,iy,it]
+function v_analytic(m::BModel,p::Param,id,iflag,iy,it)
+    vf = m.v[id,iflag,iy,it]
+    c = m.c[id,iflag,iy,it]
     cons = scaleGrid(p.cfloor_plot,gety(c.env)[2],p.k,logorder = 1)
     cash = scaleGrid(p.nT == it ? p.a_lowT : p.a_low,getx(vf.env)[2],p.k,logorder = 1)
     # deleteat!(cons,length(cons))
@@ -178,40 +178,9 @@ end
     else
         println("you need to either give it or iy. not both. not none.")
     end
-    # elseif isnothing(it) & isnothing(iy)
-    #     title --> ["value period $it" "value period $it"]
-    #     vt = v_analytic(m,p,id,iy,it)
-    #     @series begin
-    #         seriestype --> :path
-    #         linewidth --> 1
-    #         legend --> :bottomright
-    #         # seriescolor --> cols[i]
-    #         subplot := 1  # value function
-    #         yguide := "value"
-    #         xguide := "Cash on Hand M"
-    #         xlims := xrange
-    #         # ylims --> (-15,15)
-    #         getx(vt),gety(vt)
-    #         # getx(m.v[id,iy,it].env),gety(m.v[id,iy,it].env)
-    #     end
-    #     @series begin
-    #         seriestype --> :path
-    #         linewidth --> 1
-    #         legend --> :bottomright
-    #         # seriescolor --> cols[i]
-    #         subplot := 2  # 
-    #         xlims := xa
-    #         ylims --> xa
-    #         yguide := "consumption"
-    #         xguide := "Cash on Hand M"
-    #         # aspect_ratio := aspect
-    #         getx(m.c[id,iy,it].env),gety(m.c[id,iy,it].env)
-    #     end
-    # end
-
 end
 
-@recipe function f(m::BModel,p::Param;id=1,iy=nothing,it=nothing)
+@recipe function f(m::BModel,p::Param;id=1,iflag = 1,iy=nothing,it=nothing)
     grid --> true
     xticks := true
     legend --> false
@@ -231,7 +200,7 @@ end
         legend := true
         title --> ["value period $it" "consumption period $it"]
         for jy in 1:p.ny
-            vt = v_analytic(m,p,id,jy,it)
+            vt = v_analytic(m,p,id,iflag,jy,it)
             @series begin
                 seriestype --> :path
                 linewidth --> 1
@@ -260,12 +229,11 @@ end
                 yguide := "consumption"
                 xguide := "Cash on Hand M"
                 # aspect_ratio := aspect
-                getx(m.c[id,jy,it].env),gety(m.c[id,jy,it].env)
+                getx(m.c[id,iflag,jy,it].env),gety(m.c[id,iflag,jy,it].env)
             end
         end
     elseif isnothing(it) & !isnothing(iy)
         for i in 1:nT
-            vt = v_analytic(m,p,id,iy,i)
             @series begin
                 seriestype --> :path
                 linewidth --> 1
@@ -291,7 +259,7 @@ end
                 yguide := "consumption"
                 xguide := "Cash on Hand M"
                 # aspect_ratio := aspect
-                getx(m.c[id,iy,i].env),gety(m.c[id,iy,i].env)
+                getx(m.c[id,iflag,iy,i].env),gety(m.c[id,iflag,iy,i].env)
             end
         end
     else

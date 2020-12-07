@@ -223,8 +223,8 @@ mutable struct BModel <: Model
 	# result objects
 	v :: Array{Envelope}  # arrays of Envelope objects
 	c :: Array{Envelope}
-	vbk :: Array{Envelope}  # arrays of Envelope objects
-	cbk :: Array{Envelope}
+	ccp :: Array{Envelope}
+	ev :: Array{Envelope}
 	iazero :: Int  # index of first non-negative asset state
 
 
@@ -260,12 +260,14 @@ mutable struct BModel <: Model
 		               Dict(iflag =>
 		                Float64[p.R* (this.aposvec[ia]*(iflag==2) + (1 - (iflag==2))*this.avec[ia]).+
 						        income(it,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na]
-								for iflag=1:2)) for it=2:(p.nT))
+								for iflag=1:2) for it=2:(p.nT))
 
 		# result arrays: matrices of type Envelope.
 		# this allocation is only to reserve about the right amount of memory. those will be overwritten in the algo.
 		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iflag = 1:2, iy in 1:p.ny, it in 1:p.nT]
 		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iflag = 1:2, iy in 1:p.ny, it in 1:p.nT]
+		this.ccp = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iflag = 1:2, iy in 1:p.ny, it in 1:p.nT]
+		this.ev = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iflag = 1:2, iy in 1:p.ny, it in 1:p.nT]
 		# for bankruptcy flag on there is no discrete choice
 		# this.vbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny, it in 1:p.nT]
 		# this.cbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny,it in 1:p.nT]

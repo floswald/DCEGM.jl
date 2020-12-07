@@ -476,7 +476,7 @@ function do_secondary(vline::MLine, cline::MLine, working::Bool, ev0::Float64, p
         # non-convex region lies inside credit constraint.
         # endogenous x grid bends back before the first x grid point.
         # println("minx = $minx")
-        # println("first point = $(vline.v[1].x)")
+        println("first point = $(vline.v[1].x)")
         x0 = collect(range(minx,stop = vline.v[1].x,length = floor(Integer,p.na/10))) # some points to the left of first x point
         x0 = x0[1:end-1]
         c0 = copy(x0)

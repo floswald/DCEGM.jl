@@ -60,7 +60,7 @@
 		"symbol" : "pension"
 	},
 	"alpha" : {
-		"value" : 0.35,
+		"value" : 1.0,
 		"description" : "disutility of work",
 		"symbol" : "\\alpha"
 	},
