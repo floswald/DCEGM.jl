@@ -15,7 +15,7 @@ function v_analytic(m::BModel,p::Param,id,iy,it)
     vf = m.v[id,iy,it]
     c = m.c[id,iy,it]
     cons = scaleGrid(p.cfloor_plot,gety(c.env)[2],p.k,logorder = 1)
-    cash = scaleGrid(p.a_low,getx(vf.env)[2],p.k,logorder = 1)
+    cash = scaleGrid(p.nT == it ? p.a_lowT : p.a_low,getx(vf.env)[2],p.k,logorder = 1)
     # deleteat!(cons,length(cons))
     # deleteat!(cash,length(cash))
     pts = convert(Point,cash,vfun(x->u(x,id==2,p),it,cons,cash,vf,p))
