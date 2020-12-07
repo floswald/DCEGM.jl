@@ -260,7 +260,7 @@ function bk!(m::BModel,p::Param)
 end
 
 
-function runbk(; par = Dict(:nT => 50, :a_low => -5.0,:a_lowT => -5.0,:na =>101, :alpha => 0.0,  :alphaT => 0.0, :lambda => 0.5))
+function runbk(; par = Dict(:nT => 50, :a_low => -5.0,:a_lowT => 0.0,:na =>101, :alpha => 0.0,  :alphaT => 0.0, :lambda => 0.5))
     p = Param(par = par)
     m = BModel(p)
     bk!(m,p)

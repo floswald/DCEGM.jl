@@ -191,7 +191,7 @@ end
     xa = extrema(m.avec)
     xrange[1] = xa[1] .- diff(vcat(xa...))[1] .* 0.01
     xrange[2] = xa[2]
-    nT = size(m.v)[3]
+    nT = p.nT
     # cols = range(c1,stop=c2,length=nT)
 
     layout := grid(1,2)
@@ -233,7 +233,10 @@ end
             end
         end
     elseif isnothing(it) & !isnothing(iy)
-        for i in 1:nT
+
+        for i in 1:p.nT
+            vt = v_analytic(m,p,id,iflag,iy,i)
+
             @series begin
                 seriestype --> :path
                 linewidth --> 1
@@ -247,6 +250,7 @@ end
                 xguide := "Cash on Hand M"
                 getx(vt),gety(vt)
             end
+
             @series begin
                 seriestype --> :path
                 linewidth --> 1
