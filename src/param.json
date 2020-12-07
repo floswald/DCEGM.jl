@@ -65,7 +65,7 @@
 		"symbol" : "\\alpha"
 	},
 	"alphaT" : {
-		"value" : -1.0,
+		"value" : 0.0,
 		"description" : "final period disutility",
 		"symbol" : "\\alpha_T"
 	},

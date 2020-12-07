@@ -51,7 +51,7 @@ function igmodel()
 end
 
 function ibkmodel(;it::Bool=false)
-	p = Param(par = Dict(:nT => 50) )
+	p = Param(par = Dict(:nT => 20, :retage => 10) )
 	gammas = 1.0:0.1:3.0
 	betas  = 0.5:0.05:1.0
 	Rs  = 1.0:0.05:1.5
@@ -68,11 +68,11 @@ function ibkmodel(;it::Bool=false)
 							 β in slider(betas, label = "β", value =p.beta) ,
 							 a in slider(alphas, label = "α", value = p.alpha) ,
 							 aT in slider(alphaT, label = "αT", value = p.alphaT) ,
-							 alow in slider(-5:0.5:0.0, label = "alow") ,
+							 alowT in slider(-5:0.5:0.0, label = "alow") ,
 							 λ in slider(lambdas, label = "λ", value =p.lambda)#,
 							 # ρ in slider(rhos, label = "ρ", value =p.ρ)
 
-			m,p = runbk(par = Dict(:nT => 50,:a_low => -5.0,:a_lowT => alow,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
+			m,p = runbk(par = Dict(:nT => 50,:a_low => -5.0,:a_lowT => alowT,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
 			plot(m,p,it = ti, id = id,ylims = (-5,13),size = (700,400))
 		end
 
@@ -116,10 +116,10 @@ function ibksim(;pars = Dict(:nT => 50),it::Bool=false)
 							 β in slider(betas, label = "β", value =p.beta) ,
 							 a in slider(alphas, label = "α", value = p.alpha) ,
 							 aT in slider(alphaT, label = "αT", value = p.alphaT) ,
-							 alow in slider(-5:0.5:-0.01, label = "alow") ,
+							 alowT in slider(-5:0.5:0.0, label = "alowT") ,
 							 λ in slider(lambdas, label = "λ", value =p.lambda)#,
 							 # ρ in slider(rhos, label = "ρ", value =p.ρ)
-			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alow,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
+			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alowT,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
 			m,p = runbk(par = pp)
 			if dosim
 				s = sim(m,p)
@@ -137,11 +137,11 @@ function ibksim(;pars = Dict(:nT => 50),it::Bool=false)
 							 β in slider(betas, label = "β", value =p.beta) ,
 							 a in slider(alphas, label = "α", value = p.alpha) ,
 							 aT in slider(alphaT, label = "αT", value = p.alphaT) ,
-							 alow in slider(-5:0.5:0.0, label = "alow") ,
+							 alowT in slider(-5:0.5:0.0, label = "alowT", value = p.a_lowT) ,
 							 λ in slider(lambdas, label = "λ", value =p.lambda)#,
 							 # ρ in slider(rhos, label = "ρ", value =p.ρ)
 
-			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alow,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
+			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alowT,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
  			m,p = runbk(par = pp)
 			if dosim
  				s = sim(m,p)
