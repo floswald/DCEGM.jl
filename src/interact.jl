@@ -116,12 +116,13 @@ function ibksim(;pars = Dict(:nT => 50),it::Bool=false)
 							 ti in slider(times, label = "period", value = 1),
 			                 γ in slider(gammas, label = "γ", value =p.gamma ),
 							 β in slider(betas, label = "β", value =p.beta) ,
+							 δ in slider(0.0:0.01:1.0, label = "δ", value =p.delta) ,
 							 a in slider(alphas, label = "α", value = p.alpha) ,
 							 aT in slider(alphaT, label = "αT", value = p.alphaT) ,
 							 alowT in slider(-5:0.5:0.0, label = "alowT") ,
 							 λ in slider(lambdas, label = "λ", value =p.lambda)#,
 							 # ρ in slider(rhos, label = "ρ", value =p.ρ)
-			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alowT,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
+			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alowT,:na =>501,:beta => β, :delta => δ, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
 			m,p = runbk(par = pp)
 			if dosim
 				s = sim(m,p)
@@ -137,13 +138,14 @@ function ibksim(;pars = Dict(:nT => 50),it::Bool=false)
 			                 id = Dict("id=$id" => id for id in 1:2),
 			                 γ in slider(gammas, label = "γ", value =p.gamma ),
 							 β in slider(betas, label = "β", value =p.beta) ,
+							 δ in slider(0.0:0.01:1.0, label = "δ", value =p.delta) ,
 							 a in slider(alphas, label = "α", value = p.alpha) ,
 							 aT in slider(alphaT, label = "αT", value = p.alphaT) ,
 							 alowT in slider(-5:0.5:0.0, label = "alowT", value = p.a_lowT) ,
 							 λ in slider(lambdas, label = "λ", value =p.lambda)#,
 							 # ρ in slider(rhos, label = "ρ", value =p.ρ)
 
-			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alowT,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
+			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alowT,:na =>501,:beta => β, :delta => δ, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
  			m,p = runbk(par = pp)
 			if dosim
  				s = sim(m,p)
