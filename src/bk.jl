@@ -69,11 +69,11 @@ function bk!(m::BModel,p::Param)
                     end
 
                     # risk adjusted return times asset grid
-                    # rgrid = clamp!([(p.R / prnobk_at_ia[ia]) for ia in 1:p.na], p.R, p.maxinterest)
-                    rgrid = p.R
+                    m.rgrid[id,iy,it] = clamp!([(p.R / prnobk_at_ia[ia]) for ia in 1:p.na], p.R, p.maxinterest)
+                    # rgrid = p.R
                     # println("rgrid = $rgrid")
 
-                    ragrid = rgrid .* m.avec
+                    ragrid = m.rgrid[id,iy,it] .* m.avec
 
                     if !filer
                         fill!(cmat,0.0)
@@ -169,13 +169,13 @@ function bk!(m::BModel,p::Param)
                             vmat[iid,:] += (pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.vbk[jy,it+1],p))
                             cmat[iid,:] += (pr * up(ctmp[iid,jy,:],p))  # E[ c(id',y') | y]
 
-                            # now get the same for non-bk state
-                            c1 = interp(m.c[1,jy,it+1].env, m1) # C(d',y',m')
-                            floory!(c1,p.cfloor)   # floor negative consumption
-                            ctmp[iid,jy,:] = gety(c1)
-                            # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
-                            vmat[iid,:] += (pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.vbk[jy,it+1],p))
-                            cmat[iid,:] += (pr * up(ctmp[iid,jy,:],p))  # E[ c(id',y') | y]
+                            # # now get the same for non-bk state
+                            # c1 = interp(m.c[1,jy,it+1].env, m1) # C(d',y',m')
+                            # floory!(c1,p.cfloor)   # floor negative consumption
+                            # ctmp[iid,jy,:] = gety(c1)
+                            # # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+                            # vmat[iid,:] += (pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.vbk[jy,it+1],p))
+                            # cmat[iid,:] += (pr * up(ctmp[iid,jy,:],p))  # E[ c(id',y') | y]
 
                         end  # future states
 

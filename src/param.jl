@@ -227,7 +227,7 @@ mutable struct BModel <: Model
 	vbk :: Array{Envelope}  # arrays of Envelope objects
 	cbk :: Array{Envelope}
 	iazero :: Int  # index of first non-negative asset state
-
+	rgrid :: Array{Vector{Float64}}
 
 
 	function BModel(p::Param)
@@ -268,6 +268,7 @@ mutable struct BModel <: Model
 		this.vbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny, it in 1:p.nT]
 		this.cbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny,it in 1:p.nT]
 
+		this.rgrid = [fill(NaN,p.na) for id in 1:p.nD, iy in 1:p.ny,it in 1:p.nT ]
 
 		return this
 	end
