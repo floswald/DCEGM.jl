@@ -249,8 +249,8 @@ function sim(m::BModel,p::Param)
 		  iflag = findall(   s.bkflag[:,it])
 		for i in inoflag
 			iy = s.ystate[i,it]
-			vmat[1,i] = gety(interp(m.v[1,iy,it].env,[s.w0[ i, it]]))[1]
-			vmat[2,i] = s.ainit[i,it] < 0 ? m.v[2,iy,it].env[1].y : -Inf   # file only with neg assets
+			vmat[1,i] = gety(interp(m.v[1,1,iy,it].env,[s.w0[ i, it]]))[1]
+			vmat[2,i] = s.ainit[i,it] < 0 ? m.v[2,1,iy,it].env[1].y : -Inf   # file only with neg assets
 			s.vnofile[i,it] = vmat[1,i]
 			s.vfile[i,it] = vmat[2,i]
 		end
@@ -266,17 +266,17 @@ function sim(m::BModel,p::Param)
 		inoflag_nofile = findall( .!(s.bkflag[:,it]) .& .!(filing) )
 		inoflag_file   = findall( .!(s.bkflag[:,it]) .& filing )
 		for i in inoflag_nofile
-			s.cons[i,it] = gety(interp(m.c[1,s.ystate[i,it],it].env,[s.w0[ i, it]]))[1]
+			s.cons[i,it] = gety(interp(m.c[1,1,s.ystate[i,it],it].env,[s.w0[ i, it]]))[1]
 			# end of period wealth
 			s.w1[i,it] = s.w0[i,it] - s.cons[i,it]
 		end
 		for i in inoflag_file
-			s.cons[i,it]    = m.c[2,s.ystate[i,it],it].env[1].y
+			s.cons[i,it]    = m.c[2,1,s.ystate[i,it],it].env[1].y
 			# end of period wealth
 			s.w1[i,it] = 0.0
 		end
 		for i in iflag
-			s.cons[i,it] = gety(interp(m.cbk[s.ystate[i,it],it].env,[s.w0[ i, it]]))[1]
+			s.cons[i,it] = gety(interp(m.c[1,2,s.ystate[i,it],it].env,[s.w0[ i, it]]))[1]
 			s.w1[i,it] = s.w0[i,it] - s.cons[i,it]
 
 		end

@@ -32,6 +32,9 @@ function bkdchoice!(ctmp::Array,vmat::Array,p::Param,m::Model,m1::Vector{Float64
 end
 
 
+
+
+
 function bk!(m::BModel,p::Param)
     # TODO need to make distinction between `flag` and `dchoice`
     # some states (flag) allow some dchoices while others dont
@@ -47,11 +50,11 @@ function bk!(m::BModel,p::Param)
     ctmp1 = fill(-Inf,p.ny,p.na)
 
     for it in p.nT:-1:1
-        println("it = $it")
+        # println("it = $it")
         for iy in 1:p.ny  # current state
-            println("iy = $iy")
+            # println("iy = $iy")
             for iflag in 1:2  # iflag = 1: not in bankruptcy state, iflag = 2: in bankruptcy state
-                println("iflag = $iflag")
+                # println("iflag = $iflag")
                 if it==p.nT
                     # final period: consume everyting.
                     # if no flag, can choose to file (but get bad value)

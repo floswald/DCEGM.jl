@@ -102,7 +102,7 @@ end
 function ibksim(;pars = Dict(:nT => 50),it::Bool=false)
 	p = Param(par = pars )
 	gammas = 1.0:0.1:3.0
-	betas  = 0.5:0.05:1.0
+	betas  = 0.1:0.05:1.0
 	Rs  = 1.0:0.05:1.5
 	alphas = [0.0,0.1,0.35,0.5,1.0]
 	alphaT = -10:0.5:0.0
