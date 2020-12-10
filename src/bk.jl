@@ -3,6 +3,7 @@
 function bk!(m::BModel,p::Param)
 
     cmat = fill(-Inf,p.nD,p.na)
+    cmat2 = fill(-Inf,p.nD,p.na)
     vmat = fill(-Inf,p.nD,p.na)
     ctmp = fill(-Inf,p.nD,p.ny,p.na)
     # vtmp = fill(-Inf,p.nD,p.ny,p.na)
@@ -39,10 +40,13 @@ function bk!(m::BModel,p::Param)
                     fill!(vmat,0.0)
                     fill!(ctmp,-Inf)
                     fill!(cmat,0.0)
+                    fill!(cmat2,0.0)
 
                     # fill!(vtmp,0.0)
 
                     if !filer
+                        fill!(cmat,0.0)
+
                         for jy in 1:p.ny # future state: owner, renter, income, etc
                             pr = m.ywgt[iy,jy]  # transprob
 
@@ -56,12 +60,14 @@ function bk!(m::BModel,p::Param)
                                     ctmp[iid,jy,:] = gety(c1)
                                     # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
                                     vmat[iid,:] += pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+                                    cmat[iid,:] += pr * up(ctmp[iid,jy,:],p)
                                 else
                                     # you are a filer: no savings and analytic value function
                                     ctmp[iid,jy,:] .= income(it+1,p,repeat([m.yvec[jy]],p.na))
                                     vmat[iid,:] += pr * (u(ctmp[iid,jy,:],true,p) .+ p.beta * bound(m.vbk[jy,it+1]))
+                                    cmat[iid,:] += pr * up(ctmp[iid,jy,:],p)
                                     vmat[iid,m.iazero:end] .= -Inf   # filing only with negative assets!
-                                    ctmp[iid,jy,m.iazero:end] .= -Inf   # filing only with negative assets!
+                                    cmat[iid,m.iazero:end] .= 0.0   # filing only with negative assets!
                                 end
                             end
                         end # end future state
@@ -71,21 +77,6 @@ function bk!(m::BModel,p::Param)
 
                         # get ccp of filing next period: P(d'|iy), pfile
                         pnofile = ccp(vmat,p)
-
-                        # get y-expected MU of cons(t+1): uprime
-                        up!(ctmp,p)
-
-                        # integrate to get E[ u'(c(t+1,y')) | y]
-                        # prepare
-                        fill!(cmat,0.0)
-                        for jd in 1:p.nD
-                            for ja in 1:p.na
-                                for jy in 1:p.ny
-                                    # cmat[jd,ja] += m.ywgt[iy,jy] * up(ctmp[jd,jy,ja],p)
-                                    cmat[jd,ja] += m.ywgt[iy,jy] * ctmp[jd,jy,ja]
-                                end
-                            end
-                        end
 
                         # compute tomorrow's marginal utility
                         mu1 = pnofile .* cmat[1,:] .+ (1.0 .- pnofile) .* cmat[2,:] # 1,na
@@ -113,7 +104,6 @@ function bk!(m::BModel,p::Param)
                         # ==============================
                         m.v[id,iy,it], m.c[id,iy,it] = do_secondary(vline,cline,filer,minv,p)
                         m.v[id,iy,it].vbound = minv
-
 
 
                         # this creates the credit constrained region
