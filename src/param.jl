@@ -58,6 +58,7 @@ mutable struct Param
 	retage               :: Int # mandatory retirement age
 	pension              :: Float64 # pension
 	delta 				 :: Float64 # probability of going back to work
+	maxinterest          :: Float64 # maximal interest rate
 
 	# simulation
 	nsims                 :: Int64

@@ -42,7 +42,38 @@ function bk!(m::BModel,p::Param)
                     fill!(cmat,0.0)
                     fill!(cmat2,0.0)
 
-                    # fill!(vtmp,0.0)
+                    # fill!(vtmp,0.0)#
+
+
+                    # you are the bank
+                    # you know how pairs (ia,iy) map into bankruptcies in any given period
+                    # like you observe people in t+1 and you can now know that a certain asset state ia together with iy
+                    # corresponds to "bankruptcy".
+                    # in period t, you can compute an expectation over this.
+                    prnobk_at_ia = zeros(p.na)
+                    for jy in 1:p.ny # future state: owner, renter, income, etc
+                        # E[ m.v[1,jy,it+1] vs m.v[2,jy,it+1] | iy ]
+                        # m.v is defined on cash on hand M = a + y, so I can evaluate it at any M
+                        # say M = iy + ia
+                        pr = m.ywgt[iy,jy]  # transprob
+                        # println("v1 = $(gety(interp(m.v[1,jy,it+1].env, income(it+1,p,m.yvec[jy]) .+ m.avec )))")
+                        if it+1 == p.nT
+                            I = trues(p.na)
+                        else
+                            may = income(it+1,p,m.yvec[jy]) .+ m.avec
+                            b = [gety(interp(m.v[1,jy,it+1].env, may )) gety(interp(m.v[2,jy,it+1].env, may))]
+                            b[isnan.(b)] .= -Inf
+                            I = b[:,1] .> b[:,2]
+                        end
+                        prnobk_at_ia[:] += pr * I
+                    end
+
+                    # risk adjusted return times asset grid
+                    # rgrid = clamp!([(p.R / prnobk_at_ia[ia]) for ia in 1:p.na], p.R, p.maxinterest)
+                    rgrid = p.R
+                    # println("rgrid = $rgrid")
+
+                    ragrid = rgrid .* m.avec
 
                     if !filer
                         fill!(cmat,0.0)
@@ -54,7 +85,11 @@ function bk!(m::BModel,p::Param)
                                 # only feasible choices at this state
                                 # if renter, cannot sell etc
                                 if iid == 1
-                                    m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
+                                    # cash on hand : R (a[ia])*a[ia] + y(t+1)
+                                    # R[ia] = (1+r) / pr_no_bk_iy[ia]
+                                    # cash on hand:
+                                    m1 = ragrid .+ income(it+1,p,m.yvec[jy])
+                                    # m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
                                     c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
                                     floory!(c1,p.cfloor)   # floor negative consumption
                                     ctmp[iid,jy,:] = gety(c1)
@@ -76,12 +111,19 @@ function bk!(m::BModel,p::Param)
                         # =================================
 
                         # get ccp of filing next period: P(d'|iy), pfile
-                        pnofile = ccp(vmat,p)
+                        # E[ V(1,y',a',t+1) > V(2,y',a',t+1) | y]
+                        # the bank uses this object for pricing loan!
+                        # they don't know the *realized* cash on hand, but only the expected one
+                        # hence that goes into R
+                        pnofile = ccp(vmat,p)   # prob of filing TOMORROW from today's perspective
+                        # m.pnofile[iy,it,:] = pnofile   # prob of filing at state ia next period, given iy in period it.
 
                         # compute tomorrow's marginal utility
                         mu1 = pnofile .* cmat[1,:] .+ (1.0 .- pnofile) .* cmat[2,:] # 1,na
 
                         #RHS
+                        # TODO R here will be computed above as the expected return of the bank
+                        # in each discrete choice
                         RHS = p.beta * p.R * mu1
 
                         #optimal cons
@@ -92,7 +134,7 @@ function bk!(m::BModel,p::Param)
 
                         # compute value function
                         # ----------------------
-                        ev =  logsum(vmat,p)
+                        ev =  logsum(vmat,p)  # E[ max(V(1,y'),V(2,y')) | y]
                         vline = MLine(m.avec .+ c0, u(c0,id==2,p) .+ p.beta * ev[:])
                         minv = gety(vline)[1]
 
@@ -125,7 +167,16 @@ function bk!(m::BModel,p::Param)
                             ctmp[iid,jy,:] = gety(c1)
                             # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
                             vmat[iid,:] += (pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.vbk[jy,it+1],p))
-                            cmat[iid,:] += (pr * up(ctmp[iid,jy,:],p))
+                            cmat[iid,:] += (pr * up(ctmp[iid,jy,:],p))  # E[ c(id',y') | y]
+
+                            # now get the same for non-bk state
+                            c1 = interp(m.c[1,jy,it+1].env, m1) # C(d',y',m')
+                            floory!(c1,p.cfloor)   # floor negative consumption
+                            ctmp[iid,jy,:] = gety(c1)
+                            # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+                            vmat[iid,:] += (pr * vfun(x->u(x,filer,p),it+1,ctmp[iid,jy,:],m1,m.vbk[jy,it+1],p))
+                            cmat[iid,:] += (pr * up(ctmp[iid,jy,:],p))  # E[ c(id',y') | y]
+
                         end  # future states
 
                         mu1 = cmat[iid,:]

@@ -113,7 +113,8 @@ function show(io::IO, ::MIME"text/plain", L::MLine{T}) where {T<:Number}
     print(io,"$T MLine\n")
     print(io,"number of points: $(length(L.v))\n")
     print(io,"xrange: $(round.(extrema(getx(L)),digits = 2))\n")
-    print(io,"yrange: $(round.(extrema(gety(L)),digits = 2))\n")
+    ys= gety(L)
+    print(io,"yrange: $(round.(extrema(ys[isfinite.(ys)]),digits = 2))\n")
 end
 show(io::IO,L::MLine{T}) where {T<:Number} = print(io,"$(length(L.v)) point $T MLine")
 
