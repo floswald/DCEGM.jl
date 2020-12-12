@@ -2,7 +2,7 @@
 
 # DCEGM.interact(DCEGM.rsgp) for sim
 # DCEGM.interact(DCEGM.runfp) for fedors model
-function interact(fun::Function)
+function ifedor()
 	p = Param()
 	gammas = 1.0:0.1:3.0
 	betas  = 0.5:0.05:1.0
@@ -11,18 +11,28 @@ function interact(fun::Function)
 	sigmas = 0.0:0.05:0.35
 	lambdas = 0.0000002:0.05:1
 	rhos = 0.1:0.05:1
-	deltas = 0.05:0.05:0.5
+	deltas = 0.0:0.05:0.5
+	pensions = 0.0:0.1:1.0
 
-	mp = @manipulate for γ in slider(gammas, label = "γ", value =p.gamma ),
+	mp = @manipulate for dosim = Dict("sim" => true, "sol" => false),
+						 id = Dict("id=$id" => id for id in 1:2),
+						 nsims = spinbox(label="nsims"; value=p.nsims),
+						 # γ in slider(gammas, label = "γ", value =p.gamma ),
 						 β in slider(betas, label = "β", value =p.beta) ,
 						 R in slider(Rs, label = "R", value =p.R) ,
 						 α in slider(alphas, label = "α", value =p.alpha) ,
 						 σ in slider(sigmas, label = "σ", value =p.sigma) ,
 						 λ in slider(lambdas, label = "λ", value =p.lambda),
-						 ρ in slider(rhos, label = "ρ", value =p.ρ),
-						 δ in slider(deltas, label= "δ",value = p.delta)
+						 δ in slider(deltas, label= "δ",value = p.delta),
+						 pens in slider(pensions, label= "pension",value = p.pension)
 
-		fun(par = Dict(:ρ => ρ, :gamma => γ, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ))
+		 m,p = runf(par = Dict(:nsims => nsims, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ, :pension => pens))
+		 if dosim
+			 s = sim(m,p)
+			 plot_s(s)
+		 else
+			 plot(m,p,id = id)
+		 end
 	end
 end
 

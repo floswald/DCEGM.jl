@@ -68,7 +68,8 @@ function sim(m::FModel,p::Param)
 	# random setup
 	Random.seed!(p.rseed)
 	wshocks = quantile.(N, rand(p.nsims,p.nT)) .* p.sigma
-	dshocks = rand(p.nsims,p.nT)
+	dshocks = rand(p.nsims,p.nT) # discrete choice shocks
+	rshocks = rand(p.nsims,p.nT) # returning to work shocs
 	w0shocks = rand(p.nsims)
 
 
@@ -86,7 +87,7 @@ function sim(m::FModel,p::Param)
 			s.ret_age[(s.worker[:,it-1] .== 1) .& (s.worker[:,it] .== 2)] .= it
 
 			# income
-			s.inc[.!(working), it] .= 0.0
+			s.inc[.!(working), it] .= p.pension
 			s.inc[ working, it] .= income(it,p,wshocks[working,it])
 
 
@@ -96,17 +97,29 @@ function sim(m::FModel,p::Param)
 		end
 		# consumption
 		s.cons[ working,it]    = gety(interp(m.c[1,it].env,s.w0[ working, it]))
+
 		s.cons[.!(working),it] = gety(interp(m.c[2,it].env,s.w0[.!(working), it]))
 		# end of period wealth
 		s.w1[:,it] = s.w0[:,it] - s.cons[:,it]
+		clamp!(s.w1,p.a_low, p.a_high)
+
+		if any(s.cons[ :,it] .< 0)
+			println("neg cons")
+			println(s.cons[s.cons[ :,it] .< 0, it])
+			println(s.w0[.!(working), it])
+			error()
+		end
 
 		# CCP to remain worker
 		vmat[1,:] = vfun(1,it, s.cons[:,it] ,s.w0[:,it], m.v[1,it],p )
 		vmat[2,:] = vfun(2,it, s.cons[:,it] ,s.w0[:,it], m.v[2,it],p )
 		s.prob_work[:,it] = (s.worker[:,it] .== 1) .* ccp(vmat,p)  # prob to remain worker
 
-		# discrete choice
+		# discrete choice of workers
 		working[:] = s.prob_work[:,it] .> dshocks[:,it]
+
+		# random transition back into work state for retirees
+		working[.!(working)] = p.delta .> rshocks[.!(working),it]
 	end
 	s
 end

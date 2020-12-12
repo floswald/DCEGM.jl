@@ -193,14 +193,18 @@ mutable struct FModel <: Model
 
 		# simulation shocks
 
+		if p.a_low < 0
+			@warn "FModel not built for BK and neg assets"
+		end
 		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
 
 		# precompute next period's cash on hand.
 		# (na,ny,nD)
-		# iD = 1: tomorrow work
-		# iD = 2: tomorrow no work - absorbing state and retire
+		# iD = 1: tomorrow work, income is work income
+		# iD = 2: tomorrow no work - if delta = 0, pension is absorbing, else get penion
 		# notice: you decide to work today (t), but your shock realises tomorrow (t+1) in their formulation
-		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it+1,p,this.yvec[iy]) * (id==1) + (id==2) * p.delta * income(it+1,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=1:(p.nT-1))
+		this.m1 = Dict(it => Dict(id => Float64[this.avec[ia]*p.R .+ income(it+1,p,this.yvec[iy]) * (id==1) +
+		                                (id==2) * (p.delta * income(it+1,p,this.yvec[iy]) + (1-p.delta) * p.pension) for iy in 1:p.ny , ia in 1:p.na ] for id=1:p.nD) for it=1:(p.nT-1))
 
 		# result arrays: matrices of type Envelope.
 		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]

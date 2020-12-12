@@ -56,8 +56,9 @@ function plot_s(s::Simulation)
                        (0.3,0.8,Plots.text("beta = $(round(s.p.beta,digits=2))", :left, asize)),
                        (0.3,0.7,Plots.text("alpha = $(s.p.alpha)",   :left, asize)),
                        (0.3,0.6,Plots.text("sigma = $(s.p.sigma)",   :left, asize)),
-                       (0.3,0.5,Plots.text("lambda = $(s.p.lambda)", :left, asize)),
-                       (0.3,0.4,Plots.text("rho = $(s.p.ρ)",         :left, asize))])
+                       (0.3,0.5,Plots.text("lambda = $(s.p.lambda)", :left, asize))#,
+                       #(0.3,0.4,Plots.text("rho = $(s.p.ρ)",         :left, asize))
+                       ])
     plot(py,pc,pw0,ppr,pw1,
           pempty ,
           layout = (2,3))

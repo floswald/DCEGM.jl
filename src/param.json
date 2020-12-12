@@ -60,7 +60,7 @@
 		"symbol" : "retage"
 	},
 	"pension" : {
-		"value" : 1.0,
+		"value" : 0.0,
 		"description" : "Pension",
 		"symbol" : "pension"
 	},
@@ -140,7 +140,7 @@
 		"symbol" : "randseed"
 	},
 	"delta" : {
-		"value" : 0.2,
+		"value" : 0.0,
 		"description" : "Probability of going back to work",
 		"symbol" : "\\delta"
 	}
