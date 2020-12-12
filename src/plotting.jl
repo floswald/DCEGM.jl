@@ -103,7 +103,7 @@ end
     xrange[1] = xa[1] .- diff(vcat(xa...))[1] .* 0.01
     xrange[2] = xa[2]
 
-    nT = size(m.v)[3]
+    nT = p.nT
     # cols = range(c1,stop=c2,length=nT)
 
     layout := grid(1,2)
@@ -178,43 +178,14 @@ end
     else
         println("you need to either give it or iy. not both. not none.")
     end
-    # elseif isnothing(it) & isnothing(iy)
-    #     title --> ["value period $it" "value period $it"]
-    #     vt = v_analytic(m,p,id,iy,it)
-    #     @series begin
-    #         seriestype --> :path
-    #         linewidth --> 1
-    #         legend --> :bottomright
-    #         # seriescolor --> cols[i]
-    #         subplot := 1  # value function
-    #         yguide := "value"
-    #         xguide := "Cash on Hand M"
-    #         xlims := xrange
-    #         # ylims --> (-15,15)
-    #         getx(vt),gety(vt)
-    #         # getx(m.v[id,iy,it].env),gety(m.v[id,iy,it].env)
-    #     end
-    #     @series begin
-    #         seriestype --> :path
-    #         linewidth --> 1
-    #         legend --> :bottomright
-    #         # seriescolor --> cols[i]
-    #         subplot := 2  # 
-    #         xlims := xa
-    #         ylims --> xa
-    #         yguide := "consumption"
-    #         xguide := "Cash on Hand M"
-    #         # aspect_ratio := aspect
-    #         getx(m.c[id,iy,it].env),gety(m.c[id,iy,it].env)
-    #     end
-    # end
+
 
 end
 
 @recipe function f(m::BModel,p::Param;id=1,iy=nothing,it=nothing)
     grid --> true
     xticks := true
-    legend --> false
+    # legend --> false
     # cg = cgrad(:inferno)
     # c1 = colorant"red"
     # c2 = colorant"blue"
@@ -222,10 +193,12 @@ end
     xa = extrema(m.avec)
     xrange[1] = xa[1] .- diff(vcat(xa...))[1] .* 0.01
     xrange[2] = xa[2]
-    nT = size(m.v)[3]
+    nT = p.nT
     # cols = range(c1,stop=c2,length=nT)
 
-    layout := grid(1,2)
+    layout := grid(1,3)
+
+    rates = map(z->mean(z),m.rgrid[1,:,1:(nT-1)])
 
     if isnothing(iy) & !isnothing(it)
         legend := true
@@ -263,13 +236,33 @@ end
                 getx(m.c[id,jy,it].env),gety(m.c[id,jy,it].env)
             end
         end
+        for jy in 1:p.ny
+            @series begin
+                seriestype --> :path
+                linewidth --> 1
+                legend --> :topleft
+                label := "y$jy"
+
+                # seriescolor --> cols[i]
+                subplot := 3  # 
+
+                yguide := "interest rate"
+                xguide := "age"
+                ylims := (0,maximum(rates))
+
+
+                # aspect_ratio := aspect
+                # println(rates[jy,:])
+                collect(1:(p.nT-1)),rates[jy,:]
+            end
+        end
     elseif isnothing(it) & !isnothing(iy)
         for i in 1:nT
             vt = v_analytic(m,p,id,iy,i)
             @series begin
                 seriestype --> :path
                 linewidth --> 1
-                legend --> :bottomright
+                legend --> false
                 # seriescolor --> cols[i]
                 # label := lab
                 xlims := xrange
@@ -282,7 +275,8 @@ end
             @series begin
                 seriestype --> :path
                 linewidth --> 1
-                legend --> :bottomright
+                legend --> false
+
                 # seriescolor --> cols[i]
                 subplot := 2  # 
                 # label := lab
@@ -292,6 +286,24 @@ end
                 xguide := "Cash on Hand M"
                 # aspect_ratio := aspect
                 getx(m.c[id,iy,i].env),gety(m.c[id,iy,i].env)
+            end
+        end
+
+        for jy in 1:p.ny
+            @series begin
+                seriestype --> :path
+                linewidth --> 1
+                legend --> true
+                label := "y$jy"
+                # seriescolor --> cols[i]
+                subplot := 3  # 
+                ylims := (0,maximum(rates))
+
+                yguide := "interest rate"
+                xguide := "age"
+                # aspect_ratio := aspect
+                # println(rates[jy,:])
+                collect(1:(p.nT-1)),rates[jy,:]
             end
         end
     else

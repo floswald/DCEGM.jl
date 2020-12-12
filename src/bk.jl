@@ -110,11 +110,7 @@ function bk!(m::BModel,p::Param)
                         # Discrete choice setup next period
                         # =================================
 
-                        # get ccp of filing next period: P(d'|iy), pfile
-                        # E[ V(1,y',a',t+1) > V(2,y',a',t+1) | y]
-                        # the bank uses this object for pricing loan!
-                        # they don't know the *realized* cash on hand, but only the expected one
-                        # hence that goes into R
+                        # get ccp of filing next period at m1 : P(d'|iy), pfile
                         pnofile = ccp(vmat,p)   # prob of filing TOMORROW from today's perspective
                         # m.pnofile[iy,it,:] = pnofile   # prob of filing at state ia next period, given iy in period it.
 

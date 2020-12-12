@@ -141,7 +141,7 @@ function ibksim(;pars = Dict(:nT => 50),it::Bool=false)
 							 λ in slider(lambdas, label = "λ", value =p.lambda)#,
 							 # ρ in slider(rhos, label = "ρ", value =p.ρ)
 
-			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alowT,:na =>501,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
+			pp = merge(pars,Dict(:a_low => -5.0,:a_lowT => alowT,:na =>101,:beta => β, :alphaT => aT, :alpha => a, :gamma => γ , :lambda => λ))
  			m,p = runbk(par = pp)
 			if dosim
  				s = sim(m,p)
