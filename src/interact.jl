@@ -34,6 +34,13 @@ function ifedor()
 			 plot(m,p,id = id)
 		 end
 	end
+	@layout! mp vbox(
+		hbox(dosim, id, nsims),
+		hbox(β, R, σ),
+		hbox(α, λ),
+		hbox(δ, pens),
+		observe(_))
+
 end
 
 function igmodel()
