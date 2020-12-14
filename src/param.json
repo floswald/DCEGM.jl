@@ -20,7 +20,7 @@
 		"symbol" : "maxinterest"
 	},
 	"na" : {
-		"value" : 5000,
+		"value" : 100,
 		"description" : "number of asset grid points",
 		"symbol" : "na"
 	},
@@ -145,7 +145,7 @@
 		"symbol" : "\\delta"
 	},
 	"ν" : {
-		"value" : 100.0,
+		"value" : 1.0,
 		"description" : "Strength of bequest motive",
 		"symbol" : "\\nu"
 	},

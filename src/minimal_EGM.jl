@@ -38,27 +38,51 @@ function minimal_EGM_bequest(p::Param)
     m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
     v             = Vector{Float64}[Float64[] for i in 1:p.nT]   # value function on m
+
+
     m[p.nT]       = avec    # no debt in last period possible
     c[p.nT]       = avec    # consume all you have left
-    v[p.nT]       = bequest(avec,p)
+    v[p.nT]       = p.ν > 0 ? bequest(avec,p) : zeros(p.na)
 
     # plot setup
     cg = cgrad(:plasma)
     cols = cg[range(0.0,stop=1.0,length=p.nT)]
     pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false,title="Consumption",color = cols[p.nT], xlims = (0,p.a_high),ylims = (0,p.a_high))
     pv = plot(m[p.nT],v[p.nT],label="$(p.nT)",leg=:bottomright,title="Values",color = cols[p.nT], xlims = (0,p.a_high), ylims = (-20,-1))
-    # cycle back in time
-    for it in p.nT-1:-1:1
+
+    for it in (p.nT-1):-1:1
         w1 = 0.0 .+ exp.(yvec) .+ p.R.*avec'   # w1 = y + yshock*R*savings:  next period wealth at all states. (p.ny,p.na)
         # get next period consumption on that wealth w1
         # interpolate on next period's endogenous grid m[it+1].
         # notice that the `interpolate` object needs to be able to extrapolate
         c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Line())(w1[:]) ,p.ny,p.na)
         c1[c1.<0] .= p.cfloor     # don't allow negative consumption
-        rhs = ywgt' * (1 ./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
+
+        # take care of bequest: if this is the penultimate period,
+        # need to decide how much to leave for bequest
+        if it == p.nT-1
+            if p.ν > 0
+                # if there is a bequest motive at all
+                # this is like any other savings decision, except for that
+                # next (i.e. final) period utility is the bequest function.
+                # this looks like u(b + bbar) where bbar > 0 governs says that people can leave
+                # zero bequests and survive (i.e. do not get u(0) = -Inf).
+                mu1 = ywgt' * (1 ./ (c1 .+ p.bbar))  # expected marginal utility of consumption next period
+                rhs = p.beta * p.R * p.ν * mu1[:]   # RHS of Euler equation
+                c[it] = vcat(0.0, (1.0 ./ rhs[:])...)   # current period consumption vector. (p.na+1,1)
+            else
+                # if there is no bequest motive, this is like a standard period
+                mu1 = ywgt' * (1 ./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
+                rhs = p.beta * p.R * mu1[:]
+                c[it] = vcat(0.0, (1.0 ./ rhs[:])...)   # current period consumption vector. (p.na+1,1)
+            end
+        else
+            mu1 = ywgt' * (1 ./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
+            rhs = p.beta * p.R * mu1[:]
+            c[it] = vcat(0.0, (1.0 ./ rhs[:])...)   # current period consumption vector. (p.na+1,1)
+        end
 
         # we prepend c and m with (0) here to create the borrowing constrained region
-        c[it] = vcat(0.0, 1.0 ./ (p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)
         m[it] = vcat(0.0, avec .+ c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
         plot!(pl,m[it],c[it],label = it == 1 ? "$it" : "",color = cols[it])
 
@@ -70,6 +94,7 @@ function minimal_EGM_bequest(p::Param)
         plot!(pv, m[it][2:end], v[it][2:end],label = it == 1 ? "$it" : "",color = cols[it])
 
     end
+
     pl = lens!(pl, [0, 2], [0, 2], inset = (1, bbox(0.2, 0.05, 0.3, 0.25)))
     return plot(pl,pv,layout = (1,2))
 end

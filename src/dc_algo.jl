@@ -15,9 +15,8 @@ function dc_EGM!(m::FModel,p::Param)
             for id in 1:p.nD   # work of dont work
                 # final period: consume everyting.
                 m.c[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
-                # initialize value function with vf(1) = 0
-                m.v[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
-                # note that 0.0 as first value of the vfun is not innocuous here!
+                # initialize value function with bequest function
+                m.v[id,it] = Envelope(MLine(m.avec, bequest(m.avec,p) ) )
             end
         else
             for id in 1:p.nD   # current period dchoice
@@ -235,20 +234,24 @@ function vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},v::Envelop
     end
 
     r = fill(NaN,size(m1))
-    mask = m1.<getx(v.env)[2]
-    mask = it==p.nT ? trues(size(mask)) : mask
 
-    if all(mask)
-        # in the credit constrained region:
-        r[:] = u(c1,id==1,p) .+ p.beta * bound(v)
-    elseif any(mask)
-        r[mask] = u(c1[mask],id==1,p) .+ p.beta * bound(v)
-        # elsewhere
-        r[.!mask] = gety(interp(v.env,m1[.!mask]))
+    if it == p.nT
+        r[:] = bequest(m1,p)
     else
-        r[:] = gety(interp(v.env,m1))
-    end
+        mask = m1.<getx(v.env)[2]
+        mask = it==p.nT ? trues(size(mask)) : mask
 
+        if all(mask)
+            # in the credit constrained region:
+            r[:] = u(c1,id==1,p) .+ p.beta * bound(v)
+        elseif any(mask)
+            r[mask] = u(c1[mask],id==1,p) .+ p.beta * bound(v)
+            # elsewhere
+            r[.!mask] = gety(interp(v.env,m1[.!mask]))
+        else
+            r[:] = gety(interp(v.env,m1))
+        end
+    end
     return r
 end
 

@@ -5,7 +5,7 @@ function iminimal()
 	betas  = 0.5:0.05:1.0
 	Rs  = 1.0:0.05:1.5
 	sigmas = 0.0:0.05:1.0
-	nus = 0.0:5:200
+	nus = 0.0:0.01:10
 	bbars = 0.0:0.1:10
 
 	mp = @manipulate for γ in slider(gammas, label = "γ", value =p.gamma ),
@@ -13,7 +13,7 @@ function iminimal()
 						 R in slider(Rs, label = "R", value =p.R) ,
 						 σ in slider(sigmas, label = "σ", value =p.sigma),
 						 bbar in slider(bbars, label = "bbar", value =p.bbar),
-						 nu in slider(nus, label = "ν", value =p.ν)
+						 nu in slider(nus, label = "ν", value =5.0)
 
 		 p =Param(par = Dict(:beta => β, :sigma => σ,  :R => R , :bbar => bbar, :ν => nu))
 		 minimal_EGM_bequest(p)
@@ -39,6 +39,8 @@ function ifedor()
 	rhos = 0.1:0.05:1
 	deltas = 0.0:0.05:0.5
 	pensions = 0.0:0.1:1.0
+	nus = 0.0:0.1:10
+	bbars = 0.0:0.1:10
 
 	mp = @manipulate for dosim = Dict("sim" => true, "sol" => false),
 						 id = Dict("id=$id" => id for id in 1:2),
@@ -50,9 +52,11 @@ function ifedor()
 						 σ in slider(sigmas, label = "σ", value =p.sigma) ,
 						 λ in slider(lambdas, label = "λ", value =p.lambda),
 						 δ in slider(deltas, label= "δ",value = p.delta),
-						 pens in slider(pensions, label= "pension",value = p.pension)
+						 pens in slider(pensions, label= "pension",value = p.pension),
+						 bbar in slider(bbars, label = "bbar", value =p.bbar),
+						 nu in slider(nus, label = "ν", value =p.ν)
 
-		 m,p = runf(par = Dict(:nsims => nsims, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ, :pension => pens))
+		 m,p = runf(par = Dict(:nsims => nsims , :bbar => bbar, :ν => nu, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ, :pension => pens))
 		 if dosim
 			 s = sim(m,p)
 			 plot_s(s)
@@ -63,8 +67,8 @@ function ifedor()
 	@layout! mp vbox(
 		hbox(dosim, id, nsims),
 		hbox(β, R, σ),
-		hbox(α, λ),
-		hbox(δ, pens),
+		hbox(α, λ, nu),
+		hbox(δ, pens, bbar),
 		observe(_))
 
 end

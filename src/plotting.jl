@@ -42,25 +42,26 @@ function plot_s(s::Simulation)
     pc = plot(s.cons',leg = false, title = "consumption")
     i_retires = findall(s.ret_age .> 0)
     scatter!(pc, s.ret_age[i_retires], [s.cons[i,s.ret_age[i]] for i in i_retires], m = (:rect, 2, 0.6, :white))
-    pw0 = plot(s.w0',leg = false, title = "w0")
+    pw0 = plot(s.w0',leg = false, title = "w0",ylims = (0,maximum(s.p.a_high) + 0.1*maximum(s.p.a_high)))
     scatter!(pw0, s.ret_age[i_retires], [s.w0[i,s.ret_age[i]] for i in i_retires], m = (:rect, 2, 0.6, :white))
 
     ppr = plot(s.prob_work',leg = false, title = "p(work)")
     scatter!(ppr, s.ret_age[i_retires], [s.prob_work[i,s.ret_age[i]] for i in i_retires], m = (:rect, 2, 0.6, :white))
 
-    pw1 = plot(s.w1',leg = false, title = "w1")
+    pw1 = plot(s.w1',leg = false, title = "w1",ylims = (0,maximum(s.p.a_high) + 0.1*maximum(s.p.a_high)))
+    pbeq = histogram(s.w0[:,s.p.nT], title = "Bequests")
     pempty = plot(legend=false,grid=false,foreground_color_subplot=:white)
     asize = 10
-    annotate!(pempty, [(0.3,1,Plots.text("gamma = $(s.p.gamma)",     :left, asize)),
-                       (0.3,0.9,Plots.text("R = $(s.p.R)",     :left, asize)),
-                       (0.3,0.8,Plots.text("beta = $(round(s.p.beta,digits=2))", :left, asize)),
-                       (0.3,0.7,Plots.text("alpha = $(s.p.alpha)",   :left, asize)),
-                       (0.3,0.6,Plots.text("sigma = $(s.p.sigma)",   :left, asize)),
-                       (0.3,0.5,Plots.text("lambda = $(s.p.lambda)", :left, asize))#,
-                       #(0.3,0.4,Plots.text("rho = $(s.p.ρ)",         :left, asize))
-                       ])
+    # annotate!(pempty, [(0.3,1,Plots.text("gamma = $(s.p.gamma)",     :left, asize)),
+    #                    (0.3,0.9,Plots.text("R = $(s.p.R)",     :left, asize)),
+    #                    (0.3,0.8,Plots.text("beta = $(round(s.p.beta,digits=2))", :left, asize)),
+    #                    (0.3,0.7,Plots.text("alpha = $(s.p.alpha)",   :left, asize)),
+    #                    (0.3,0.6,Plots.text("sigma = $(s.p.sigma)",   :left, asize)),
+    #                    (0.3,0.5,Plots.text("lambda = $(s.p.lambda)", :left, asize))#,
+    #                    #(0.3,0.4,Plots.text("rho = $(s.p.ρ)",         :left, asize))
+    #                    ])
     plot(py,pc,pw0,ppr,pw1,
-          pempty ,
+          pbeq ,
           layout = (2,3))
 end
 
@@ -92,20 +93,78 @@ function plot_s(s::BSimulation)
           layout = (2,3))
 end
 
+
+@recipe function f(m::FModel,p::Param;id=1)
+    grid --> true
+    xticks := true
+    legend --> true
+    cg = cgrad(:plasma)
+    # c1 = colorant"red"
+    # c2 = colorant"blue"
+    # alow,ahi = extrema(m.avec)
+    # aspect = (ahi-alow)/(ahi - 0.0)
+
+    nT = size(m.v)[2]
+    # cols = range(c1,stop=c2,length=nT)
+    cols = cg[range(0.0,stop=1.0,length=nT)]
+    xrange = zeros(2)
+    xa = extrema(m.avec)
+    xrange[1] = xa[1] .- diff(vcat(xa...))[1] .* 0.01
+    xrange[2] = xa[2]
+
+    layout := grid(1,2)
+    for i in 1:nT
+        vt = v_analytic(m,p,id,i)
+        lab = ((i==1)|(i==nT)) ? "$i" : ""
+        @series begin
+            seriestype --> :path
+            linewidth --> 1
+            legend --> :bottomright
+            seriescolor --> cols[i]
+            label := lab
+            subplot := 1  # value function
+            yguide := "value"
+            xguide := "Cash on Hand M"
+            xlims := xrange
+            ylims := (-15,15)
+            getx(vt),gety(vt)
+        end
+        @series begin
+            seriestype --> :path
+            linewidth --> 1
+            legend --> :bottomright
+            seriescolor --> cols[i]
+            # subplot := 2  # 
+            label := lab
+            # xlims := (alow,ahi)
+            # ylims := (0,ahi)
+            ylims := extrema(m.avec)
+            xlims := extrema(m.avec)
+            yguide := "consumption"
+            xguide := "Cash on Hand M"
+            # aspect_ratio := aspect
+            getx(m.c[id,i].env),gety(m.c[id,i].env)
+        end
+    end
+end
+
+
 @recipe function f(m::GModel,p::Param;id=1,iy=nothing,it=nothing)
     grid --> true
     xticks := true
     legend --> false
-    # cg = cgrad(:inferno)
+    cg = cgrad(:plasma)
     # c1 = colorant"red"
     # c2 = colorant"blue"
+
     xrange = zeros(2)
     xa = extrema(m.avec)
     xrange[1] = xa[1] .- diff(vcat(xa...))[1] .* 0.01
     xrange[2] = xa[2]
 
     nT = p.nT
-    # cols = range(c1,stop=c2,length=nT)
+    cols = cg[range(0.0,stop=1.0,length=nT)]
+
 
     layout := grid(1,2)
 
@@ -152,7 +211,8 @@ end
                 seriestype --> :path
                 linewidth --> 1
                 legend --> :bottomright
-                # seriescolor --> cols[i]
+                seriescolor --> cols[i]
+                label := ((i == 1) || (i == nT)) ? "$it" : ""
                 # label := lab
                 xlims := xrange
                 # ylims --> (-15,15)
@@ -165,8 +225,9 @@ end
                 seriestype --> :path
                 linewidth --> 1
                 legend --> :bottomright
-                # seriescolor --> cols[i]
+                seriescolor --> cols[i]
                 subplot := 2  # 
+                label := ((i == 1) || (i == nT)) ? "$it" : ""
                 # label := lab
                 xlims := xa
                 ylims := xa
@@ -187,6 +248,10 @@ end
     grid --> true
     xticks := true
     # legend --> false
+    cg = cgrad(:plasma)
+    cols = cg[range(0.0,stop=1.0,length=p.nT)]
+
+
     # cg = cgrad(:inferno)
     # c1 = colorant"red"
     # c2 = colorant"blue"
@@ -264,8 +329,10 @@ end
                 seriestype --> :path
                 linewidth --> 1
                 legend --> false
-                # seriescolor --> cols[i]
+                seriescolor --> cols[i]
                 # label := lab
+                label := ((i == 1) || (i == nT)) ? "$it" : ""
+
                 xlims := xrange
                 # ylims --> (-15,15)
                 subplot := 1  # value function
@@ -278,9 +345,11 @@ end
                 linewidth --> 1
                 legend --> false
 
-                # seriescolor --> cols[i]
+                seriescolor --> cols[i]
                 subplot := 2  # 
                 # label := lab
+                label := ((i == 1) || (i == nT)) ? "$it" : ""
+
                 xlims := xa
                 ylims := xa
                 yguide := "consumption"
@@ -310,93 +379,9 @@ end
     else
         println("you need to either give it or iy. not both. not none.")
     end
-    # elseif isnothing(it) & isnothing(iy)
-    #     title --> ["value period $it" "value period $it"]
-    #     vt = v_analytic(m,p,id,iy,it)
-    #     @series begin
-    #         seriestype --> :path
-    #         linewidth --> 1
-    #         legend --> :bottomright
-    #         # seriescolor --> cols[i]
-    #         subplot := 1  # value function
-    #         yguide := "value"
-    #         xguide := "Cash on Hand M"
-    #         xlims := xrange
-    #         # ylims --> (-15,15)
-    #         getx(vt),gety(vt)
-    #         # getx(m.v[id,iy,it].env),gety(m.v[id,iy,it].env)
-    #     end
-    #     @series begin
-    #         seriestype --> :path
-    #         linewidth --> 1
-    #         legend --> :bottomright
-    #         # seriescolor --> cols[i]
-    #         subplot := 2  # 
-    #         xlims := xa
-    #         ylims --> xa
-    #         yguide := "consumption"
-    #         xguide := "Cash on Hand M"
-    #         # aspect_ratio := aspect
-    #         getx(m.c[id,iy,it].env),gety(m.c[id,iy,it].env)
-    #     end
-    # end
-
 end
 
 
-@recipe function f(m::FModel,p::Param;id=1)
-    grid --> true
-    xticks := true
-    legend --> true
-    cg = cgrad(:inferno)
-    # c1 = colorant"red"
-    # c2 = colorant"blue"
-    # alow,ahi = extrema(m.avec)
-    # aspect = (ahi-alow)/(ahi - 0.0)
-
-    nT = size(m.v)[2]
-    # cols = range(c1,stop=c2,length=nT)
-    cols = cg[range(0.0,stop=1.0,length=nT)]
-    xrange = zeros(2)
-    xa = extrema(m.avec)
-    xrange[1] = xa[1] .- diff(vcat(xa...))[1] .* 0.01
-    xrange[2] = xa[2]
-
-    layout := grid(1,2)
-    for i in 1:nT
-        vt = v_analytic(m,p,id,i)
-        lab = ((i==1)|(i==nT)) ? "$i" : ""
-        @series begin
-            seriestype --> :path
-            linewidth --> 1
-            legend --> :bottomright
-            seriescolor --> cols[i]
-            label := lab
-            subplot := 1  # value function
-            yguide := "value"
-            xguide := "Cash on Hand M"
-            xlims := xrange
-            ylims := (-15,15)
-            getx(vt),gety(vt)
-        end
-        @series begin
-            seriestype --> :path
-            linewidth --> 1
-            legend --> :bottomright
-            seriescolor --> cols[i]
-            # subplot := 2  # 
-            label := lab
-            # xlims := (alow,ahi)
-            # ylims := (0,ahi)
-            ylims := extrema(m.avec)
-            xlims := extrema(m.avec)
-            yguide := "consumption"
-            xguide := "Cash on Hand M"
-            # aspect_ratio := aspect
-            getx(m.c[id,i].env),gety(m.c[id,i].env)
-        end
-    end
-end
 
 struct tester
     m :: Matrix
