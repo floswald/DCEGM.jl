@@ -143,5 +143,15 @@
 		"value" : 0.0,
 		"description" : "Probability of going back to work",
 		"symbol" : "\\delta"
+	},
+	"ν" : {
+		"value" : 100.0,
+		"description" : "Strength of bequest motive",
+		"symbol" : "\\nu"
+	},
+	"bbar" : {
+		"value" : 7.7,
+		"description" : "Extent that bequest is luxury",
+		"symbol" : "\\underline{b}"
 	}
 }

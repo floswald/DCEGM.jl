@@ -1,5 +1,20 @@
 
 
+"""
+Bequest function after DeNardi (2004)
+"""
+function bequest(b::Float64, p::Param)
+	p.ν * u(b + p.bbar,p)
+end
+
+function bequest(b::Vector{Float64}, p::Param)
+	n = length(b)
+	y = similar(b)
+	for i in 1:n
+		y[i] = bequest(b[i],p)
+	end
+	y
+end
 
 #utility functions
 

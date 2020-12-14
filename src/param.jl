@@ -60,6 +60,9 @@ mutable struct Param
 	delta 				 :: Float64 # probability of going back to work
 	maxinterest          :: Float64 # maximal interest rate
 
+	bbar :: Float64 # bequest luxury goods level
+	ν    :: Float64 # strength of bequest motive
+
 	# simulation
 	nsims                 :: Int64
 	initw0                :: Float64   # low/high bounds on initial wealth from this interval

@@ -1,4 +1,30 @@
 
+function iminimal()
+	p = Param()
+	gammas = 1.0:0.1:3.0
+	betas  = 0.5:0.05:1.0
+	Rs  = 1.0:0.05:1.5
+	sigmas = 0.0:0.05:1.0
+	nus = 0.0:5:200
+	bbars = 0.0:0.1:10
+
+	mp = @manipulate for γ in slider(gammas, label = "γ", value =p.gamma ),
+						 β in slider(betas, label = "β", value =p.beta) ,
+						 R in slider(Rs, label = "R", value =p.R) ,
+						 σ in slider(sigmas, label = "σ", value =p.sigma),
+						 bbar in slider(bbars, label = "bbar", value =p.bbar),
+						 nu in slider(nus, label = "ν", value =p.ν)
+
+		 p =Param(par = Dict(:beta => β, :sigma => σ,  :R => R , :bbar => bbar, :ν => nu))
+		 minimal_EGM_bequest(p)
+
+	end
+	@layout! mp vbox(
+		hbox(β, R, σ),
+		hbox(bbar, nu),
+		observe(_))
+end
+
 
 # DCEGM.interact(DCEGM.rsgp) for sim
 # DCEGM.interact(DCEGM.runfp) for fedors model

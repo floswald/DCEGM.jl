@@ -42,6 +42,7 @@ include("envelope.jl")
 # # includes for dcegm
 include("param.jl")
 include("utils.jl")
+include("minimal_EGM.jl")
 include("dc_algo.jl")
 include("simulate.jl")
 
