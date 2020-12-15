@@ -4,6 +4,7 @@ mutable struct Simulation
 	w0        :: Matrix{Float64}
 	w1        :: Matrix{Float64}
 	cons      :: Matrix{Float64}
+	util      :: Matrix{Float64}
 	ystate    :: Matrix{Int64}
 	inc       :: Matrix{Float64}
 	prob_work :: Matrix{Float64}
@@ -15,6 +16,7 @@ mutable struct Simulation
 		this.w0        = fill(NaN,p.nsims,p.nT)  # beginning of period wealth
 		this.w1        = fill(NaN,p.nsims,p.nT)  # end of period wealth
 		this.cons      = fill(NaN,p.nsims,p.nT)
+		this.util      = fill(NaN,p.nsims,p.nT)
 		this.ystate    = zeros(Int,p.nsims,p.nT)
 		this.inc       = fill(NaN,p.nsims,p.nT)
 		this.worker    = zeros(Int,p.nsims,p.nT)
@@ -97,10 +99,13 @@ function sim(m::FModel,p::Param)
 		end
 		# consumption
 		s.cons[ working,it]    = gety(interp(m.c[1,it].env,s.w0[ working, it]))
+		s.util[ working,it]    = u(s.cons[ working,it], true, s.p)
+
 
 		s.cons[.!(working),it] = gety(interp(m.c[2,it].env,s.w0[.!(working), it]))
+		s.util[.!(working),it] = u(s.cons[.!(working),it], false, s.p)
 		# end of period wealth
-		s.w1[:,it] = s.w0[:,it] - s.cons[:,it]
+		s.w1[:,it] =  s.w0[:,it] - s.cons[:,it]
 		clamp!(s.w1,p.a_low, p.a_high)
 
 		if any(s.cons[ :,it] .< 0)
@@ -113,13 +118,13 @@ function sim(m::FModel,p::Param)
 		# CCP to remain worker
 		vmat[1,:] = vfun(1,it, s.cons[:,it] ,s.w0[:,it], m.v[1,it],p )
 		vmat[2,:] = vfun(2,it, s.cons[:,it] ,s.w0[:,it], m.v[2,it],p )
-		s.prob_work[:,it] = (s.worker[:,it] .== 1) .* ccp(vmat,p)  # prob to remain worker
+		s.prob_work[:,it] = (s.worker[:,it] .== 1) .* ccp(vmat,p)  # prob to remain worker. 0 for current non-workers
 
 		# discrete choice of workers
 		working[:] = s.prob_work[:,it] .> dshocks[:,it]
 
 		# random transition back into work state for retirees
-		working[.!(working)] = p.delta .> rshocks[.!(working),it]
+		working[(s.worker[:,it] .== 2)] = p.delta .> rshocks[(s.worker[:,it] .== 2),it]
 	end
 	s
 end

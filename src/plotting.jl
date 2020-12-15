@@ -3,12 +3,18 @@
 function v_analytic(m::Model,p::Param,id,it)
     vf = m.v[id,it]
     c = m.c[id,it]
-    cons = scaleGrid(p.cfloor_plot,gety(c.env)[2],p.k,logorder = 1)
-    cash = scaleGrid(p.a_low,getx(vf.env)[2],p.k,logorder = 1)
-    # deleteat!(cons,length(cons))
-    # deleteat!(cash,length(cash))
-    pts = convert(Point,cash,vfun(id,it,cons,cash,vf,p))
-    vcat(pts, vf.env.v[2:end])  # connect at second point
+    if it == p.nT
+        cons = m.avec
+        cash = m.avec
+        convert(Point,cash,vfun(id,it,cons,cash,vf,p))
+    else
+        cons = scaleGrid(p.cfloor_plot,gety(c.env)[2],p.k,logorder = 1)
+        cash = scaleGrid(p.a_low,getx(vf.env)[2],p.k,logorder = 1)
+        # deleteat!(cons,length(cons))
+        # deleteat!(cash,length(cash))
+        pts = convert(Point,cash,vfun(id,it,cons,cash,vf,p))
+        vcat(pts, vf.env.v[2:end])  # connect at second point
+    end
 end
 
 function v_analytic(m::BModel,p::Param,id,iy,it)
@@ -39,7 +45,14 @@ function plot_s(s::Simulation)
 
     # inc, cons, w
     py = plot(s.inc',leg = false, title = "income")
-    pc = plot(s.cons',leg = false, title = "consumption")
+    if s.p.ν > 0
+        pc = plot(s.cons[:,1:(s.p.nT-1)]',leg = false, title = "consumption",ylims = (0,7))
+        pw1 = plot(s.w1[:,1:(s.p.nT-1)]',leg = false, title = "w1",ylims = (0,maximum(s.p.a_high) + 0.1*maximum(s.p.a_high)))
+
+    else
+        pc = plot(s.cons',leg = false, title = "consumption",ylims = (0,7))
+        pw1 = plot(s.w1',leg = false, title = "w1",ylims = (0,maximum(s.p.a_high) + 0.1*maximum(s.p.a_high)))
+    end
     i_retires = findall(s.ret_age .> 0)
     scatter!(pc, s.ret_age[i_retires], [s.cons[i,s.ret_age[i]] for i in i_retires], m = (:rect, 2, 0.6, :white))
     pw0 = plot(s.w0',leg = false, title = "w0",ylims = (0,maximum(s.p.a_high) + 0.1*maximum(s.p.a_high)))
@@ -48,8 +61,15 @@ function plot_s(s::Simulation)
     ppr = plot(s.prob_work',leg = false, title = "p(work)")
     scatter!(ppr, s.ret_age[i_retires], [s.prob_work[i,s.ret_age[i]] for i in i_retires], m = (:rect, 2, 0.6, :white))
 
-    pw1 = plot(s.w1',leg = false, title = "w1",ylims = (0,maximum(s.p.a_high) + 0.1*maximum(s.p.a_high)))
-    pbeq = histogram(s.w0[:,s.p.nT], title = "Bequests")
+    pbeq = if s.p.ν > 0
+        histogram(s.w0[:,s.p.nT], title = "Bequests", bins = range(0,stop = 30.0, length = 50), normalize = false, legend = false)
+    else
+        histogram(s.w1[:,s.p.nT], title = "Bequests", bins = range(0,stop = 30.0, length = 50), normalize =false, legend = false)
+    end
+    pretage = histogram(s.ret_age, title = "Ret Age", bins = range(0,stop = s.p.nT, length = s.p.nT), normalize = false, legend = false)
+    mutil = map(x -> mean(s.util[:,x]), 1:s.p.nT)
+    pmutil = plot(1:s.p.nT, mutil, title ="mean utility",ylims = (0,1),yticks = range(0,1,length = 6),legend = false)
+
     pempty = plot(legend=false,grid=false,foreground_color_subplot=:white)
     asize = 10
     # annotate!(pempty, [(0.3,1,Plots.text("gamma = $(s.p.gamma)",     :left, asize)),
@@ -60,9 +80,9 @@ function plot_s(s::Simulation)
     #                    (0.3,0.5,Plots.text("lambda = $(s.p.lambda)", :left, asize))#,
     #                    #(0.3,0.4,Plots.text("rho = $(s.p.ρ)",         :left, asize))
     #                    ])
-    plot(py,pc,pw0,ppr,pw1,
-          pbeq ,
-          layout = (2,3))
+    plot(py,pc,pw0,pretage,
+        ppr,pw1,pbeq , pmutil,
+          layout = (2,4))
 end
 
 function plot_s(s::BSimulation)

@@ -4,6 +4,7 @@
 Bequest function after DeNardi (2004)
 """
 function bequest(b::Float64, p::Param)
+	@assert b >= 0.0  # no negative bequests
 	p.ν * u(b + p.bbar,p)
 end
 
@@ -48,6 +49,20 @@ function u(x::Array{T}, working::Bool, p::Param) where T
 	y = zeros(T,n)
 	for i in 1:n
  		y[i] = u(x[i],working,p)
+	end
+	y
+end
+
+"bequest with discrete choice"
+function bequest(b::Float64, working::Bool, p::Param)
+	bequest(b,p) - p.alpha * working
+end
+
+function bequest(b::Vector{Float64}, working::Bool, p::Param)
+	n = length(b)
+	y = similar(b)
+	for i in 1:n
+		y[i] = bequest(b[i],working,p)
 	end
 	y
 end

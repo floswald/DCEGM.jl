@@ -16,15 +16,13 @@ function dc_EGM!(m::FModel,p::Param)
                 # final period: consume everyting.
                 m.c[id,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
                 # initialize value function with bequest function
-                m.v[id,it] = Envelope(MLine(m.avec, bequest(m.avec,p) ) )
+                m.v[id,it] = p.ν > 0 ?  Envelope(MLine(m.avec, bequest(m.avec,id == 1,p) )) : Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)))
             end
         else
             for id in 1:p.nD   # current period dchoice
                 working = id==1  # working today is id=1
-                # what's next period's cash on hand given you work/not TODAY?
-                mm1 = m.m1[it][id]
                 # clamp!(mm1, p.cfloor, Inf)  # dont actullay want to do that: want to allow for neg assets
-
+                mm1 = m.m1[it][id]
                 # next period consumption and values y-coords
                 # for each d-choice
                 cmat = fill(-Inf,p.nD,p.na*p.ny)
@@ -33,22 +31,32 @@ function dc_EGM!(m::FModel,p::Param)
                 # get future cons and values
                 # for future nD compute consumption and value function
                 for iid in 1:p.nD
+                    # what's next period's cash on hand in this discrete choice?
+                    # mm1 = m.m1[it+1][iid]
+
                     c1 = interp(m.c[iid,it+1].env, mm1[:])
                     floory!(c1,p.cfloor)   # floor negative consumption
-                    cmat[iid,:] = gety(c1)  # get y-values
+                    cmat[iid,:] = gety(c1)  # get y-values: next period consumption
                     vmat[iid,:] = vfun(iid,it+1,cmat[iid,:],mm1[:],m.v[iid,it+1],p)
                 end
 
                 # get ccp to be a worker
                 pwork = working ? ccp(vmat,p) : p.delta*ones(size(vmat)[2])
 
-                # get expected marginal utility of that consumption
-                mu1 = reshape(pwork .* up(cmat[1,:],p) .+ (1.0 .- pwork) .* up(cmat[2,:],p),p.ny,p.na)
+                if it == p.nT-1 && p.ν > 0
+                    # expected marginal utility of bequest on RHS
+                    cmat[:] = cmat .+ p.bbar  # add luxury level of bequest before we evaluate in marginal utility
+                    mu1 = reshape(pwork .* up(cmat[1,:],p) .+ (1.0 .- pwork) .* up(cmat[2,:],p),p.ny,p.na)
+                    RHS = p.beta * p.R * p.ν * m.ywgt' * mu1
+                else
+                    # get expected marginal utility of consumption t+1
+                    mu1 = reshape(pwork .* up(cmat[1,:],p) .+ (1.0 .- pwork) .* up(cmat[2,:],p),p.ny,p.na)
 
-                # get expected marginal value of saving: RHS of euler equation
-                # beta * R * E[ u'(c_{t+1}) ]
-                # ywgt: weight on the income states
-                RHS = p.beta * p.R *  m.ywgt' * mu1
+                    # get expected marginal value of saving: RHS of euler equation
+                    # beta * R * E[ u'(c_{t+1}) ]
+                    # ywgt: weight on the income states
+                    RHS = p.beta * p.R * m.ywgt' * mu1
+                end
 
                 # optimal consumption today: invert the RHS of euler equation
                 c0 = iup(Array(RHS)[:],p)
@@ -57,7 +65,6 @@ function dc_EGM!(m::FModel,p::Param)
                 cline = MLine(m.avec .+ c0, c0)
                 # store
                 m.c[id,it] = Envelope(cline)
-
                 # consumption function done.
 
 
@@ -66,7 +73,7 @@ function dc_EGM!(m::FModel,p::Param)
                 if working
                     ev =  m.ywgt' * reshape(logsum(vmat,p),p.ny,p.na)
                 else
-                    ev =  (1-p.delta)*m.ywgt' * reshape(vmat[2,:],p.ny,p.na)+p.delta*m.ywgt' * reshape(logsum(vmat,p),p.ny,p.na)
+                    ev =  (1-p.delta) * m.ywgt' * reshape(vmat[2,:],p.ny,p.na) + p.delta * m.ywgt' * reshape(logsum(vmat,p),p.ny,p.na)
                 end
                 vline = MLine(m.avec .+ c0, u(c0,id==1,p) .+ p.beta * ev[:])
 
@@ -235,8 +242,8 @@ function vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},v::Envelop
 
     r = fill(NaN,size(m1))
 
-    if it == p.nT
-        r[:] = bequest(m1,p)
+    if (it == p.nT) && (p.ν > 0)
+        r[:] = bequest(c1,id == 1, p)  # working == true
     else
         mask = m1.<getx(v.env)[2]
         mask = it==p.nT ? trues(size(mask)) : mask

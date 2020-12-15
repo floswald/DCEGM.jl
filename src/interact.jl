@@ -33,7 +33,7 @@ function ifedor()
 	gammas = 1.0:0.1:3.0
 	betas  = 0.5:0.05:1.0
 	Rs  = 1.0:0.05:1.5
-	alphas = [0.0,0.35,0.5]
+	alphas = 0.0:0.05:0.5
 	sigmas = 0.0:0.05:0.35
 	lambdas = 0.0000002:0.05:1
 	rhos = 0.1:0.05:1
