@@ -94,8 +94,8 @@ function sim(m::FModel,p::Param)
 
 
 			# end of period wealth in period it
-			s.w0[ :     , it] .= s.w1[:      , it-1]*p.R
-			s.w0[working, it] .= s.w1[working, it-1]*p.R .+ s.inc[ working, it]
+			s.w0[ :     , it] .= s.w1[:  , it-1]*p.R .+ s.inc[ : , it]
+			# s.w0[working, it] .= s.w1[working, it-1]*p.R .+ s.inc[ working, it]
 		end
 		# consumption
 		s.cons[ working,it]    = gety(interp(m.c[1,it].env,s.w0[ working, it]))
