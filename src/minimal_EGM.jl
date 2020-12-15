@@ -6,13 +6,19 @@ function minimal_EGM()
     nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
     yvec          = sqrt(2.0) * p.sigma .* nodes
     ywgt          = weights .* pi^(-0.5)
-    # avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
-    avec          = scaleGrid(0.0,p.a_high,p.na,logorder = 1)
+    # avec          = scaleGrid(0.0,p.a_high,p.na,logorder = 1)
+    avec          = collect(range(0.0,p.a_high,length = p.na))
     m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
     m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
     c[p.nT]       = [0.0,p.a_high]
-    pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false,title="0 borrowing")
+
+    cg = cgrad(:viridis)
+    cols = cg[range(0.0,stop=1.0,length=p.nT)]
+
+    pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=:topright,title="Consumption Function",
+              xlims = (0,p.a_high),ylims = (0,p.a_high), color = cols[p.nT],
+              xlab = "Cash on Hand", ylab = "Consumption")
     # cycle back in time
     for it in p.nT-1:-1:1
         w1 = 0.0 .+ exp.(yvec) .+ p.R.*avec'   # w1 = y + yshock*R*savings:  next period wealth at all states. (p.ny,p.na)
@@ -21,12 +27,22 @@ function minimal_EGM()
         # notice that the `interpolate` object needs to be able to extrapolate
         c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Line())(w1[:]) ,p.ny,p.na)
         c1[c1.<0] .= p.cfloor     # don't allow negative consumption
-        rhs = ywgt' * (1 ./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
-        c[it] = vcat(0.0, 1.0 ./ (p.beta * p.R * rhs[:])...)   # current period consumption vector. (p.na+1,1)
-        m[it] = vcat(0.0, avec .+ c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
-        plot!(pl,m[it],c[it],label="$it")
+        Emu   = ywgt' * (1 ./ c1)   # Expected marginal utility (with log utility!). (p.na,1)
+        rhs   = p.beta * p.R * Emu[:]   # RHS of euler equation
+        c[it] = 1.0 ./ rhs   # inverse marginal utility function gives current consumption
+        m[it] = avec .+ c[it]   # current period endogenous cash on hand grid. (p.na+1,1)
+
+        # add credit constraint region
+        # the lowest asset grid point on tomorrow's cash on hand (agrid[1]) corresponds to
+        # saving exactly zero (or location on the lower bound of the asset grid)
+        # well, we allow that people save zero (and consume all they have currently on hand).
+        c[it] = vcat(0.0, c[it])   # prepend with 0
+        m[it] = vcat(0.0, m[it])   #
+
+        plot!(pl,m[it],c[it],label= it == 1 ? "$it" : "", color = cols[it])
     end
-    return (m,c,pl)
+    pl = lens!(pl, [0, 2], [0, 2], inset = (1, bbox(0.2, 0.1, 0.25, 0.25)))
+    pl
 end
 
 function minimal_EGM_bequest(p::Param)
@@ -38,7 +54,6 @@ function minimal_EGM_bequest(p::Param)
     m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
     v             = Vector{Float64}[Float64[] for i in 1:p.nT]   # value function on m
-
 
     m[p.nT]       = avec    # no debt in last period possible
     c[p.nT]       = avec    # consume all you have left
@@ -97,63 +112,4 @@ function minimal_EGM_bequest(p::Param)
 
     pl = lens!(pl, [0, 2], [0, 2], inset = (1, bbox(0.2, 0.05, 0.3, 0.25)))
     return plot(pl,pv,layout = (1,2))
-end
-
-function minimal_EGM_neg(;alow = -1.0,brate = false)
-    p             = Param()
-    nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-    yvec          = sqrt(2.0) * p.sigma .* nodes
-    ywgt          = weights .* pi^(-0.5)
-    # avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
-
-    # η = NBL(yvec[1],p)  # compute natural borrowing limit: maximal borrowing if c=0 in all future periods and worst income
-    # if blim
-    #     avec          = [scaleGrid(η[it],p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
-    #     push!(avec, scaleGrid(0.0,p.a_high,p.na,logorder = 1))  # last period
-    # else
-        avec          = [scaleGrid(alow,p.a_high,p.na,logorder = 1) for it in 1:p.nT-1]
-        push!(avec, scaleGrid(0.0,p.a_high,p.na,logorder = 1))  # last period
-    # end
-    m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
-    c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
-    m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
-    c[p.nT]       = [0.0,p.a_high]
-    # m[p.nT]       = [p.a_low,0.0,p.a_high]    # no debt in last period possible
-    # c[p.nT]       = [p.cfloor,p.cfloor,p.a_high]
-    # ti = blim ? "Ntl. br:$brate" : "Fixed. br:$brate"
-    pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=false,title = ti)
-    # cycle back in time
-    for it in p.nT-1:-1:1
-        if !brate
-            w1 = 0.0 .+ exp.(yvec) .+ p.R.*avec[it+1]'   # w1 = y + yshock + R*savings:  next period wealth at all states. (p.ny,p.na)
-        else
-
-            w1 = 0.0 .+ exp.(yvec) .+ vcat(avec[it+1][avec[it+1] .< 0 ].*(p.R*1.3),avec[it+1][avec[it+1] .>= 0 ].*(p.R))'  # w1 = y + yshock + R*savings:  next period wealth at all states. (p.ny,p.na)
-        end
-        # get next period consumption on that wealth w1
-        # interpolate on next period's endogenous grid m[it+1].
-        # notice that the `interpolate` object needs to be able to extrapolate
-        c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Line())(w1[:]) ,p.ny,p.na)
-        # if it == p.nT-3
-            # println("mt+1 = $(m[it+1])")
-            # println("wt+1 = $w1")
-            # println("ct+1 = $c1")
-        # end
-        c1[c1.<0] .= p.cfloor     # don't allow negative consumption
-        rhs = ywgt' * (1 ./ c1)   # rhs of euler equation (with log utility!). (p.na,1)
-        c[it] = vcat(0.0, 1 ./ (p.beta * p.R * rhs[:])...)   # current period consumption vector ∈ [0,∞]
-        m[it] = vcat(avec[it][1], avec[it] .+ c[it][2:end]...)   # current period endogenous cash on hand grid. (p.na+1,1)
-        # plot!(pl,m[it],c[it],label="$it")
-        plot!(pl,m[it],c[it])
-    end
-    return (m,c,pl)
-end
-
-function plot_minimal()
-    p1 = minimal_EGM()
-    p2 = minimal_EGM_neg()
-    p3 = minimal_EGM_neg(brate = true)
-    p4 = minimal_EGM_neg(blim = false)
-    p5 = minimal_EGM_neg(blim = false,brate = true)
-    plot(p1[3],p2[3],p3[3],p4[3],p5[3],layout = (1,5),xlims = (-10,10),size = (800,400))
 end
