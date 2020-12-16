@@ -113,66 +113,42 @@ function dc_EGM!(m::GModel,p::Param)
     # vtmp = fill(-Inf,p.nD,p.ny,p.na)
 
     for it in p.nT:-1:1
-        for iy in 1:p.ny  # current state
-            for id in 1:p.nD  # current dchoice
-                working = id==1  # working today is id=1
-
-                if it==p.nT
+        if it==p.nT
+            for id in 1:p.nD
+                for iy in 1:p.ny
                     # final period: consume everyting.
                     m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
                     # initialize value function with vf(1) = 0
                     m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
                     # note that 0.0 as first value of the vfun is not innocuous here!
-                else
-                    # next period consumption and values y-coords
-                    # for each d-choice
-                    # reset all value matrices
-                    fill!(vmat,0.0)
-                    fill!(ctmp,-Inf)
-                    # fill!(vtmp,0.0)
+                end
+            end
+        else
+            for iy in 1:p.ny  # current state
+                # next period consumption and values y-coords
+                # for each d-choice
+                # reset all value matrices
+                fill!(vmat,0.0)
+                fill!(ctmp,-Inf)
+                fill!(cmat,0.0)
 
-                    for jy in 1:p.ny # future state: owner, renter, income, etc
-                        pr = m.ywgt[iy,jy]  # transprob
+                for jy in 1:p.ny # future state: owner, renter, income, etc
+                    pr = m.ywgt[iy,jy]  # transprob
+                    for iid in 1:p.nD  # future dchoice
+                        m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
+                        c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
+                        floory!(c1,p.cfloor)   # floor negative consumption
+                        ctmp[iid,jy,:] = gety(c1)
+                        vmat[iid,:] += pr * vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
+                        cmat[iid,:] += pr * up(ctmp[iid,jy,:],p)
+                    end
+                end # end future state
 
-                        for iid in 1:p.nD  # future dchoice
-                            # only feasible choices at this state
-                            # if renter, cannot sell etc
-                            # if iid == 1
-                            #     m1 = (p.R * m.avec) .+ income(it,p,m.yvec[jy])
-                            # else
-                            #     m1 = (p.R * m.avec) .+ p.pension
-                            # end
-
-                            m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
-                            c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
-                            floory!(c1,p.cfloor)   # floor negative consumption
-                            ctmp[iid,jy,:] = gety(c1)
-                            # vtmp[iid,jy,:] = vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
-                            vmat[iid,:] += pr * vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
-                        end
-                    end # end future state
-
-                    # now get expectated value function conditional on iy: E[V(t+1,iid,y')|iy]
-                    # vmat = integrate over second dimension
-                    # vmat = dropdims( reduce(+, vtmp, dims = 2), dims = 2)
+                for id in 1:p.nD  # current dchoice
+                    working = id==1  # working today is id=1
 
                     # get ccp of choices: P(d'|iy), pwork
                     pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
-
-                    # get y-expected MU of cons(t+1): uprime
-                    up!(ctmp,p)
-
-                    # integrate to get E[ u'(c(t+1,y')) | y]
-                    # prepare
-                    fill!(cmat,0.0)
-                    for jd in 1:p.nD
-                        for ja in 1:p.na
-                            for jy in 1:p.ny
-                                # cmat[jd,ja] += m.ywgt[iy,jy] * up(ctmp[jd,jy,ja],p)
-                                cmat[jd,ja] += m.ywgt[iy,jy] * ctmp[jd,jy,ja]
-                            end
-                        end
-                    end
 
                     # compute tomorrow's marginal utility
                     mu1 = pwork .* cmat[1,:] .+ (1.0 .- pwork) .* cmat[2,:] # 1,na
@@ -184,8 +160,6 @@ function dc_EGM!(m::GModel,p::Param)
                     c0 = iup(RHS,p)
                     # set optimal consumption function today. endo grid m and cons c0
                     cline = MLine(m.avec .+ c0, c0)
-                    # store
-                    # m.c[id,iy,it] = Envelope(cline)
                     # consumption function done.
 
                     # compute value function
@@ -211,15 +185,14 @@ function dc_EGM!(m::GModel,p::Param)
                     # in a separate object
                     m.v[id,iy,it].vbound = ev[1]
 
-
                     # this creates the credit constrained region
                     prepend!(m.c[id,iy,it].env,[Point(m.avec[1],0.0)])
                     prepend!(m.v[id,iy,it].env,[Point(m.avec[1],ev[1])])
                     sortx!(m.c[id,iy,it].env)  # sort cons by default
-                end # if last period
-            end  # current id
-        end  # iy
-    end # it
+                end  # current id
+            end  # iy
+        end # if last period
+    end# it
 end
 
 
