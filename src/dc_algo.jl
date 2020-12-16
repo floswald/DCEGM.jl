@@ -137,6 +137,11 @@ function dc_EGM!(m::GModel,p::Param)
                         for iid in 1:p.nD  # future dchoice
                             # only feasible choices at this state
                             # if renter, cannot sell etc
+                            # if iid == 1
+                            #     m1 = (p.R * m.avec) .+ income(it,p,m.yvec[jy])
+                            # else
+                            #     m1 = (p.R * m.avec) .+ p.pension
+                            # end
 
                             m1 = m.m1[it+1][iid][jy,:]  # state specific mvec
                             c1 = interp(m.c[iid,jy,it+1].env, m1) # C(d',y',m')
