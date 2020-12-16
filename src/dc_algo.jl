@@ -113,14 +113,15 @@ function dc_EGM!(m::GModel,p::Param)
     # vtmp = fill(-Inf,p.nD,p.ny,p.na)
 
     for it in p.nT:-1:1
+        is_bequest = (it == p.nT-1) && (p.ν > 0)
+
         if it==p.nT
             for id in 1:p.nD
                 for iy in 1:p.ny
                     # final period: consume everyting.
                     m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
                     # initialize value function with vf(1) = 0
-                    m.v[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)) )
-                    # note that 0.0 as first value of the vfun is not innocuous here!
+                    m.v[id,iy,it] = p.ν > 0 ?  Envelope(MLine(m.avec, bequest(m.avec,id == 1,p) )) : Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)))
                 end
             end
         else
@@ -132,6 +133,7 @@ function dc_EGM!(m::GModel,p::Param)
                 fill!(ctmp,-Inf)
                 fill!(cmat,0.0)
 
+                # All future uncertainty to be accounted for here
                 for jy in 1:p.ny # future state: owner, renter, income, etc
                     pr = m.ywgt[iy,jy]  # transprob
                     for iid in 1:p.nD  # future dchoice
@@ -140,7 +142,11 @@ function dc_EGM!(m::GModel,p::Param)
                         floory!(c1,p.cfloor)   # floor negative consumption
                         ctmp[iid,jy,:] = gety(c1)
                         vmat[iid,:] += pr * vfun(iid,it+1,ctmp[iid,jy,:],m1,m.v[iid,jy,it+1],p)
-                        cmat[iid,:] += pr * up(ctmp[iid,jy,:],p)
+                        if is_bequest
+                            cmat[iid,:] += pr * up(ctmp[iid,jy,:] .+ p.bbar,p)
+                        else
+                            cmat[iid,:] += pr * up(ctmp[iid,jy,:],p)
+                        end
                     end
                 end # end future state
 
@@ -150,11 +156,10 @@ function dc_EGM!(m::GModel,p::Param)
                     # get ccp of choices: P(d'|iy), pwork
                     pwork = working ? ccp(vmat,p) : zeros(size(vmat)[2])
 
-                    # compute tomorrow's marginal utility
+                    # get expected marginal utility of consumption t+1
                     mu1 = pwork .* cmat[1,:] .+ (1.0 .- pwork) .* cmat[2,:] # 1,na
-
                     #RHS
-                    RHS = p.beta * p.R * mu1
+                    RHS = is_bequest ? p.beta * p.R * p.ν * mu1 : p.beta * p.R * mu1
 
                     #optimal cons
                     c0 = iup(RHS,p)

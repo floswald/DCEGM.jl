@@ -90,7 +90,7 @@ function igmodel()
 	try
 		mp = @manipulate for dosim = Dict("sim" => true, "sol" => false),
 							 id = Dict("id=$id" => id for id in 1:2),
-							 nsims = spinbox(label="nsims"; value=p.nsims),
+							 nsims = spinbox(label="nsims"; value=20),
 							 # γ in slider(gammas, label = "γ", value =p.gamma ),
 							 β in slider(betas, label = "β", value =p.beta) ,
 							 R in slider(Rs, label = "R", value =p.R) ,

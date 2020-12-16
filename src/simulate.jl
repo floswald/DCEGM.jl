@@ -187,6 +187,10 @@ function sim(m::GModel,p::Param)
 			vmat[2,i] = vfun(2,it, [s.cons[i,it] ],[s.w0[i,it]], m.v[2,iy,it],p )[1]
 		end
 		# end of period wealth
+		s.util[ working,it]    = u(s.cons[ working,it], true, s.p)
+		s.util[ .!(working),it]    = u(s.cons[  .!(working),it], false, s.p)
+
+
 		s.w1[:,it] = s.w0[:,it] - s.cons[:,it]
 
 		# CCP to remain worker
