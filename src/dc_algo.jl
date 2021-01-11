@@ -226,7 +226,7 @@ function vfun(id::Int,it::Int,c1::Vector{Float64},m1::Vector{Float64},v::Envelop
     r = fill(NaN,size(m1))
 
     if (it == p.nT) && (p.ν > 0)
-        r[:] = bequest(c1,id == 1, p)  # working == true
+        r[:] = bequest(c1,false, p)  # working == true
     else
         mask = m1.<getx(v.env)[2]
         mask = it==p.nT ? trues(size(mask)) : mask
