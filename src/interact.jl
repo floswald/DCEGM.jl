@@ -78,23 +78,49 @@ function igmodel()
 	gammas = 1.0:0.1:3.0
 	betas  = 0.5:0.05:1.0
 	Rs  = 1.0:0.05:1.5
-	alphas = [0.0,0.35,0.5]
+	alphas = 0.0:0.05:0.5
 	sigmas = 0.0:0.05:0.35
 	lambdas = 0.0000002:0.05:1
 	rhos = 0.1:0.05:1
+	deltas = 0.0:0.05:0.5
+	pensions = 0.0:0.1:1.0
+	nus = 0.0:0.1:10
+	bbars = 0.0:0.1:10
 
+	try
+		mp = @manipulate for dosim = Dict("sim" => true, "sol" => false),
+							 id = Dict("id=$id" => id for id in 1:2),
+							 nsims = spinbox(label="nsims"; value=20) |> onchange,
+							 # γ in slider(gammas, label = "γ", value =p.gamma ),
+							 β in slider(betas, label = "β", value =p.beta) |> onchange,
+							 R in slider(Rs, label = "R", value =p.R) |> onchange,
+							 α in slider(alphas, label = "α", value =p.alpha) |> onchange,
+							 σ in slider(sigmas, label = "σ", value =p.sigma) |> onchange,
+							 λ in slider(lambdas, label = "λ", value =p.lambda)|> onchange,
+							 ρ in slider(0:0.05:1, label = "ρ", value =p.ρ)|> onchange,
+							 δ in slider(deltas, label= "δ",value = p.delta)|> onchange,
+							 pens in slider(pensions, label= "pension",value = p.pension)|> onchange,
+							 bbar in slider(bbars, label = "bbar", value =p.bbar)|> onchange,
+							 nu in slider(nus, label = "ν", value =p.ν) |> onchange
 
-	mp = @manipulate for iy = OrderedDict("iy=$iy" => iy for iy in 1:p.ny) ,
-		                 id = Dict("id=$id" => id for id in 1:2),
-		                 γ in slider(gammas, label = "γ", value =p.gamma ),
-						 β in slider(betas, label = "β", value =p.beta) ,
-						 σ in slider(sigmas, label = "σ", value =p.sigma) ,
-						 λ in slider(lambdas, label = "λ", value =p.lambda),
-						 ρ in slider(rhos, label = "ρ", value =p.ρ)
-
-		m,p = rung(par = Dict(:ρ => ρ, :gamma => γ, :beta => β, :sigma => σ, :lambda => λ))
-		plot(m,p,iy = iy, id = id,ylims = (-15,13),size = (700,400))
+			 m,p = rung(par = Dict(:nsims => nsims , :bbar => bbar, :ν => nu, :ρ => ρ, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ, :pension => pens))
+			 if dosim
+				 s = sim(m,p)
+				 plot_s(s)
+			 else
+				 plot(m,p,id = id,iy = 1)
+			 end
+		end
+		@layout! mp vbox(
+			hbox(dosim, id, nsims),
+			hbox(β, R, σ),
+			hbox(α, λ, nu, ρ),
+			hbox(δ, pens, bbar),
+			observe(_))
+	catch e
+		return e
 	end
+
 end
 
 # function ibkmodel(;it::Bool=false)

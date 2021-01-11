@@ -145,7 +145,7 @@
 		"symbol" : "\\delta"
 	},
 	"ν" : {
-		"value" : 1.0,
+		"value" : 0.0,
 		"description" : "Strength of bequest motive",
 		"symbol" : "\\nu"
 	},
