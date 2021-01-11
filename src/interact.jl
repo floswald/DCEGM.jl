@@ -90,18 +90,18 @@ function igmodel()
 	try
 		mp = @manipulate for dosim = Dict("sim" => true, "sol" => false),
 							 id = Dict("id=$id" => id for id in 1:2),
-							 nsims = spinbox(label="nsims"; value=20),
+							 nsims = spinbox(label="nsims"; value=20) |> onchange,
 							 # γ in slider(gammas, label = "γ", value =p.gamma ),
-							 β in slider(betas, label = "β", value =p.beta) ,
-							 R in slider(Rs, label = "R", value =p.R) ,
-							 α in slider(alphas, label = "α", value =p.alpha) ,
-							 σ in slider(sigmas, label = "σ", value =p.sigma) ,
-							 λ in slider(lambdas, label = "λ", value =p.lambda),
-							 ρ in slider(0:0.05:1, label = "ρ", value =p.ρ),
-							 δ in slider(deltas, label= "δ",value = p.delta),
-							 pens in slider(pensions, label= "pension",value = p.pension),
-							 bbar in slider(bbars, label = "bbar", value =p.bbar),
-							 nu in slider(nus, label = "ν", value =p.ν)
+							 β in slider(betas, label = "β", value =p.beta) |> onchange,
+							 R in slider(Rs, label = "R", value =p.R) |> onchange,
+							 α in slider(alphas, label = "α", value =p.alpha) |> onchange,
+							 σ in slider(sigmas, label = "σ", value =p.sigma) |> onchange,
+							 λ in slider(lambdas, label = "λ", value =p.lambda)|> onchange,
+							 ρ in slider(0:0.05:1, label = "ρ", value =p.ρ)|> onchange,
+							 δ in slider(deltas, label= "δ",value = p.delta)|> onchange,
+							 pens in slider(pensions, label= "pension",value = p.pension)|> onchange,
+							 bbar in slider(bbars, label = "bbar", value =p.bbar)|> onchange,
+							 nu in slider(nus, label = "ν", value =p.ν) |> onchange
 
 			 m,p = rung(par = Dict(:nsims => nsims , :bbar => bbar, :ν => nu, :ρ => ρ, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ, :pension => pens))
 			 if dosim
