@@ -121,7 +121,8 @@ function dc_EGM!(m::GModel,p::Param)
                     # final period: consume everyting.
                     m.c[id,iy,it] = Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,p.a_high)) )
                     # initialize value function with vf(1) = 0
-                    m.v[id,iy,it] = p.ν > 0 ?  Envelope(MLine(m.avec, bequest(m.avec,id == 1,p) )) : Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)))
+                    # the ((id > 1)*10.0 is here to make sure that working is never optimal when dead. 
+                    m.v[id,iy,it] = p.ν > 0 ?  Envelope(MLine(m.avec, bequest(m.avec,id == 1,p) .- ((id > 1)*10.0) )) : Envelope(MLine(vcat(p.a_lowT,p.a_high),vcat(0.0,NaN)))
                 end
             end
         else
