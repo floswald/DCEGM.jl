@@ -31,7 +31,7 @@ function bk!(m::BModel,p::Param)
                     # with bk flag on:
                     m.cbk[iy,it] = Envelope(MLine(vcat(0.0,p.a_high),vcat(0.0,p.a_high)) )
                     # initiz,iae value function with vf(1) = 0
-                    m.vbk[iy,it] = Envelope(MLine(vcat(0.0,p.a_high),vcat(-p.alpha,NaN)) )
+                    m.vbk[iy,it] = Envelope(MLine(vcat(0.0,p.a_high),vcat(p.alphaT,NaN)) )
                     m.vbk[iy,it].vbound = p.alphaT
                 else
                     # next period consumption and values y-coords
@@ -157,7 +157,7 @@ function bk!(m::BModel,p::Param)
                         # we compute the value and savings function of being in bk state first.
                         for jy in 1:p.ny # future state:
                             pr = m.ywgt[iy,jy]  # transprob
-                            m1 = m.m1[it+1][iid][jy,:]  # cash on hand in bk state
+                            m1 = m.m1[it+1][jy,:]  # cash on hand in bk state
                             c1 = interp(m.cbk[jy,it+1].env, m1) # C(d',y',m')
                             floory!(c1,p.cfloor)   # floor negative consumption
                             ctmp[iid,jy,:] = gety(c1)

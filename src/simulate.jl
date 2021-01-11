@@ -247,7 +247,7 @@ function sim(m::BModel,p::Param)
 			s.bkflag[notfiling , it] = s.bkflag[notfiling , it-1]
 			# else, flag goes from false to true
 			s.bkflag[filing , it] .= true  # have chosen file in previous period, so flag is on
-			s.file_age[filing] .= it  # age at which filed
+			s.file_age[filing] .= it-1  # age at which filed
 
 			# income
 			s.inc[: , it] .= income(it,p,m.yvec[s.ystate[:,it]])  # all get their income

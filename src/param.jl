@@ -217,74 +217,16 @@ mutable struct FModel <: Model
 	end
 end
 
-"""
-Fedor's Model with state dependence and bankruptcy
-"""
-mutable struct BModel <: Model
-	avec::Vector{Float64}
-	aposvec::Vector{Float64}
-	yvec::Vector{Float64}   # income support
-	ywgt::Matrix{Float64}   # income support
-
-	# intermediate objects (na,nD)
-	m1::Dict{Int,Dict}	# a dict[it] for each period
-	# result objects
-	v :: Array{Envelope}  # arrays of Envelope objects
-	c :: Array{Envelope}
-	vbk :: Array{Envelope}  # arrays of Envelope objects
-	cbk :: Array{Envelope}
-	iazero :: Int  # index of first non-negative asset state
-	rgrid :: Array{Vector{Float64}}
-
-
-	function BModel(p::Param)
-
-		this = new()
-
-		if p.ρ == 0
-			nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-			this.yvec = sqrt(2.0) * p.sigma .* nodes
-			this.ywgt = reshape(repeat(weights .* pi^(-0.5),inner = p.ny),p.ny,p.ny)  # make a matrix
-		else
-			# version with income persistence
-			this.yvec, this.ywgt = rouwenhorst(p.ρ,0,p.sigma,p.ny)
-		end
-
-		if p.a_low >= 0
-			error("need a_low < 0 for bankruptcy model")
-		end
-
-		# simulation shocks
-
-		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
-		this.aposvec       = collect(range(0.0,stop = p.a_high,length = p.na))
-		this.iazero = findfirst(this.avec .>= 0)
-
-		# precompute next period's cash on hand.
-		# (na,ny,nState)
-		# state = 1: tomorrow bk flag off
-		# state = 2: tomorrow bk flag on
-		this.m1 = Dict(it => Dict(id =>
-		                          Float64[p.R* (this.aposvec[ia]*(id==2) + (1 - (id==2))*this.avec[ia]).+ income(it,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na] for id=1:(p.nD)) for it=2:(p.nT))
-
-		# result arrays: matrices of type Envelope.
-		# this allocation is only to reserve about the right amount of memory. those will be overwritten in the algo.
-		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny, it in 1:p.nT]
-		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny,it in 1:p.nT]
-		# for bankruptcy flag on there is no discrete choice
-		this.vbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny, it in 1:p.nT]
-		this.cbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny,it in 1:p.nT]
-
-		this.rgrid = [fill(NaN,p.na) for id in 1:p.nD, iy in 1:p.ny,it in 1:p.nT ]
-
-		return this
-	end
-end
 
 
 
 """
-General GModel
+# General GModel
+
+* endogenous retirement age choice: if work get income(age), if not get fixed pension
+* with bequest
+* `general` because there is state dependent income, i.e an AR1 structure
+* no bankruptcy
 """
 mutable struct GModel <: Model
 
@@ -310,9 +252,6 @@ mutable struct GModel <: Model
 	w0shocks :: Vector{Float64}  # initial wealth shock
 	y0shocks :: Vector{Int64}  # initial income state
 
-	"""
-	Constructor for discrete choice GModel
-	"""
 	function GModel(p::Param)
 
 		this = new()
@@ -369,4 +308,68 @@ end
 function gmodel()
 	p = Param()
 	(GModel(p),p)
+end
+
+
+"""
+GModel with bankruptcy
+"""
+mutable struct BModel <: Model
+	avec::Vector{Float64}
+	aposvec::Vector{Float64}
+	yvec::Vector{Float64}   # income support
+	ywgt::Matrix{Float64}   # income support
+
+	# intermediate objects (na,nD)
+	m1::Dict{Int,Dict}	# a dict[it] for each period
+	# result objects
+	v :: Array{Envelope}  # arrays of Envelope objects
+	c :: Array{Envelope}
+	vbk :: Array{Envelope}  # arrays of Envelope objects
+	cbk :: Array{Envelope}
+	iazero :: Int  # index of first non-negative asset state
+	rgrid :: Array{Vector{Float64}}
+
+
+	function BModel(p::Param)
+
+		this = new()
+
+		if p.ρ == 0
+			nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+			this.yvec = sqrt(2.0) * p.sigma .* nodes
+			this.ywgt = reshape(repeat(weights .* pi^(-0.5),inner = p.ny),p.ny,p.ny)  # make a matrix
+		else
+			# version with income persistence
+			this.yvec, this.ywgt = rouwenhorst(p.ρ,0,p.sigma,p.ny)
+		end
+
+		if p.a_low >= 0
+			error("need a_low < 0 for bankruptcy model")
+		end
+
+		# simulation shocks
+
+		this.avec          = collect(range(p.a_low,stop = p.a_high,length = p.na))
+		this.aposvec       = collect(range(0.0,stop = p.a_high,length = p.na))
+		this.iazero = findfirst(this.avec .>= 0)
+
+		# precompute next period's cash on hand.
+		# (na,ny,nState)
+		# only precompute for bankrutpcy state
+		# in non-bk state cash on hand is endogenous to changing interest rate.
+		this.m1 = Dict(it => Float64[p.R * this.aposvec[ia] .+ income(it,p,this.yvec[iy]) for iy in 1:p.ny , ia in 1:p.na] for it=2:(p.nT))
+
+		# result arrays: matrices of type Envelope.
+		# this allocation is only to reserve about the right amount of memory. those will be overwritten in the algo.
+		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny, it in 1:p.nT]
+		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, iy in 1:p.ny,it in 1:p.nT]
+		# for bankruptcy flag on there is no discrete choice
+		this.vbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny, it in 1:p.nT]
+		this.cbk = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for iy in 1:p.ny,it in 1:p.nT]
+
+		this.rgrid = [fill(NaN,p.na) for id in 1:p.nD, iy in 1:p.ny,it in 1:p.nT ]
+
+		return this
+	end
 end
