@@ -9,7 +9,7 @@ This julia package is based on the matlab code accompanying the published paper,
 
 **tl;dr**
 
-1. This runs `12.5x` faster than the published matlab version. [Details](#Performance)
+1. This runs `12.5x` faster than the published matlab version. [Details](#performance-x125)
 2. The solution is checked for numerical equivalence with the matlab version.
 3. I provide a  state-dependent extensions to their version.
 4. I provide interactive apps that make it easy to study model behavior as the user varies model parameters.
