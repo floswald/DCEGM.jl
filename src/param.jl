@@ -64,10 +64,10 @@ mutable struct Param
 	ν    :: Float64 # strength of bequest motive
 
 	# simulation
-	nsims                 :: Int64
+	nsims                 :: Int
 	initw0                :: Float64   # low/high bounds on initial wealth from this interval
 	initw1                :: Float64   # low/high bounds on initial wealth from this interval
-	rseed                 :: Int64     # random generator seed
+	rseed                 :: Int     # random generator seed
 
 	# constructor
     function Param(;par::Dict=Dict())
@@ -308,7 +308,7 @@ mutable struct GModel <: Model
 	wshocks :: Matrix{Float64}  # wage shocks
 	dshocks :: Matrix{Float64}  # discrete choice shocks
 	w0shocks :: Vector{Float64}  # initial wealth shock
-	y0shocks :: Vector{Int64}  # initial income state
+	y0shocks :: Vector{Int}  # initial income state
 
 	"""
 	Constructor for discrete choice GModel
