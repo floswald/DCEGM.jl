@@ -166,13 +166,13 @@ function sim(m::GModel,p::Param)
 			s.ret_age[(s.worker[:,it-1] .== 1) .& (s.worker[:,it] .== 2)] .= it
 
 			# income
-			s.inc[.!(working), it] .= 0.0
+			s.inc[.!(working), it] .= p.pension #* income(it,p,m.yvec[s.ystate[.!(working),it]])
 			s.inc[ working, it] .= income(it,p,m.yvec[s.ystate[working,it]])
 
 
 			# start of period wealth in period it
-			s.w0[ :     , it] .= s.w1[:      , it-1]*p.R
-			s.w0[working, it] .= s.w1[working, it-1]*p.R .+ s.inc[ working, it]
+			s.w0[ :     , it] .= s.w1[:      , it-1]*p.R.+ s.inc[ : ,it]
+			# s.w0[working, it] .= s.w1[working, it-1]*p.R .+ s.inc[ working, it]
 		end
 		# consumption and value
 		# can be made much faster by grouping individuals by `iy` state
@@ -187,6 +187,10 @@ function sim(m::GModel,p::Param)
 			vmat[2,i] = vfun(2,it, [s.cons[i,it] ],[s.w0[i,it]], m.v[2,iy,it],p )[1]
 		end
 		# end of period wealth
+		s.util[ working,it]    = u(s.cons[ working,it], true, s.p)
+		s.util[ .!(working),it]    = u(s.cons[  .!(working),it], false, s.p)
+
+
 		s.w1[:,it] = s.w0[:,it] - s.cons[:,it]
 
 		# CCP to remain worker

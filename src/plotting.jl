@@ -44,7 +44,7 @@ end
 function plot_s(s::Simulation)
 
     # inc, cons, w
-    py = plot(s.inc',leg = false, title = "income")
+    py = plot(s.inc',leg = false, title = "income",yticks = [0,5,10,15],ylims = (-1,19))
     if s.p.ν > 0
         pc = plot(s.cons[:,1:(s.p.nT-1)]',leg = false, title = "consumption",ylims = (0,7))
         pw1 = plot(s.w1[:,1:(s.p.nT-1)]',leg = false, title = "w1",ylims = (0,maximum(s.p.a_high) + 0.1*maximum(s.p.a_high)))

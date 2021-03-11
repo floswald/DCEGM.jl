@@ -13,7 +13,8 @@ using Random
 using Interact
 using DataStructures: OrderedDict
 using InvertedIndices: Not
-gr()
+using Blink
+using BenchmarkTools
 
 
 import Base: +, -, *, /, ==, isless, in
