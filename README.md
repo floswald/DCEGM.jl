@@ -1,5 +1,8 @@
 # DCEGM.jl
 
+GitHub Actions Tests : [![Build Status](https://github.com/floswald/DCEGM.jl/workflows/CI/badge.svg)](https://github.com/floswald/DCEGM.jl/actions?query=workflow%3ACI+branch%3Amaster)
+
+
 *This implements the code for [The endogenous grid method for discrete‐continuous dynamic choice models with (or without) taste shocks](http://onlinelibrary.wiley.com/doi/10.3982/QE643/full), published in Quantitative Economics (2017) by Fedor Iskhakov, Thomas H. Jørgensen, John Rust and Bertel Schjerning*
 
 This julia package is based on the matlab code accompanying the published paper, available at [https://github.com/fediskhakov/dcegm](https://github.com/fediskhakov/dcegm).
