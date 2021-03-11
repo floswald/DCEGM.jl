@@ -1,18 +1,20 @@
-# DCEGM
+# DCEGM.jl
 
+*This implements the code for [The endogenous grid method for discrete‐continuous dynamic choice models with (or without) taste shocks](http://onlinelibrary.wiley.com/doi/10.3982/QE643/full), published in Quantitative Economics (2017) by Fedor Iskhakov, Thomas H. Jørgensen, John Rust and Bertel Schjerning*
 
+This julia package is based on the matlab code accompanying the published paper, available at [https://github.com/fediskhakov/dcegm](https://github.com/fediskhakov/dcegm).
 
-Julia implementation of DCEGM based on the matlab version at [https://github.com/fediskhakov/dcegm](https://github.com/fediskhakov/dcegm).
+**tl;dr**
 
-This package implements three types of models:
-
-1. `FModel`: Baseline DCEGM version as published in QE paper [and with code here](https://github.com/fediskhakov/dcegm).
-2. `GModel`: generalized version of `FModel` with state dependence
-3. `BModel`: extension of `GModel` with discrete choice *bankruptcy* instead of labor yes/no.
-
+1. This runs `12.5x` faster than the published matlab version. [Details](#Performance)
+2. The solution is checked for numerical equivalence with the matlab version.
+3. I provide a  state-dependent extensions to their version.
+4. I provide interactive apps that make it easy to study model behavior as the user varies model parameters.
 
 
 ## How to Use this
+
+*This package is not (yet) officially registered, you so follow instructions below for installation*
 
 1. [Download latest julia](https://julialang.org/downloads/)
 2. start julia. you see something like this:
@@ -51,22 +53,9 @@ This package implements three types of models:
     ```julia
     julia> using DCEGM
 
-    julia> m,p = DCEGM.runf();  # runs @fediskhakov version of the algorithm
+    julia> @time DCEGM.runf();   # run @fedishakov's version of the model
+       0.012842 seconds (13.53 k allocations: 16.122 MiB)
     ```
-
-## How to work with this: workflow
-
-* I don't use `Revise.jl`, instead i
-    ```julia
-    julia> include("src/DCEGM.jl")
-    ```
-    each time I made a change to the code. I found it much more robust than `Revise.jl` but maybe that's just me.
-* I work mainly in Atom to use the interaction feature (see below) easily
-* no pushes into master branch: ideally, changes to code should be made only as a reaction to an issue on the github repo. Therefore, all contributions should be pull requests that are related to one or more issues.
-* please give reasonable names to your branches like `issue12` or `multi-dchoice` and not `branch1`, `branch2` etc.
-* Each PR ideally augments the set of unit tests (below).
-* no PR should be submitted without executing and passing the test suite (below again). Travis-CI is disabled for now (I ran out of free private builds...)
-
 
 ## Testing
 
@@ -82,18 +71,15 @@ The package is thoroughly unit tested. Please run `] test` while in the activate
 
 The core of the package functionality can be tried out in an interactive dashboard powered by [`Interact.jl`](https://github.com/JuliaGizmos/Interact.jl). The relevant code is in [interact.jl](src/interact.jl).
 
-**Important**: there is a known [bug](https://github.com/JunoLab/Juno.jl/issues/583) in the latest version of Atom which prevents the interactive panel to show. A very simple solution is to use the previous version 1.46.0 of Atom, which you just [download here](https://github.com/atom/atom/releases/tag/v1.46.0) for your OS.
-
-There is an interaction for each model type:
-
 
 ```julia
-julia> DCEGM.interact(DCEGM.rsgp)   # run sim general model plots
-julia> DCEGM.interact(DCEGM.runfp)   # run fedors model and plot
-julia> DCEGM.ibksim()   # interact bk model with sim/sol switch in interact
+julia> DCEGM.iminimal()   # interact with the minimal model
+julia> DCEGM.iminimalb()   # interact with the minimal model with bequest
+julia> DCEGM.ifedor()  # interact with fedors model
+julia> DCEGM.igmodel()  # interact with the general model
 ```
 
-if this last one works, it looks like this:
+in each instance, you'll see a new window like that one:
 
 ![](images/interact.png)
 
@@ -109,7 +95,9 @@ Also, points where 2 lines intersect on the initial grid of both lines are *not*
 ![](images/demo2.png)
 
 
-## Performance: `x7.5`
+## Performance: `x12.5`
+
+This is the output of function `bm()` which is [here](src/bench.jl). Matlab time is taken only for model solution, no setup or disk write operation. Please check the source code for questions.
 
 ```julia
 julia> DCEGM.bm()
@@ -123,7 +111,18 @@ Retirement model solved with
 in  1.509s
 wrote policy and value function to ascii in output/ . exiting matlab.
 julia timing:
-    0.206208 seconds (220.33 k allocations: 147.162 MiB, 38.24% gc time)
+
+BenchmarkTools.Trial: 
+  memory estimate:  117.82 MiB
+  allocs estimate:  179885
+  --------------
+  minimum time:     121.571 ms (16.45% GC)
+  median time:      125.947 ms (18.26% GC)
+  mean time:        129.230 ms (20.44% GC)
+  maximum time:     149.955 ms (31.12% GC)
+  --------------
+  samples:          39
+  evals/sample:     1
 ```
 
-The julia version runs 7.5 times faster than the matlab version.
+The julia version runs 12.5 times faster than the matlab version.

@@ -1,8 +1,7 @@
 
 
 
-function minimal_EGM()
-    p             = Param()
+function minimal_EGM(p::Param)
     nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
     yvec          = sqrt(2.0) * p.sigma .* nodes
     ywgt          = weights .* pi^(-0.5)

@@ -23,9 +23,9 @@ function bm()
 
 	# accuracy of solution has been tested in F_test unit test.
 	println()
-    DCEGM.runf(par = pd);
+    DCEGM.runf(par = pd);  # run once to compile
 	println("julia timing:")
-    @time DCEGM.runf(par = pd);
+	@benchmark DCEGM.runf(par = $pd)
 	return nothing
 
 end
