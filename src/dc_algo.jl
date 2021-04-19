@@ -368,6 +368,16 @@ function pp()
     plot(m.v[1,1].env)
 end
 
+"""
+    do_secondary(vline::MLine, cline::MLine, working::Bool, ev0::Float64, p::Param)
+
+Performs secondary envelope cleaning on the DC algo example with working true/false.
+
+1. Checks whether there is any backward bending of calculated EGM value function beyond first grid point in x0
+2. Inserts a new point if so (from analytic expression of utility)
+3. Calls [`secondary_envelope`](@ref)
+4. Prunes invalid points from the consumption policy function and adds new intersections ([`secondary_envelope`](@ref) is only pruning the value function)
+"""
 function do_secondary(vline::MLine, cline::MLine, working::Bool, ev0::Float64, p::Param)
     minx = min_x(vline)
     if vline.v[1].x <= minx
