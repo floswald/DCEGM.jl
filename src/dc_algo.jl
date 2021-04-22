@@ -5,7 +5,7 @@
 
 DCEGM algorithm as in Ishkakov et al.
 """
-function dc_EGM!(m::FModel,p::Param)
+function dc_EGM!(m::FModel,p::Param; demo = false)
 
     for it in p.nT:-1:1
         # println(it)
@@ -76,6 +76,10 @@ function dc_EGM!(m::FModel,p::Param)
                     ev =  (1-p.delta) * m.ywgt' * reshape(vmat[2,:],p.ny,p.na) + p.delta * m.ywgt' * reshape(logsum(vmat,p),p.ny,p.na)
                 end
                 vline = MLine(m.avec .+ c0, u(c0,id==1,p) .+ p.beta * ev[:])
+                if demo
+                    m.vdirty[id,it] = Envelope(vline)
+                    m.cdirty[id,it] = Envelope(cline)
+                end
 
                 # SECONDARY ENVELOPE COMPUTATION
                 # ==============================
@@ -332,6 +336,13 @@ function runf(;par=Dict())
     # p.beta = 1/p.R
     m = FModel(p)
     dc_EGM!(m,p)
+    (m,p)
+end
+function runfdemo(;par=Dict())
+    p = Param(par=par)
+    # p.beta = 1/p.R
+    m = FModel(p)
+    dc_EGM!(m,p,demo = true)
     (m,p)
 end
 function runfp(;par = Dict())

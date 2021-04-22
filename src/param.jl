@@ -182,6 +182,9 @@ mutable struct FModel <: Model
 	v :: Array{Envelope}  # arrays of Envelope objects
 	c :: Array{Envelope}
 
+	vdirty :: Array{Envelope}  # arrays of Envelope objects
+	cdirty :: Array{Envelope}
+
 
 	function FModel(p::Param)
 
@@ -212,6 +215,9 @@ mutable struct FModel <: Model
 		# result arrays: matrices of type Envelope.
 		this.v = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
 		this.c = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD ,it in 1:p.nT]
+
+		this.vdirty = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD, it in 1:p.nT]
+		this.cdirty = [Envelope(MLine(fill(NaN,(p.na)),fill(NaN,(p.na)))) for id in 1:p.nD ,it in 1:p.nT]
 
 		return this
 	end
