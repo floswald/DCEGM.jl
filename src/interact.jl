@@ -71,6 +71,7 @@ function ifedor()
 	mp = @manipulate for dosim = Dict("sim" => true, "sol" => false),
 						 id = Dict("id=$id" => id for id in 1:2) ,
 						 nsims = spinbox(label="nsims"; value=p.nsims) |> onchange,
+						 nT = spinbox(label="nperiods"; value=p.nT) |> onchange,
 						 # γ in slider(gammas, label = "γ", value =p.gamma ),
 						 β in slider(betas, label = "β", value =p.beta) |> onchange ,
 						 R in slider(Rs, label = "R", value =p.R) |> onchange,
@@ -82,7 +83,7 @@ function ifedor()
 						 bbar in slider(bbars, label = "bbar", value =p.bbar) |> onchange,
 						 nu in slider(nus, label = "ν", value =p.ν) |> onchange
 
-		 m,p = runf(par = Dict(:nsims => nsims , :bbar => bbar, :ν => nu, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ, :pension => pens))
+		 m,p = runf(par = Dict(:nsims => nsims , :bbar => bbar, :ν => nu, :beta => β, :alpha => α, :sigma => σ, :lambda => λ, :R => R, :delta => δ, :pension => pens, :nT => nT))
 		 if dosim
 			 s = sim(m,p)
 			 plot_s(s)
@@ -92,7 +93,7 @@ function ifedor()
 	end
 	@layout! mp vbox(
 		hbox(dosim, id, nsims),
-		hbox(β, R, σ),
+		hbox(β, R, σ, nT),
 		hbox(α, λ, nu),
 		hbox(δ, pens, bbar),
 		observe(_))

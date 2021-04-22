@@ -423,7 +423,6 @@ end
     # defaults
     grid --> true
     xticks := true
-    legend := false
     @series begin
         seriestype --> :path
         linecolor --> :black
