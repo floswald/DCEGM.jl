@@ -5,7 +5,7 @@
 
 DCEGM algorithm as in Ishkakov et al.
 """
-function dc_EGM!(m::FModel,p::Param)
+function dc_EGM!(m::FModel,p::Param; demo = false)
 
     for it in p.nT:-1:1
         # println(it)
@@ -76,6 +76,10 @@ function dc_EGM!(m::FModel,p::Param)
                     ev =  (1-p.delta) * m.ywgt' * reshape(vmat[2,:],p.ny,p.na) + p.delta * m.ywgt' * reshape(logsum(vmat,p),p.ny,p.na)
                 end
                 vline = MLine(m.avec .+ c0, u(c0,id==1,p) .+ p.beta * ev[:])
+                if demo
+                    m.vdirty[id,it] = Envelope(vline)
+                    m.cdirty[id,it] = Envelope(cline)
+                end
 
                 # SECONDARY ENVELOPE COMPUTATION
                 # ==============================
@@ -335,6 +339,13 @@ function runf(;par=Dict())
     dc_EGM!(m,p)
     (m,p)
 end
+function runfdemo(;par=Dict())
+    p = Param(par=par)
+    # p.beta = 1/p.R
+    m = FModel(p)
+    dc_EGM!(m,p,demo = true)
+    (m,p)
+end
 function runfp(;par = Dict())
     m,p = runf(par = par)
     plot(m,p)
@@ -369,6 +380,16 @@ function pp()
     plot(m.v[1,1].env)
 end
 
+"""
+    do_secondary(vline::MLine, cline::MLine, working::Bool, ev0::Float64, p::Param)
+
+Performs secondary envelope cleaning on the DC algo example with working true/false.
+
+1. Checks whether there is any backward bending of calculated EGM value function beyond first grid point in x0
+2. Inserts a new point if so (from analytic expression of utility)
+3. Calls [`secondary_envelope`](@ref)
+4. Prunes invalid points from the consumption policy function and adds new intersections ([`secondary_envelope`](@ref) is only pruning the value function)
+"""
 function do_secondary(vline::MLine, cline::MLine, working::Bool, ev0::Float64, p::Param)
     minx = min_x(vline)
     if vline.v[1].x <= minx

@@ -13,7 +13,8 @@ using Random
 using Interact
 using DataStructures: OrderedDict
 using InvertedIndices: Not
-gr()
+using Blink
+using BenchmarkTools
 
 
 import Base: +, -, *, /, ==, isless, in
@@ -50,6 +51,7 @@ include("plotting.jl")
 include("bench.jl")
 include("bk.jl")
 include("interact.jl")
+include("demo.jl")
 
 
 function doi()

@@ -1,16 +1,13 @@
 
 
-
-function minimal_EGM()
-    p             = Param()
+function minimal_EGM(p::Param)
     nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
     yvec          = sqrt(2.0) * p.sigma .* nodes
     ywgt          = weights .* pi^(-0.5)
-    # avec          = scaleGrid(0.0,p.a_high,p.na,logorder = 1)
     avec          = collect(range(0.0,p.a_high,length = p.na))
     m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
-    m[p.nT]       = [0.0,p.a_high]    # no debt in last period possible
+    m[p.nT]       = [0.0,p.a_high]    
     c[p.nT]       = [0.0,p.a_high]
 
     cg = cgrad(:viridis)

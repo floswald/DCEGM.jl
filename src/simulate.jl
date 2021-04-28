@@ -5,11 +5,11 @@ mutable struct Simulation
 	w1        :: Matrix{Float64}
 	cons      :: Matrix{Float64}
 	util      :: Matrix{Float64}
-	ystate    :: Matrix{Int64}
+	ystate    :: Matrix{Int}
 	inc       :: Matrix{Float64}
 	prob_work :: Matrix{Float64}
-	ret_age   :: Vector{Int64}
-	worker    :: Matrix{Int64}
+	ret_age   :: Vector{Int}
+	worker    :: Matrix{Int}
 	p :: Param
 	function Simulation(p::Param)
 		this = new()
@@ -32,10 +32,10 @@ mutable struct BSimulation
 	w0        :: Matrix{Float64}
 	w1        :: Matrix{Float64}
 	cons      :: Matrix{Float64}
-	ystate    :: Matrix{Int64}
+	ystate    :: Matrix{Int}
 	inc       :: Matrix{Float64}
 	prob_nofile :: Matrix{Float64}
-	file_age   :: Vector{Int64}
+	file_age   :: Vector{Int}
 	bkflag    :: Matrix{Bool}  # on/off
 	vfile :: Matrix{Float64}
 	vnofile :: Matrix{Float64}
