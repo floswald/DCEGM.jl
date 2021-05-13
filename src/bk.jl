@@ -1,5 +1,7 @@
 
-
+# status: WIP
+# still does not allow to come back from bankruptcy punishment
+# this means that final period bankrtuptcy punishment is very important
 function bk!(m::BModel,p::Param)
 
     cmat = fill(-Inf,p.nD,p.na)
