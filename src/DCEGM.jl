@@ -51,6 +51,6 @@ include("plotting.jl")
 include("bench.jl")
 include("bk.jl")
 include("interact.jl")
-include("demo.jl")
+
 
 end # module
