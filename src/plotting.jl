@@ -82,7 +82,7 @@ function plot_s(s::Simulation)
     #                    ])
     plot(py,pc,pw0,pretage,
         ppr,pw1,pbeq , pmutil,
-          layout = (2,4))
+          layout = (2,4), size = (1200,800))
 end
 
 function plot_s(s::BSimulation)
