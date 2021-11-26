@@ -92,47 +92,47 @@ end
 # even if that means negative cash on hand
 # simple EGM that allows borrowing also in final period of life
 # just shifts everything left
-function minimal_EGM_borrow(p::Param)
-    nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
-    yvec          = sqrt(2.0) * p.sigma .* nodes
-    ywgt          = weights .* pi^(-0.5)
-    avec          = collect(range(p.a_low,p.a_high,length = p.na))
-    m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
-    c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
-    m[p.nT]       = [0.0,p.a_high]    
-    c[p.nT]       = [0.0,p.a_high]
+# function minimal_EGM_borrow(p::Param)
+#     nodes,weights = gausshermite(p.ny)  # from FastGaussQuadrature
+#     yvec          = sqrt(2.0) * p.sigma .* nodes
+#     ywgt          = weights .* pi^(-0.5)
+#     avec          = collect(range(p.a_low,p.a_high,length = p.na))
+#     m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
+#     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
+#     m[p.nT]       = [0.0,p.a_high]    
+#     c[p.nT]       = [0.0,p.a_high]
 
-    cg = cgrad(:viridis)
-    cols = cg[range(0.0,stop=1.0,length=p.nT)]
+#     cg = cgrad(:viridis)
+#     cols = cg[range(0.0,stop=1.0,length=p.nT)]
 
-    pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=:topright,title="Consumption Function",
-              xlims = (p.a_low,p.a_high),ylims = (0.0,p.a_high), color = cols[p.nT],
-              xlab = "Cash on Hand", ylab = "Consumption")
-    # cycle back in time
-    for it in p.nT-1:-1:1
-        w1 = 0.0 .+ exp.(yvec) .+ p.R.*avec'   # w1 = y + yshock*R*savings:  next period wealth at all states. (p.ny,p.na)
-        # get next period consumption on that wealth w1
-        # interpolate on next period's endogenous grid m[it+1].
-        # notice that the `interpolate` object needs to be able to extrapolate
-        c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Line())(w1[:]) ,p.ny,p.na)
-        c1[c1.<0] .= p.cfloor     # don't allow negative consumption
-        Emu   = ywgt' * (1 ./ c1)   # Expected marginal utility (with log utility!). (p.na,1)
-        rhs   = p.beta * p.R * Emu[:]   # RHS of euler equation
-        c[it] = 1.0 ./ rhs   # inverse marginal utility function gives current consumption
-        m[it] = avec .+ c[it]   # current period endogenous cash on hand grid. (p.na+1,1)
+#     pl = plot(m[p.nT],c[p.nT],label="$(p.nT)",leg=:topright,title="Consumption Function",
+#               xlims = (p.a_low,p.a_high),ylims = (0.0,p.a_high), color = cols[p.nT],
+#               xlab = "Cash on Hand", ylab = "Consumption")
+#     # cycle back in time
+#     for it in p.nT-1:-1:1
+#         w1 = 0.0 .+ exp.(yvec) .+ p.R.*avec'   # w1 = y + yshock*R*savings:  next period wealth at all states. (p.ny,p.na)
+#         # get next period consumption on that wealth w1
+#         # interpolate on next period's endogenous grid m[it+1].
+#         # notice that the `interpolate` object needs to be able to extrapolate
+#         c1 = reshape(extrapolate(interpolate((m[it+1],),c[it+1],Gridded(Linear())),Line())(w1[:]) ,p.ny,p.na)
+#         c1[c1.<0] .= p.cfloor     # don't allow negative consumption
+#         Emu   = ywgt' * (1 ./ c1)   # Expected marginal utility (with log utility!). (p.na,1)
+#         rhs   = p.beta * p.R * Emu[:]   # RHS of euler equation
+#         c[it] = 1.0 ./ rhs   # inverse marginal utility function gives current consumption
+#         m[it] = avec .+ c[it]   # current period endogenous cash on hand grid. (p.na+1,1)
 
-        # add credit constraint region
-        # the lowest asset grid point on tomorrow's cash on hand (agrid[1]) corresponds to
-        # saving exactly zero (or location on the lower bound of the asset grid)
-        # well, we allow that people save zero (and consume all they have currently on hand).
-        c[it] = vcat(0.0, c[it])   # prepend with 0
-        m[it] = vcat(p.a_low, m[it])   #
+#         # add credit constraint region
+#         # the lowest asset grid point on tomorrow's cash on hand (agrid[1]) corresponds to
+#         # saving exactly zero (or location on the lower bound of the asset grid)
+#         # well, we allow that people save zero (and consume all they have currently on hand).
+#         c[it] = vcat(0.0, c[it])   # prepend with 0
+#         m[it] = vcat(p.a_low, m[it])   #
 
-        plot!(pl,m[it],c[it],label= it == 1 ? "$it" : "", color = cols[it])
-    end
-    pl = lens!(pl, [p.a_low, 2], [0.0, 2], inset = (1, bbox(0.2, 0.1, 0.25, 0.25)))
-    m,c,pl
-end
+#         plot!(pl,m[it],c[it],label= it == 1 ? "$it" : "", color = cols[it])
+#     end
+#     pl = lens!(pl, [p.a_low, 2], [0.0, 2], inset = (1, bbox(0.2, 0.1, 0.25, 0.25)))
+#     m,c,pl
+# end
 
 
 function minimal_EGM_bequest(p::Param)
