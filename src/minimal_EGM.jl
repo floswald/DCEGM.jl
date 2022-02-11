@@ -53,7 +53,7 @@ function minimal_EGM_borrow(p::Param)
     avec          = collect(range(p.a_low,p.a_high,length = p.na))
     m             = Vector{Float64}[Float64[] for i in 1:p.nT]   # endogenous grid
     c             = Vector{Float64}[Float64[] for i in 1:p.nT]   # consumption function on m
-    m[p.nT]       = [0.0,p.a_high]    
+    m[p.nT]       = [p.a_low,p.a_high]    
     c[p.nT]       = [0.0,p.a_high]
 
     cg = cgrad(:viridis)
