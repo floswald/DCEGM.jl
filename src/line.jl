@@ -2,7 +2,7 @@ struct Point{T}
     x::T
     y::T
 end
-function convert(::Type{Point},x::Vector,y::Vector) where T
+function convert(::Type{Point},x::Vector,y::Vector)
     @assert length(x) == length(y)
     [Point(x[ix],y[ix]) for ix in 1:length(x)]
 end
